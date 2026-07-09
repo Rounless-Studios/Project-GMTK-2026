@@ -119,3 +119,4 @@ Small raster assets such as `*.png` and `*.jpg` are marked binary but are not au
 - Unity batch-mode open/import with `6000.3.19f1` exited 0. The log showed transient licensing handshake/update messages that resolved to an initialized Unity Personal license, and no compiler/import errors were found.
 - Unity batch-mode validation did not modify source-controlled files.
 - Local fresh-clone verification from the committed setup branch passed: the clone contained `Assets`, `Packages`, `ProjectSettings`, `.gitignore`, and `.gitattributes`; generated directories were absent; setup and validation passed; the temporary clone was removed.
+- Remote fresh-clone verification from `https://github.com/Rounless-Studios/Project-GMTK-2026.git` on branch `chore/pre-jam-repo-setup` passed: the clone contained the required Unity source project paths, generated directories were absent, setup and validation passed, and the temporary clone was removed.
