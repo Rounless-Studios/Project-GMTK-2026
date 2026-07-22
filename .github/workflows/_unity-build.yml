@@ -65,9 +65,44 @@ jobs:
       - name: Run repository preflight
         run: bash scripts/ci/repository-preflight.sh
 
+  unity_credentials:
+    name: Resolve Unity credential availability
+    needs: preflight
+    runs-on: ubuntu-latest
+    outputs:
+      can_run_unity: ${{ steps.check.outputs.can_run_unity }}
+    steps:
+      - name: Check Unity credentials
+        id: check
+        shell: bash
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          set -Eeuo pipefail
+          if [[ -n "${UNITY_SERIAL:-}" && ( -z "${UNITY_EMAIL:-}" || -z "${UNITY_PASSWORD:-}" ) ]]; then
+            echo '::error::UNITY_EMAIL and UNITY_PASSWORD are required when UNITY_SERIAL is used.'
+            exit 1
+          fi
+          if [[ -n "${UNITY_LICENSE:-}" || -n "${UNITY_SERIAL:-}" ]]; then
+            echo 'can_run_unity=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            echo 'can_run_unity=false' >> "$GITHUB_OUTPUT"
+            echo '### Unity jobs skipped' >> "$GITHUB_STEP_SUMMARY"
+            echo '- UNITY_LICENSE/UNITY_SERIAL are unavailable in this pull request run, so licensed Unity tests and builds were skipped.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo '::error::Configure UNITY_LICENSE for Personal, or UNITY_SERIAL for eligible Pro activation.'
+          exit 1
+
   tests:
     name: ${{ matrix.label }} tests
-    needs: preflight
+    needs: [preflight, unity_credentials]
+    if: needs.unity_credentials.outputs.can_run_unity == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -87,16 +122,6 @@ jobs:
           persist-credentials: false
       - name: Pull and verify LFS objects
         run: bash scripts/ci/repository-preflight.sh
-      - name: Check Unity credentials
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-        run: |
-          set -Eeuo pipefail
-          if [[ -z "${UNITY_LICENSE:-}" && -z "${UNITY_SERIAL:-}" ]]; then echo '::error::Configure UNITY_LICENSE for Personal, or UNITY_SERIAL for eligible Pro activation.'; exit 1; fi
-          if [[ -n "${UNITY_SERIAL:-}" && ( -z "${UNITY_EMAIL:-}" || -z "${UNITY_PASSWORD:-}" ) ]]; then echo '::error::UNITY_EMAIL and UNITY_PASSWORD are required when UNITY_SERIAL is used.'; exit 1; fi
       - name: Restore isolated test Library cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -134,7 +159,8 @@ jobs:
 
   build:
     name: Build and validate ${{ matrix.label }}
-    needs: [preflight, tests]
+    needs: [preflight, unity_credentials, tests]
+    if: needs.unity_credentials.outputs.can_run_unity == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -149,16 +175,6 @@ jobs:
           persist-credentials: false
       - name: Pull and verify LFS objects
         run: bash scripts/ci/repository-preflight.sh
-      - name: Check Unity credentials
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-        run: |
-          set -Eeuo pipefail
-          [[ -n "${UNITY_LICENSE:-}" || -n "${UNITY_SERIAL:-}" ]] || { echo '::error::Configure UNITY_LICENSE for Personal, or UNITY_SERIAL for eligible Pro activation.'; exit 1; }
-          [[ -z "${UNITY_SERIAL:-}" || ( -n "${UNITY_EMAIL:-}" && -n "${UNITY_PASSWORD:-}" ) ]] || { echo '::error::UNITY_EMAIL and UNITY_PASSWORD must be configured when UNITY_SERIAL is used.'; exit 1; }
       - name: Restore target-isolated Library cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

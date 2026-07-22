@@ -38,12 +38,12 @@ flowchart LR
 
 | Trigger | Validation/tests | Builds | itch | GitHub Release |
 |---|---|---|---|---|
-| PR targeting `main` | Repository/LFS, compilation, EditMode, PlayMode | WebGL structural/loading smoke | Never; no itch environment or credentials | No |
+| PR targeting `main` | Repository/LFS, plus EditMode/PlayMode/builds when Unity credentials are available | WebGL structural/loading smoke when Unity credentials are available | Never; no itch environment or credentials | No |
 | Push to `main` | Same | Windows 64-bit + WebGL | `windows-staging`, `html5-staging` after every prerequisite passes | No |
 | Manual diagnostic | Same | WebGL, optionally Windows | Never | No |
 | Manual production | Early input/ref gate, then all checks again at resolved SHA | Windows + WebGL | Protected `windows`, `html5` | Annotated tag and release after both uploads succeed |
 
-The reusable workflow orders `preflight -> EditMode and PlayMode in parallel -> target builds in parallel`. Deployment jobs download those exact artifacts and never rebuild. PR workflows use `pull_request`, never `pull_request_target`, have read-only permissions, and never reference itch secrets. Fork PRs are safe, but GitHub withholds Unity repository secrets from forks; such runs fail with an actionable licensing message rather than executing untrusted code with secrets. A maintainer must inspect the fork and test it from a trusted branch.
+The reusable workflow orders `preflight -> Unity credential gate -> EditMode and PlayMode in parallel -> target builds in parallel`. Deployment jobs download those exact artifacts and never rebuild. PR workflows use `pull_request`, never `pull_request_target`, have read-only permissions, and never reference itch secrets. When Unity credentials are unavailable in a PR run, the workflow records that licensed Unity jobs were skipped instead of failing before any test/build step can start. Push and release workflows still fail fast until Unity licensing is configured correctly.
 
 ## Files and responsibilities
 
