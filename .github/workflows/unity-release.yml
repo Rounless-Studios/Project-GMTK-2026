@@ -1,0 +1,153 @@
+name: Unity production release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semantic release version, without v (for example 0.1.0)
+        required: true
+        type: string
+      ref:
+        description: Branch, tag, or commit reachable from main
+        required: false
+        default: main
+        type: string
+      release_type:
+        description: GitHub release classification
+        required: true
+        type: choice
+        options: [candidate, final]
+      confirmation:
+        description: Type RELEASE exactly
+        required: true
+        type: string
+
+concurrency:
+  group: itch-production-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Validate release request and resolve source
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.gate.outputs.sha }}
+      short_sha: ${{ steps.gate.outputs.short_sha }}
+    steps:
+      - name: Reject invalid inputs before Unity work
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          SOURCE_REF: ${{ inputs.ref }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo '::error::Version must be strict major.minor.patch semantic versioning.'; exit 1; }
+          [[ "$CONFIRMATION" == RELEASE ]] || { echo '::error::Confirmation must be exactly RELEASE.'; exit 1; }
+          [[ -n "$SOURCE_REF" && "$SOURCE_REF" != -* && "$SOURCE_REF" != *'..'* && "$SOURCE_REF" != *' '* && "$SOURCE_REF" != *'~'* && "$SOURCE_REF" != *'^'* && "$SOURCE_REF" != *':'* && "$SOURCE_REF" != *'?'* && "$SOURCE_REF" != *'['* && "$SOURCE_REF" != *'\\'* ]] || { echo '::error::Unsafe or invalid Git ref.'; exit 1; }
+      - name: Check out full repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+      - name: Resolve ref, ancestry, tag, and release uniqueness
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REF: ${{ inputs.ref }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -Eeuo pipefail
+          git fetch --no-tags origin main
+          git fetch --no-tags origin "$SOURCE_REF"
+          sha="$(git rev-parse --verify 'FETCH_HEAD^{commit}')" || { echo '::error::Selected ref cannot be resolved to a commit.'; exit 1; }
+          git merge-base --is-ancestor "$sha" origin/main || { echo '::error::Production source must be reachable from main.'; exit 1; }
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then echo '::error::Release tag already exists.'; exit 1; fi
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$VERSION" >/dev/null 2>&1; then echo '::error::GitHub Release already exists.'; exit 1; fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(git rev-parse --short=8 "$sha")" >> "$GITHUB_OUTPUT"
+          echo "Resolved production source to $sha" >> "$GITHUB_STEP_SUMMARY"
+
+  validate_test_build:
+    name: Revalidate and rebuild exact production source
+    needs: gate
+    uses: ./.github/workflows/_unity-build.yml
+    with:
+      source_ref: ${{ needs.gate.outputs.sha }}
+      release_version: ${{ inputs.version }}
+      release_type: ${{ inputs.release_type }}
+      build_windows: true
+      retention_days: 30
+    secrets: inherit
+
+  publish:
+    name: Approve, deploy itch, tag, and publish GitHub Release
+    needs: [gate, validate_test_build]
+    runs-on: ubuntu-latest
+    environment: itch-production
+    permissions:
+      contents: write
+    steps:
+      - name: Check out exact built commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.gate.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Download exact successful build artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: unity-build-*
+          path: payload
+          merge-multiple: true
+      - name: Revalidate and prepare release assets
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE_SHA: ${{ needs.gate.outputs.sha }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: |
+          set -Eeuo pipefail
+          bash scripts/ci/validate-output.sh StandaloneWindows64 payload/build/windows
+          bash scripts/ci/validate-output.sh WebGL payload/build/webgl
+          mkdir -p release-assets
+          cp "payload/dist/project-gmtk-2026-windows-${VERSION}.zip" "release-assets/project-gmtk-2026-windows-v${VERSION}.zip"
+          cp "payload/dist/project-gmtk-2026-webgl-${VERSION}.zip" "release-assets/project-gmtk-2026-webgl-v${VERSION}.zip"
+          jq -s --arg source "$SOURCE_SHA" --arg type "$RELEASE_TYPE" --arg unity '6000.3.19f1' '{schemaVersion:1,sourceCommit:$source,unityVersion:$unity,releaseType:$type,platforms:.}' payload/manifests/windows.json payload/manifests/webgl.json > "release-assets/build-manifest-v${VERSION}.json"
+          (cd release-assets && sha256sum *.zip build-manifest-*.json > "SHA256SUMS-v${VERSION}.txt")
+      - name: Install stable Butler
+        run: bash scripts/ci/install-butler.sh
+      - name: Deploy Windows production channel
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          ITCH_PROJECT: ${{ vars.ITCH_PROJECT }}
+          SOURCE_SHA: ${{ needs.gate.outputs.sha }}
+        run: bash scripts/ci/deploy-itch.sh payload/build/windows windows '${{ inputs.version }}'
+      - name: Deploy WebGL production channel
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          ITCH_PROJECT: ${{ vars.ITCH_PROJECT }}
+          SOURCE_SHA: ${{ needs.gate.outputs.sha }}
+        run: bash scripts/ci/deploy-itch.sh payload/build/webgl html5 '${{ inputs.version }}'
+      - name: Recheck uniqueness, create annotated tag, and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          SOURCE_SHA: ${{ needs.gate.outputs.sha }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: |
+          set -Eeuo pipefail
+          git fetch --tags origin
+          ! git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null || { echo '::error::Tag appeared while this release waited; refusing overwrite.'; exit 1; }
+          ! gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$VERSION" >/dev/null 2>&1 || { echo '::error::Release appeared while this release waited; refusing overwrite.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a "v$VERSION" "$SOURCE_SHA" -m "Project GMTK 2026 $RELEASE_TYPE release v$VERSION"
+          git push origin "refs/tags/v$VERSION"
+          prerelease=()
+          [[ "$RELEASE_TYPE" == candidate ]] && prerelease=(--prerelease)
+          printf 'Release type: %s\nSource commit: %s\nUnity: 6000.3.19f1\n' "$RELEASE_TYPE" "$SOURCE_SHA" > release-notes.md
+          gh release create "v$VERSION" release-assets/* --verify-tag --title "v$VERSION" --notes-file release-notes.md "${prerelease[@]}"
