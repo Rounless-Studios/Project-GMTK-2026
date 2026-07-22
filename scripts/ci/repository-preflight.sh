@@ -14,7 +14,7 @@ version="$(unity_version)"
 
 git lfs pull
 git lfs ls-files
-"$root/scripts/ci/validate-lfs.sh" Assets
+bash "$root/scripts/ci/validate-lfs.sh" Assets
 
 if [[ -n "$(git ls-files -i --exclude-standard -- Library Temp Logs Build Builds 2>/dev/null)" ]]; then
   die 'Generated Unity or build output is tracked by Git.'

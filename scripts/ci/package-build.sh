@@ -4,7 +4,7 @@ source "$(dirname "$0")/common.sh"
 platform="${1:-}"
 build_dir="${2:-}"
 zip_path="$(realpath -m "${3:-}")"
-"$(dirname "$0")/validate-output.sh" "$platform" "$build_dir"
+bash "$(dirname "$0")/validate-output.sh" "$platform" "$build_dir"
 rm -f "$zip_path"
 mkdir -p "$(dirname "$zip_path")"
 (cd "$build_dir" && zip -q -r "$zip_path" . -x '*_BackUpThisFolder_ButDontShipItWithYourGame/*' '*_BurstDebugInformation_DoNotShip/*' '*.pdb' '*.debug')
