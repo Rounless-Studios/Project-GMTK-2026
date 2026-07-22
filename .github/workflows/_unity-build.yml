@@ -95,8 +95,8 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         run: |
           set -Eeuo pipefail
-          if [[ -z "${UNITY_EMAIL:-}" || -z "${UNITY_PASSWORD:-}" ]]; then echo '::error::UNITY_EMAIL and UNITY_PASSWORD are required. Unity Pro may additionally set UNITY_SERIAL.'; exit 1; fi
           if [[ -z "${UNITY_LICENSE:-}" && -z "${UNITY_SERIAL:-}" ]]; then echo '::error::Configure UNITY_LICENSE for Personal, or UNITY_SERIAL for eligible Pro activation.'; exit 1; fi
+          if [[ -n "${UNITY_SERIAL:-}" && ( -z "${UNITY_EMAIL:-}" || -z "${UNITY_PASSWORD:-}" ) ]]; then echo '::error::UNITY_EMAIL and UNITY_PASSWORD are required when UNITY_SERIAL is used.'; exit 1; fi
       - name: Restore isolated test Library cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -157,8 +157,8 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         run: |
           set -Eeuo pipefail
-          [[ -n "${UNITY_EMAIL:-}" && -n "${UNITY_PASSWORD:-}" ]] || { echo '::error::UNITY_EMAIL and UNITY_PASSWORD must be configured.'; exit 1; }
           [[ -n "${UNITY_LICENSE:-}" || -n "${UNITY_SERIAL:-}" ]] || { echo '::error::Configure UNITY_LICENSE for Personal, or UNITY_SERIAL for eligible Pro activation.'; exit 1; }
+          [[ -z "${UNITY_SERIAL:-}" || ( -n "${UNITY_EMAIL:-}" && -n "${UNITY_PASSWORD:-}" ) ]] || { echo '::error::UNITY_EMAIL and UNITY_PASSWORD must be configured when UNITY_SERIAL is used.'; exit 1; }
       - name: Restore target-isolated Library cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
