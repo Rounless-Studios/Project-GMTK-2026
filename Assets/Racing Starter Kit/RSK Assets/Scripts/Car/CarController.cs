@@ -60,6 +60,14 @@ namespace SpinMotion
         [HideInInspector] public float forceSteeringFactor = 0.1f;
         [HideInInspector] public int forceBraking = 0;
 
+        private void Awake()
+        {
+            // Cache the rigidbody in Awake so CurrentSpeed is safe even if a physics
+            // step fires before Start() on a runtime-spawned car (avoids a null-ref
+            // from AI FixedUpdate the frame a car is instantiated).
+            m_Rigidbody = GetComponent<Rigidbody>();
+        }
+
         // Use this for initialization
         private void Start()
         {
