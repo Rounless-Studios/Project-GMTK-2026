@@ -28,6 +28,10 @@ namespace GMTK
 
         public const string Tag = "GMTK-PLAYTEST:";
 
+        /// <summary>Last run's result, readable via the CLI even when the console is noisy:
+        /// <c>unity command eval --code "return GMTK.GMTKAutoPlaytest.LastResult;"</c></summary>
+        public static string LastResult = "(not run yet)";
+
         private bool raceFinished;
         private RaceFinishType finishType;
 
@@ -100,7 +104,8 @@ namespace GMTK
                 Check("random events spawn hazards", after > before, "delta=" + (after - before));
             }
 
-            Debug.Log(Tag + " " + (pass ? "PASS" : "FAIL") + " | " + sb);
+            LastResult = (pass ? "PASS" : "FAIL") + " | " + sb;
+            Debug.Log(Tag + " " + LastResult);
         }
 
         private void OnFinished(RaceFinishType type)
