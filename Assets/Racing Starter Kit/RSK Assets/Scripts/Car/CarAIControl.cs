@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using GMTK;
 using Random = UnityEngine.Random;
 /// <summary>
 /// Unity Standard Assets CarAIControl, replace with your own
@@ -47,6 +48,18 @@ namespace SpinMotion
         private float m_AvoidPathOffset;          // direction (-1 or 1) in which to offset path to avoid other car, whilst avoiding
         private Rigidbody m_Rigidbody;
 
+        [Header("GMTK Navigation Assist")]
+        [SerializeField] private bool m_UseObstacleAvoidance = true;
+        [SerializeField] private float m_AvoidanceRayLength = 9f;
+        [SerializeField] private float m_AvoidanceStrength = 0.7f;
+        [SerializeField] private bool m_UseStuckRecovery = true;
+        [SerializeField] private float m_StuckSpeedThreshold = 4f;
+        [SerializeField] private float m_StuckTimeToRecover = 1.8f;
+        [SerializeField] private float m_RecoverDuration = 1.2f;
+        private float m_LowSpeedTimer;
+        private float m_RecoverUntil;
+        private IAIDriverModifier m_Modifier;   // optional personality hook (null if none)
+
         private void Awake()
         {
             // get the car controller reference
@@ -56,6 +69,9 @@ namespace SpinMotion
             m_RandomPerlin = Random.value*100;
 
             m_Rigidbody = GetComponent<Rigidbody>();
+
+            // optional personality module (see AIPersonality); inert when absent
+            m_Modifier = GetComponent<IAIDriverModifier>();
         }
 
         public void SetTarget(Transform target)
@@ -74,6 +90,9 @@ namespace SpinMotion
             }
             else
             {
+                // GMTK: reverse out of walls / pile-ups when pinned
+                if (m_UseStuckRecovery && HandleStuckRecovery()) return;
+
                 Vector3 fwd = transform.forward;
                 if (m_Rigidbody.linearVelocity.magnitude > m_CarController.MaxSpeed*0.1f)
                 {
@@ -128,10 +147,18 @@ namespace SpinMotion
                         break;
                 }
 
+                // GMTK: personality speed scaling (e.g. reckless racers go faster)
+                if (m_Modifier != null)
+                    desiredSpeed *= m_Modifier.SpeedMultiplier;
+
                 // Evasive action due to collision with other cars:
 
                 // our target position starts off as the 'real' target position
                 Vector3 offsetTargetPos = m_Target.position;
+
+                // GMTK: personality target bias (e.g. rammers veer toward the player)
+                if (m_Modifier != null)
+                    offsetTargetPos += m_Modifier.GetTargetOffset(transform, m_Target.position);
 
                 // if are we currently taking evasive action to prevent being stuck against another car:
                 if (Time.time < m_AvoidOtherCarTime)
@@ -173,6 +200,10 @@ namespace SpinMotion
                 // get the amount of steering needed to aim the car towards the target
                 float steer = Mathf.Clamp(targetAngle*m_SteerSensitivity, -1, 1)*Mathf.Sign(m_CarController.CurrentSpeed);
 
+                // GMTK: blend in raycast obstacle avoidance so the AI stops kissing walls
+                if (m_UseObstacleAvoidance)
+                    steer = Mathf.Clamp(steer + ComputeAvoidanceSteer(), -1f, 1f);
+
                 // feed input to the car controller.
                 m_CarController.Move(steer, accel, accel, 0f);
 
@@ -184,6 +215,81 @@ namespace SpinMotion
             }
         }
 
+
+        // GMTK: back up and re-orient when the car has been crawling for too long
+        // (typically nose-first into a wall or wedged against other cars).
+        private bool HandleStuckRecovery()
+        {
+            if (Time.time >= m_RecoverUntil)
+            {
+                if (m_CarController.CurrentSpeed < m_StuckSpeedThreshold)
+                    m_LowSpeedTimer += Time.fixedDeltaTime;
+                else
+                    m_LowSpeedTimer = 0f;
+
+                if (m_LowSpeedTimer > m_StuckTimeToRecover)
+                {
+                    m_RecoverUntil = Time.time + m_RecoverDuration;
+                    m_LowSpeedTimer = 0f;
+                }
+            }
+
+            if (Time.time < m_RecoverUntil)
+            {
+                // reverse (accel 0, footbrake -1 => reverse torque at low speed),
+                // steering opposite the target so we swing the nose back on course
+                Vector3 local = transform.InverseTransformPoint(m_Target.position);
+                float steerBack = local.x >= 0f ? -1f : 1f;
+                m_CarController.Move(steerBack, 0f, -1f, 0f);
+                return true;
+            }
+
+            return false;
+        }
+
+        // GMTK: three forward "feelers" that push steering away from nearby geometry.
+        private float ComputeAvoidanceSteer()
+        {
+            Vector3 origin = transform.position + transform.forward * 2.2f + transform.up * 0.4f;
+            float left = Feeler(origin, Quaternion.AngleAxis(-28f, transform.up) * transform.forward);
+            float center = Feeler(origin, transform.forward);
+            float right = Feeler(origin, Quaternion.AngleAxis(28f, transform.up) * transform.forward);
+
+            float steer = 0f;
+            steer += left * m_AvoidanceStrength;    // obstacle on the left  -> steer right (+)
+            steer -= right * m_AvoidanceStrength;   // obstacle on the right -> steer left  (-)
+
+            if (center > 0.01f)
+            {
+                // head-on obstacle: commit to the clearer side
+                float dir = (right <= left) ? 1f : -1f;
+                steer += dir * center * m_AvoidanceStrength * 1.5f;
+            }
+
+            return Mathf.Clamp(steer, -1f, 1f);
+        }
+
+        // Returns 0 (clear) .. 1 (obstacle right at the feeler tip).
+        // Only static geometry counts — car-vs-car is left to collision handling and
+        // personalities, so avoidance doesn't cancel out ramming/blocking behaviour.
+        private float Feeler(Vector3 origin, Vector3 dir)
+        {
+            if (Physics.Raycast(origin, dir, out var hit, m_AvoidanceRayLength))
+            {
+                if (hit.collider == null) return 0f;
+                var root = hit.collider.transform.root;
+                if (root == transform.root) return 0f;              // ignore our own car
+                if (root.GetComponent<CarController>() != null) return 0f; // ignore other cars
+                return 1f - (hit.distance / m_AvoidanceRayLength);
+            }
+            return 0f;
+        }
+
+        /// <summary>Re-read the optional personality module (call after adding one at runtime).</summary>
+        public void RefreshModifier()
+        {
+            m_Modifier = GetComponent<IAIDriverModifier>();
+        }
 
         private void OnCollisionStay(Collision col)
         {
