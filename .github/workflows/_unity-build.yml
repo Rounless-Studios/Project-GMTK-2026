@@ -69,8 +69,6 @@ jobs:
     name: Resolve Unity credential availability
     needs: preflight
     runs-on: ubuntu-latest
-    outputs:
-      can_run_unity: ${{ steps.check.outputs.can_run_unity }}
     steps:
       - name: Check Unity credentials
         id: check
@@ -82,27 +80,19 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         run: |
           set -Eeuo pipefail
-          if [[ -n "${UNITY_SERIAL:-}" && ( -z "${UNITY_EMAIL:-}" || -z "${UNITY_PASSWORD:-}" ) ]]; then
-            echo '::error::UNITY_EMAIL and UNITY_PASSWORD are required when UNITY_SERIAL is used.'
+          if [[ -z "${UNITY_EMAIL:-}" || -z "${UNITY_PASSWORD:-}" ]]; then
+            echo '::error::Missing Unity credentials: configure UNITY_EMAIL and UNITY_PASSWORD in repository or environment secrets available to this workflow run.'
             exit 1
           fi
-          if [[ -n "${UNITY_LICENSE:-}" || -n "${UNITY_SERIAL:-}" ]]; then
-            echo 'can_run_unity=true' >> "$GITHUB_OUTPUT"
-            exit 0
+          if [[ -z "${UNITY_LICENSE:-}" && -z "${UNITY_SERIAL:-}" ]]; then
+            echo '::error::Missing Unity license activation secret: configure UNITY_LICENSE (Personal) or UNITY_SERIAL (eligible Pro) for this workflow run.'
+            echo '::error::If this is a fork pull request, GitHub does not expose repository secrets; run the workflow from a trusted branch with secrets available.'
+            exit 1
           fi
-          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
-            echo 'can_run_unity=false' >> "$GITHUB_OUTPUT"
-            echo '### Unity jobs skipped' >> "$GITHUB_STEP_SUMMARY"
-            echo '- UNITY_LICENSE/UNITY_SERIAL are unavailable in this pull request run, so licensed Unity tests and builds were skipped.' >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          echo '::error::Configure UNITY_LICENSE for Personal, or UNITY_SERIAL for eligible Pro activation.'
-          exit 1
 
   tests:
     name: ${{ matrix.label }} tests
     needs: [preflight, unity_credentials]
-    if: needs.unity_credentials.outputs.can_run_unity == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -160,7 +150,6 @@ jobs:
   build:
     name: Build and validate ${{ matrix.label }}
     needs: [preflight, unity_credentials, tests]
-    if: needs.unity_credentials.outputs.can_run_unity == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
