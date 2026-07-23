@@ -52,6 +52,10 @@ namespace SpinMotion
         [SerializeField] private bool m_UseObstacleAvoidance = true;
         [SerializeField] private float m_AvoidanceRayLength = 9f;
         [SerializeField] private float m_AvoidanceStrength = 0.7f;
+        [SerializeField] private float m_FeelerForwardOffset = 2.2f;   // how far ahead the feelers start
+        [SerializeField] private float m_FeelerUpOffset = 0.4f;
+        [SerializeField] private float m_FeelerSideAngle = 28f;        // spread of the left/right feelers
+        [SerializeField] private float m_HeadOnSteerBoost = 1.5f;      // extra steer when something is dead ahead
         [SerializeField] private bool m_UseStuckRecovery = true;
         [SerializeField] private float m_StuckSpeedThreshold = 4f;
         [SerializeField] private float m_StuckTimeToRecover = 1.8f;
@@ -250,10 +254,10 @@ namespace SpinMotion
         // GMTK: three forward "feelers" that push steering away from nearby geometry.
         private float ComputeAvoidanceSteer()
         {
-            Vector3 origin = transform.position + transform.forward * 2.2f + transform.up * 0.4f;
-            float left = Feeler(origin, Quaternion.AngleAxis(-28f, transform.up) * transform.forward);
+            Vector3 origin = transform.position + transform.forward * m_FeelerForwardOffset + transform.up * m_FeelerUpOffset;
+            float left = Feeler(origin, Quaternion.AngleAxis(-m_FeelerSideAngle, transform.up) * transform.forward);
             float center = Feeler(origin, transform.forward);
-            float right = Feeler(origin, Quaternion.AngleAxis(28f, transform.up) * transform.forward);
+            float right = Feeler(origin, Quaternion.AngleAxis(m_FeelerSideAngle, transform.up) * transform.forward);
 
             float steer = 0f;
             steer += left * m_AvoidanceStrength;    // obstacle on the left  -> steer right (+)
@@ -263,7 +267,7 @@ namespace SpinMotion
             {
                 // head-on obstacle: commit to the clearer side
                 float dir = (right <= left) ? 1f : -1f;
-                steer += dir * center * m_AvoidanceStrength * 1.5f;
+                steer += dir * center * m_AvoidanceStrength * m_HeadOnSteerBoost;
             }
 
             return Mathf.Clamp(steer, -1f, 1f);

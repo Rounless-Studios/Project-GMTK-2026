@@ -11,10 +11,20 @@ namespace GMTK
     /// </summary>
     public class CarExplosion : MonoBehaviour
     {
+        [Header("Blast")]
         public float upwardForce = 9f;
         public float explosionForce = 1600f;
+        public float explosionRadius = 6f;
         public float torque = 25f;
         public float wreckLingerSeconds = 2.5f;
+
+        [Header("Flash")]
+        public Color flashColor = new Color(1f, 0.55f, 0.1f);
+        public float flashStartScale = 0.5f;
+        public float flashEndScale = 6f;
+        public float flashDuration = 0.45f;
+        public float flashLightRange = 18f;
+        public float flashLightIntensity = 30f;
 
         private bool exploded;
 
@@ -32,12 +42,11 @@ namespace GMTK
             foreach (var user in GetComponentsInChildren<CarUserControl>()) user.enabled = false;
 
             // 2. physical blast
-            var bodies = GetComponentsInChildren<Rigidbody>();
             Vector3 origin = transform.position - transform.forward * 0.5f;
-            foreach (var rb in bodies)
+            foreach (var rb in GetComponentsInChildren<Rigidbody>())
             {
                 if (rb == null) continue;
-                rb.AddExplosionForce(explosionForce, origin, 6f, upwardForce, ForceMode.Impulse);
+                rb.AddExplosionForce(explosionForce, origin, explosionRadius, upwardForce, ForceMode.Impulse);
                 rb.AddTorque(Random.insideUnitSphere * torque, ForceMode.Impulse);
             }
 
@@ -56,30 +65,37 @@ namespace GMTK
             var col = flash.GetComponent<Collider>();
             if (col != null) Destroy(col);
             flash.transform.position = position;
-            flash.transform.localScale = Vector3.one * 0.5f;
+            flash.transform.localScale = Vector3.one * flashStartScale;
 
             var renderer = flash.GetComponent<Renderer>();
             var mat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
-            var color = new Color(1f, 0.55f, 0.1f);
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
-            if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", flashColor);
+            if (mat.HasProperty("_Color")) mat.SetColor("_Color", flashColor);
             renderer.material = mat;
 
             var light = flash.AddComponent<Light>();
             light.type = LightType.Point;
-            light.color = color;
-            light.range = 18f;
-            light.intensity = 30f;
+            light.color = flashColor;
+            light.range = flashLightRange;
+            light.intensity = flashLightIntensity;
 
-            flash.AddComponent<ExplosionFlashAnim>();
+            var anim = flash.AddComponent<ExplosionFlashAnim>();
+            anim.startScale = flashStartScale;
+            anim.endScale = flashEndScale;
+            anim.duration = flashDuration;
+            anim.startIntensity = flashLightIntensity;
         }
     }
 
     /// <summary>Expands and fades the explosion flash sphere, then destroys it.</summary>
     public class ExplosionFlashAnim : MonoBehaviour
     {
+        public float startScale = 0.5f;
+        public float endScale = 6f;
+        public float duration = 0.45f;
+        public float startIntensity = 30f;
+
         private float life;
-        private const float Duration = 0.45f;
         private Renderer rend;
         private Light flashLight;
 
@@ -92,16 +108,16 @@ namespace GMTK
         private void Update()
         {
             life += Time.deltaTime;
-            float t = Mathf.Clamp01(life / Duration);
-            transform.localScale = Vector3.one * Mathf.Lerp(0.5f, 6f, t);
-            if (flashLight != null) flashLight.intensity = Mathf.Lerp(30f, 0f, t);
+            float t = Mathf.Clamp01(life / duration);
+            transform.localScale = Vector3.one * Mathf.Lerp(startScale, endScale, t);
+            if (flashLight != null) flashLight.intensity = Mathf.Lerp(startIntensity, 0f, t);
             if (rend != null && rend.material.HasProperty("_BaseColor"))
             {
                 var c = rend.material.GetColor("_BaseColor");
                 c.a = Mathf.Lerp(1f, 0f, t);
                 rend.material.SetColor("_BaseColor", c);
             }
-            if (life >= Duration) Destroy(gameObject);
+            if (life >= duration) Destroy(gameObject);
         }
     }
 }

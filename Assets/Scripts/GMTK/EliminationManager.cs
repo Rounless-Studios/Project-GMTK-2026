@@ -19,6 +19,12 @@ namespace GMTK
         public float eliminationIntervalSeconds = 12f;
         public bool enableElimination = true;
 
+        [Header("Explosion (applied to each eliminated car)")]
+        public float explosionForce = 1600f;
+        public float upwardForce = 9f;
+        public float explosionRadius = 6f;
+        public float wreckLingerSeconds = 2.5f;
+
         private readonly HashSet<int> eliminated = new();
         private float nextEliminationTime;
         private bool armed;
@@ -119,6 +125,10 @@ namespace GMTK
             if (car == null) return;
             var explosion = car.GetComponent<CarExplosion>();
             if (explosion == null) explosion = car.AddComponent<CarExplosion>();
+            explosion.explosionForce = explosionForce;
+            explosion.upwardForce = upwardForce;
+            explosion.explosionRadius = explosionRadius;
+            explosion.wreckLingerSeconds = wreckLingerSeconds;
             explosion.Explode();
         }
 

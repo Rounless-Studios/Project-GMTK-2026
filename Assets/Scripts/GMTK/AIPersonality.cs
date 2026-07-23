@@ -20,12 +20,19 @@ namespace GMTK
     {
         public AIPersonalityType type = AIPersonalityType.CleanRacer;
 
+        [Header("Aggression")]
         [Tooltip("How hard rammers pull toward the player.")]
         public float ramStrength = 7f;
         [Tooltip("How hard blockers slide sideways to cut the player off.")]
         public float blockStrength = 5f;
         [Tooltip("Only chase/block the player within this distance.")]
         public float aggroRange = 45f;
+
+        [Header("Speed Multipliers (x normal desired speed)")]
+        public float recklessSpeedMultiplier = 1.15f;
+        public float rammerSpeedMultiplier = 1.05f;
+        public float blockerSpeedMultiplier = 0.97f;
+        public float cleanRacerSpeedMultiplier = 1.0f;
 
         private Transform player;
 
@@ -42,10 +49,10 @@ namespace GMTK
             {
                 return type switch
                 {
-                    AIPersonalityType.Reckless => 1.15f,
-                    AIPersonalityType.Rammer => 1.05f,
-                    AIPersonalityType.Blocker => 0.97f,
-                    _ => 1.0f,
+                    AIPersonalityType.Reckless => recklessSpeedMultiplier,
+                    AIPersonalityType.Rammer => rammerSpeedMultiplier,
+                    AIPersonalityType.Blocker => blockerSpeedMultiplier,
+                    _ => cleanRacerSpeedMultiplier,
                 };
             }
         }
