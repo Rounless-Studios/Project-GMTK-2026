@@ -1,34 +1,49 @@
 using System.Collections.Generic;
 using UnityEngine;
 using SpinMotion;
+using Gmtk2026.GameBalance;
 
 namespace GMTK
 {
+    public enum EliminationWarningLevel { None, Warning, Intense, Execution }
+
     /// <summary>
-    /// Battle-royale race rule: every few seconds the car in last place explodes.
-    /// Repeats until a single car remains — that survivor wins. If the player is the
-    /// one eliminated, the race ends in a loss immediately.
-    /// Self-attaches to the GMTK game-mode host; no scene wiring required.
+    /// "Hell countdown" rule: every EliminationSettings.intervalSeconds the current
+    /// last-place car is executed. Warnings escalate at the warning / intense / execution
+    /// thresholds. Elimination stops once RaceSettings.finalDuelRacerCount cars remain
+    /// (the final gate decides the winner — there is no auto-win at one car). If the player
+    /// is executed, the race is lost immediately.
+    /// All timing/counts come from GameBalance; explosion force stays a presentation tuning.
+    /// Self-attaches to the GMTK game-mode host.
     /// </summary>
     public class EliminationManager : MonoBehaviour
     {
-        [Header("Elimination Timing")]
-        [Tooltip("Grace period after the race starts before the first elimination.")]
-        public float firstEliminationDelaySeconds = 20f;
-        [Tooltip("Seconds between eliminations.")]
-        public float eliminationIntervalSeconds = 12f;
-        public bool enableElimination = true;
-
-        [Header("Explosion (applied to each eliminated car)")]
+        [Header("Explosion (presentation tuning)")]
         public float explosionForce = 1600f;
         public float upwardForce = 9f;
         public float explosionRadius = 6f;
-        public float wreckLingerSeconds = 2.5f;
+
+        // ---- state exposed for HUD / execution camera ----
+        public int CurrentLastPlaceIndex { get; private set; } = -1;
+        public float SecondsToElimination { get; private set; }
+        public EliminationWarningLevel Level { get; private set; }
+        public bool InFinalDuel { get; private set; }
+        public int ActiveCarCount => Mathf.Max(0, Race.CarCount - eliminated.Count);
+        public bool IsEliminated(int raceIndex) => eliminated.Contains(raceIndex);
+
+        // ---- events for HUD / camera / other systems ----
+        public static event System.Action<int, EliminationWarningLevel> WarningChanged; // (lastPlaceIndex, level)
+        public static event System.Action<int> CarEliminated;                            // (raceIndex)
+        public static event System.Action FinalDuelStarted;
 
         private readonly HashSet<int> eliminated = new();
         private float nextEliminationTime;
         private bool armed;
         private bool finished;
+        private EliminationWarningLevel lastFiredLevel = EliminationWarningLevel.None;
+
+        private EliminationSettings E => GameBalance.Current.elimination;
+        private int FinalDuelCount => GameBalance.Current.race.finalDuelRacerCount;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttach()
@@ -51,72 +66,107 @@ namespace GMTK
         {
             eliminated.Clear();
             finished = false;
-            armed = enableElimination;
-            nextEliminationTime = Time.time + firstEliminationDelaySeconds;
+            InFinalDuel = false;
+            Level = EliminationWarningLevel.None;
+            lastFiredLevel = EliminationWarningLevel.None;
+            CurrentLastPlaceIndex = -1;
+            armed = true;
+            // first elimination also fires after a full interval (GDD: 30s consistently)
+            nextEliminationTime = Time.time + E.intervalSeconds;
         }
 
         private void OnRestartRace()
         {
             armed = false;
-            eliminated.Clear();
             finished = false;
+            InFinalDuel = false;
+            eliminated.Clear();
+            Level = EliminationWarningLevel.None;
+            lastFiredLevel = EliminationWarningLevel.None;
         }
 
-        private void OnRaceFinished(RaceFinishType type)
-        {
-            armed = false;
-        }
+        private void OnRaceFinished(RaceFinishType type) => armed = false;
 
         private void Update()
         {
             if (!armed || finished || !Race.IsRaceInProgress) return;
-            if (Time.time < nextEliminationTime) return;
 
-            nextEliminationTime = Time.time + eliminationIntervalSeconds;
-            EliminateLastPlace();
+            UpdateWarnings();
+
+            if (Time.time >= nextEliminationTime)
+            {
+                nextEliminationTime = Time.time + E.intervalSeconds;
+                EliminateLastPlace();
+            }
         }
 
-        private int ActiveCount()
+        private void UpdateWarnings()
         {
-            return Mathf.Max(0, Race.CarCount - eliminated.Count);
+            SecondsToElimination = Mathf.Max(0f, nextEliminationTime - Time.time);
+            CurrentLastPlaceIndex = FindLastPlace();
+
+            var level = EliminationWarningLevel.None;
+            if (SecondsToElimination <= E.executionCameraLeadSeconds) level = EliminationWarningLevel.Execution;
+            else if (SecondsToElimination <= E.intenseWarningSeconds) level = EliminationWarningLevel.Intense;
+            else if (SecondsToElimination <= E.warningSeconds) level = EliminationWarningLevel.Warning;
+            Level = level;
+
+            if (level != lastFiredLevel)
+            {
+                lastFiredLevel = level;
+                WarningChanged?.Invoke(CurrentLastPlaceIndex, level);
+            }
         }
 
-        private void EliminateLastPlace()
+        // lowest race score among active cars (re-evaluated live, so a late overtake counts)
+        private int FindLastPlace()
         {
             int carCount = Race.CarCount;
-            if (carCount <= 1) { armed = false; return; }
-            if (ActiveCount() <= 1) { armed = false; return; }
-
-            // find the active car with the lowest race score
             int lastIndex = -1;
             double lowest = double.MaxValue;
             for (int i = 0; i < carCount; i++)
             {
                 if (eliminated.Contains(i)) continue;
                 double score = Race.ScoreOf(i);
-                if (score < lowest)
-                {
-                    lowest = score;
-                    lastIndex = i;
-                }
+                if (score < lowest) { lowest = score; lastIndex = i; }
             }
+            return lastIndex;
+        }
 
-            if (lastIndex < 0) return;
+        private void EliminateLastPlace()
+        {
+            if (Race.CarCount <= 1) { armed = false; return; }
+            if (ActiveCarCount <= FinalDuelCount) { EnterFinalDuel(); return; }
 
-            eliminated.Add(lastIndex);
-            ExplodeCar(lastIndex);
+            int last = FindLastPlace();
+            if (last < 0) return;
 
-            // resolve end conditions
-            if (lastIndex == 0)
+            eliminated.Add(last);
+            CarEliminated?.Invoke(last);
+            ExplodeCar(last);
+
+            // reset the warning cycle for the next countdown
+            Level = EliminationWarningLevel.None;
+            lastFiredLevel = EliminationWarningLevel.None;
+
+            if (last == 0)
             {
-                // the player was eliminated → immediate loss
+                // the player was executed → immediate loss (no auto-win path)
                 FinishRace(RaceFinishType.Lose);
+                return;
             }
-            else if (ActiveCount() <= 1)
-            {
-                // only the player remains → win
-                FinishRace(RaceFinishType.Win);
-            }
+
+            if (ActiveCarCount <= FinalDuelCount)
+                EnterFinalDuel();
+        }
+
+        // Elimination stops here; the final gate (stage 6) decides the winner.
+        private void EnterFinalDuel()
+        {
+            if (InFinalDuel) return;
+            InFinalDuel = true;
+            armed = false;
+            FinalDuelStarted?.Invoke();
         }
 
         private void ExplodeCar(int raceIndex)
@@ -128,7 +178,7 @@ namespace GMTK
             explosion.explosionForce = explosionForce;
             explosion.upwardForce = upwardForce;
             explosion.explosionRadius = explosionRadius;
-            explosion.wreckLingerSeconds = wreckLingerSeconds;
+            explosion.wreckLingerSeconds = GameBalance.Current.presentation.wreckLingerSeconds;
             explosion.Explode();
         }
 

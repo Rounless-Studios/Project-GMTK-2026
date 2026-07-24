@@ -2,46 +2,45 @@ using System.Collections;
 using System.Text;
 using UnityEngine;
 using SpinMotion;
+using Gmtk2026.GameBalance;
 
 namespace GMTK
 {
     /// <summary>
     /// Automated smoke test for the GMTK race features, driven from the Unity CLI.
-    /// It starts a race, pins the player's score to the top so the elimination cascade
-    /// runs through every AI, and asserts: race starts, personalities are assigned, all
-    /// AI are eliminated, the player wins, and random events spawn hazards.
+    /// Loads the FastTest balance preset, starts a race, pins the player's score to the top
+    /// so the elimination cascade runs through the AI, and asserts: race starts, personalities
+    /// assigned, cars are eliminated down to finalDuelRacerCount, the final-duel phase begins
+    /// (no auto-win at one car), the player survives to the duel, and random events spawn.
     ///
-    /// Run it by entering play mode and creating the harness, e.g. via `unity command eval`:
+    /// Run it by entering play mode and creating the harness via `unity command eval`:
     ///     new UnityEngine.GameObject().AddComponent&lt;GMTK.GMTKAutoPlaytest&gt;();
-    /// then read the console for a line beginning with "GMTK-PLAYTEST:".
-    /// A standalone assembly / NUnit wrapper is intentionally avoided because CarAIControl
-    /// (kit assembly) depends on GMTK, which would make a test asmdef circular.
+    /// then read GMTK.GMTKAutoPlaytest.LastResult (console-noise proof).
+    /// A standalone NUnit asmdef is avoided because CarAIControl (kit) depends on GMTK,
+    /// which would make a test assembly reference circular.
     /// </summary>
     public class GMTKAutoPlaytest : MonoBehaviour
     {
         public int aiCount = 5;
         public int laps = 20;
-        public float fastFirstElimination = 3f;
-        public float fastInterval = 2f;
         public float startTimeout = 15f;
-        public float finishTimeout = 45f;
+        public float duelTimeout = 60f;
 
         public const string Tag = "GMTK-PLAYTEST:";
-
-        /// <summary>Last run's result, readable via the CLI even when the console is noisy:
-        /// <c>unity command eval --code "return GMTK.GMTKAutoPlaytest.LastResult;"</c></summary>
         public static string LastResult = "(not run yet)";
 
         private bool raceFinished;
         private RaceFinishType finishType;
+        private bool finalDuelStarted;
 
         private void Start() => StartCoroutine(Run());
+
+        private void OnDuel() => finalDuelStarted = true;
 
         private IEnumerator Run()
         {
             var sb = new StringBuilder();
             bool pass = true;
-
             void Check(string name, bool ok, string detail = "")
             {
                 if (!ok) pass = false;
@@ -51,24 +50,17 @@ namespace GMTK
             }
 
             var events = Race.Events;
-            if (events == null)
-            {
-                Debug.LogError(Tag + " FAIL | no GameEvents found");
-                yield break;
-            }
-            events.RaceFinishedEvent.AddListener(OnFinished);
+            if (events == null) { Debug.LogError(Tag + " FAIL | no GameEvents"); LastResult = "FAIL | no GameEvents"; yield break; }
 
-            // speed up elimination and silence random events for a deterministic run
-            var elim = Object.FindAnyObjectByType<EliminationManager>();
-            if (elim != null)
-            {
-                elim.firstEliminationDelaySeconds = fastFirstElimination;
-                elim.eliminationIntervalSeconds = fastInterval;
-            }
+            // deterministic, fast run: FastTest preset (short elimination interval) + no random events
+            var preset = GameBalance.Load("FastTest");
+            Check("FastTest preset loaded", preset != null);
             var eventMgr = Object.FindAnyObjectByType<RandomEventManager>();
             if (eventMgr != null) eventMgr.enableEvents = false;
 
-            // start the race
+            events.RaceFinishedEvent.AddListener(OnFinished);
+            EliminationManager.FinalDuelStarted += OnDuel;
+
             RaceData.AiBotsSelected = aiCount;
             RaceData.LapsSelected = laps;
             events.OnClickPlayRaceEvent.Invoke();
@@ -77,25 +69,34 @@ namespace GMTK
             while (!Race.IsRaceInProgress && Time.time - t0 < startTimeout) yield return null;
             Check("race started", Race.IsRaceInProgress);
 
-            // pin the player to the top so the cascade eliminates the AI, not the idle player
+            // pin the player to the top so it survives the cascade into the final duel
             if (Race.Positions != null && Race.Positions.LapScores.Count > 0)
                 Race.Positions.LapScores[0] = 999999;
 
+            var elim = Object.FindAnyObjectByType<EliminationManager>();
             int cars = Race.CarCount;
             int personalities = Object.FindObjectsByType<AIPersonality>(FindObjectsSortMode.None).Length;
+            Check("elimination manager present", elim != null);
             Check("car count == ai+1", cars == aiCount + 1, "cars=" + cars);
             Check("personalities == ai", personalities == aiCount, "n=" + personalities);
 
-            // wait for the cascade to finish
+            // wait until the final duel begins (elimination stopped) or the race is lost
             float t1 = Time.time;
-            while (!raceFinished && Time.time - t1 < finishTimeout) yield return null;
-            Check("race finished", raceFinished, raceFinished ? finishType.ToString() : "timeout");
-            Check("player won via elimination", raceFinished && finishType == RaceFinishType.Win, finishType.ToString());
+            while (!finalDuelStarted && !raceFinished && Time.time - t1 < duelTimeout) yield return null;
+
+            int finalDuelCount = GameBalance.Current.race.finalDuelRacerCount;
+            Check("final duel started (not auto-win)", finalDuelStarted, raceFinished ? "raceFinished=" + finishType : "timeout");
+            Check("no premature race finish", !raceFinished, raceFinished ? finishType.ToString() : "");
+            if (elim != null)
+            {
+                Check("survivors == finalDuelRacerCount", elim.ActiveCarCount == finalDuelCount, "active=" + elim.ActiveCarCount);
+                Check("player survived to duel", !elim.IsEliminated(0));
+            }
 
             int explosions = Object.FindObjectsByType<CarExplosion>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
-            Check("all AI eliminated", explosions >= aiCount, "explosions=" + explosions);
+            int expectedElims = (aiCount + 1) - finalDuelCount;
+            Check("eliminated down to duel", explosions >= expectedElims, "explosions=" + explosions + " expected>=" + expectedElims);
 
-            // random events smoke test
             if (eventMgr != null)
             {
                 int before = Object.FindObjectsByType<TimedDestroy>(FindObjectsSortMode.None).Length;
@@ -104,6 +105,7 @@ namespace GMTK
                 Check("random events spawn hazards", after > before, "delta=" + (after - before));
             }
 
+            EliminationManager.FinalDuelStarted -= OnDuel;
             LastResult = (pass ? "PASS" : "FAIL") + " | " + sb;
             Debug.Log(Tag + " " + LastResult);
         }
