@@ -104,6 +104,9 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float requiredLeadHoldSeconds = 0.5f;
         public OvertakeCooldownRewardMode cooldownRewardMode = OvertakeCooldownRewardMode.Reset;
         [Min(0)] public float cooldownReductionSeconds = 6f; // only used in Reduce mode
+        // failure penalty: "referee's chains" — a hard slowdown for a short time
+        [Min(0)] public float bindDurationSeconds = 5f;       // TBD by playtest
+        [Range(0f, 1f)] public float bindSpeedMultiplier = 0.5f; // TBD by playtest
     }
 
     [System.Serializable]

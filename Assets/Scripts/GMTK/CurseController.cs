@@ -67,11 +67,19 @@ namespace GMTK
             Changed?.Invoke(this);
         }
 
-        /// <summary>Overtake reward: clear the curse cooldown.</summary>
+        /// <summary>Overtake reward (Reset mode): clear the curse cooldown.</summary>
         public void ResetCooldown()
         {
             if (State == null) return;
             State.ResetCooldown();
+            Changed?.Invoke(this);
+        }
+
+        /// <summary>Overtake reward (Reduce mode): shorten the curse cooldown.</summary>
+        public void ReduceCooldown(float seconds)
+        {
+            if (State == null) return;
+            State.ReduceCooldown(seconds);
             Changed?.Invoke(this);
         }
 

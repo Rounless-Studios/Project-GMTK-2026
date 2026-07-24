@@ -34,8 +34,14 @@ namespace Gmtk2026.GameBalance
         /// <summary>Spend the cooldown after a wrong answer / timeout (rotation unchanged).</summary>
         public void OnCastFailed() => cooldownTimer = s.sharedCooldownSeconds;
 
-        /// <summary>Overtake reward: make a curse available immediately.</summary>
+        /// <summary>Overtake reward (Reset mode): make a curse available immediately.</summary>
         public void ResetCooldown() => cooldownTimer = 0f;
+
+        /// <summary>Overtake reward (Reduce mode): shorten the remaining cooldown.</summary>
+        public void ReduceCooldown(float seconds)
+        {
+            if (seconds > 0f) cooldownTimer = Mathf.Max(0f, cooldownTimer - seconds);
+        }
 
         public void Tick(float deltaTime)
         {
