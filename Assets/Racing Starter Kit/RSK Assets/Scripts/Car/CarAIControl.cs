@@ -57,11 +57,15 @@ namespace SpinMotion
         [SerializeField] private float m_FeelerSideAngle = 28f;        // spread of the left/right feelers
         [SerializeField] private float m_HeadOnSteerBoost = 1.5f;      // extra steer when something is dead ahead
         [SerializeField] private bool m_UseStuckRecovery = true;
-        [SerializeField] private float m_StuckSpeedThreshold = 4f;
-        [SerializeField] private float m_StuckTimeToRecover = 1.8f;
+        [SerializeField] private float m_StuckCheckInterval = 2f;      // how often to test for progress
+        [SerializeField] private float m_StuckDistanceThreshold = 6f;  // min travel per interval to count as progress
         [SerializeField] private float m_RecoverDuration = 1.2f;
-        private float m_LowSpeedTimer;
+        [SerializeField] private float m_RecoverGracePeriod = 5f;      // don't recover during the launch off the grid
+        private Vector3 m_LastProgressPos;
+        private float m_ProgressCheckTime;
         private float m_RecoverUntil;
+        private float m_RecoverSteerDir = 1f;   // alternates each recovery so we don't re-wedge
+        private float m_RaceStartTime = -1f;
         private IAIDriverModifier m_Modifier;   // optional personality hook (null if none)
 
         private void Awake()
@@ -224,27 +228,52 @@ namespace SpinMotion
         // (typically nose-first into a wall or wedged against other cars).
         private bool HandleStuckRecovery()
         {
+            // Only recover while the race is actually running. Before the start the cars
+            // sit frozen on the grid; without this guard the progress check reads "stuck"
+            // and reverses everyone off the line.
+            if (!Race.IsRaceInProgress)
+            {
+                m_LastProgressPos = transform.position;
+                m_ProgressCheckTime = Time.time + m_StuckCheckInterval;
+                m_RecoverUntil = 0f;
+                m_RaceStartTime = -1f;
+                return false;
+            }
+
+            // grace period after the lights go out: let cars launch off the grid before
+            // the progress check can flag the normal start-line jostle as "stuck".
+            if (m_RaceStartTime < 0f) m_RaceStartTime = Time.time;
+            if (Time.time < m_RaceStartTime + m_RecoverGracePeriod)
+            {
+                m_LastProgressPos = transform.position;
+                m_ProgressCheckTime = Time.time + m_StuckCheckInterval;
+                return false;
+            }
+
             if (Time.time >= m_RecoverUntil)
             {
-                if (m_CarController.CurrentSpeed < m_StuckSpeedThreshold)
-                    m_LowSpeedTimer += Time.fixedDeltaTime;
-                else
-                    m_LowSpeedTimer = 0f;
-
-                if (m_LowSpeedTimer > m_StuckTimeToRecover)
+                // progress-based stuck detection: catches full stops AND cars grinding
+                // slowly along a wall (which a pure speed check misses).
+                if (Time.time >= m_ProgressCheckTime)
                 {
-                    m_RecoverUntil = Time.time + m_RecoverDuration;
-                    m_LowSpeedTimer = 0f;
+                    float moved = Vector3.Distance(transform.position, m_LastProgressPos);
+                    if (moved < m_StuckDistanceThreshold)
+                    {
+                        m_RecoverUntil = Time.time + m_RecoverDuration;
+                        // flip the steer each attempt so repeated recoveries back out at
+                        // different angles instead of re-wedging into the same wall
+                        m_RecoverSteerDir = -m_RecoverSteerDir;
+                    }
+                    m_LastProgressPos = transform.position;
+                    m_ProgressCheckTime = Time.time + m_StuckCheckInterval;
                 }
             }
 
             if (Time.time < m_RecoverUntil)
             {
-                // reverse (accel 0, footbrake -1 => reverse torque at low speed),
-                // steering opposite the target so we swing the nose back on course
-                Vector3 local = transform.InverseTransformPoint(m_Target.position);
-                float steerBack = local.x >= 0f ? -1f : 1f;
-                m_CarController.Move(steerBack, 0f, -1f, 0f);
+                // reverse (accel 0, footbrake -1 => reverse torque at low speed) while
+                // turning so the nose swings off whatever we're wedged against
+                m_CarController.Move(m_RecoverSteerDir, 0f, -1f, 0f);
                 return true;
             }
 
