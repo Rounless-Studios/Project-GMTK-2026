@@ -109,6 +109,19 @@ namespace GMTK
                 Check("random events spawn hazards", after > before, "delta=" + (after - before));
             }
 
+            // final gate: player crosses first -> player wins, remaining AI executed
+            var gate = FinalGate.Instance;
+            Check("final gate present", gate != null);
+            if (gate != null && finalDuelStarted && !raceFinished)
+            {
+                gate.ReportGateCrossing(0);
+                float t3 = Time.time;
+                while (!raceFinished && Time.time - t3 < 5f) yield return null;
+                Check("gate crossing finishes race", raceFinished, raceFinished ? finishType.ToString() : "timeout");
+                Check("player wins via gate", finishType == RaceFinishType.Win, finishType.ToString());
+                Check("gate winner == player", gate.WinnerIndex == 0, "winner=" + gate.WinnerIndex);
+            }
+
             EliminationManager.FinalDuelStarted -= OnDuel;
             LastResult = (pass ? "PASS" : "FAIL") + " | " + sb;
             Debug.Log(Tag + " " + LastResult);
