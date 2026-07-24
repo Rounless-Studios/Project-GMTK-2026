@@ -61,11 +61,13 @@ namespace SpinMotion
         [SerializeField] private float m_StuckDistanceThreshold = 6f;  // min travel per interval to count as progress
         [SerializeField] private float m_RecoverDuration = 1.2f;
         [SerializeField] private float m_RecoverGracePeriod = 5f;      // don't recover during the launch off the grid
+        [SerializeField] private float m_RespawnAfterSeconds = 6f;     // if reversing can't free us, respawn on track
         private Vector3 m_LastProgressPos;
         private float m_ProgressCheckTime;
         private float m_RecoverUntil;
         private float m_RecoverSteerDir = 1f;   // alternates each recovery so we don't re-wedge
         private float m_RaceStartTime = -1f;
+        private float m_StuckSince = -1f;
         private IAIDriverModifier m_Modifier;   // optional personality hook (null if none)
 
         private void Awake()
@@ -237,6 +239,7 @@ namespace SpinMotion
                 m_ProgressCheckTime = Time.time + m_StuckCheckInterval;
                 m_RecoverUntil = 0f;
                 m_RaceStartTime = -1f;
+                m_StuckSince = -1f;
                 return false;
             }
 
@@ -259,10 +262,24 @@ namespace SpinMotion
                     float moved = Vector3.Distance(transform.position, m_LastProgressPos);
                     if (moved < m_StuckDistanceThreshold)
                     {
+                        if (m_StuckSince < 0f) m_StuckSince = Time.time;
                         m_RecoverUntil = Time.time + m_RecoverDuration;
                         // flip the steer each attempt so repeated recoveries back out at
                         // different angles instead of re-wedging into the same wall
                         m_RecoverSteerDir = -m_RecoverSteerDir;
+
+                        // hard fallback: reversing couldn't free us (deep corner wedge) —
+                        // respawn on the track at the current waypoint so the race continues
+                        if (Time.time - m_StuckSince > m_RespawnAfterSeconds)
+                        {
+                            RespawnAtTarget();
+                            m_StuckSince = -1f;
+                            m_RecoverUntil = 0f;
+                        }
+                    }
+                    else
+                    {
+                        m_StuckSince = -1f; // made progress
                     }
                     m_LastProgressPos = transform.position;
                     m_ProgressCheckTime = Time.time + m_StuckCheckInterval;
@@ -278,6 +295,23 @@ namespace SpinMotion
             }
 
             return false;
+        }
+
+        // GMTK: last-resort un-stick — drop the car back onto the track at the waypoint
+        // it was heading for, facing the direction of travel, and zero its velocity.
+        private void RespawnAtTarget()
+        {
+            if (m_Target == null) return;
+            Vector3 fwd = m_Target.position - transform.position;
+            fwd.y = 0f;
+            if (fwd.sqrMagnitude < 0.01f) fwd = transform.forward;
+            transform.position = m_Target.position + Vector3.up * 1f;
+            transform.rotation = Quaternion.LookRotation(fwd.normalized, Vector3.up);
+            if (m_Rigidbody != null)
+            {
+                m_Rigidbody.linearVelocity = Vector3.zero;
+                m_Rigidbody.angularVelocity = Vector3.zero;
+            }
         }
 
         // GMTK: three forward "feelers" that push steering away from nearby geometry.
