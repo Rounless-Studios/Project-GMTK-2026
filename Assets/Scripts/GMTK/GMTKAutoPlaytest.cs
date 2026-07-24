@@ -122,6 +122,31 @@ namespace GMTK
                 Check("gate winner == player", gate.WinnerIndex == 0, "winner=" + gate.WinnerIndex);
             }
 
+            // restart revive rule: after the duel, several cars are inactive (elimination +
+            // the gate-executed loser). ReviveAllCars() must bring every car back so the grid
+            // is full for the next race. We call it directly instead of firing the kit's
+            // RestartRaceEvent, whose kit-side handler is fragile under headless CLI play; the
+            // full restart flow is validated interactively.
+            if (raceFinished && elim != null)
+            {
+                int deadBefore = 0;
+                foreach (int i in Race.AllCarIndices())
+                {
+                    var c = Race.CarByIndex(i);
+                    if (c != null && !c.activeSelf) deadBefore++;
+                }
+                elim.ReviveAllCars();
+                yield return null;
+                int active2 = 0;
+                foreach (int i in Race.AllCarIndices())
+                {
+                    var c = Race.CarByIndex(i);
+                    if (c != null && c.activeSelf) active2++;
+                }
+                Check("cars were eliminated before restart", deadBefore > 0, "dead=" + deadBefore);
+                Check("restart revives all cars", active2 == aiCount + 1, "active=" + active2);
+            }
+
             EliminationManager.FinalDuelStarted -= OnDuel;
             LastResult = (pass ? "PASS" : "FAIL") + " | " + sb;
             Debug.Log(Tag + " " + LastResult);

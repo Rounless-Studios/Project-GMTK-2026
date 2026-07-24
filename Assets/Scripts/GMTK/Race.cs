@@ -74,7 +74,8 @@ namespace GMTK
                 if (tracker == null) continue;
                 if (tracker.GetCarRacePositionIndex() == raceIndex)
                 {
-                    var controller = tracker.GetComponentInParent<CarController>();
+                    // includeInactive so eliminated (SetActive(false)) cars are still resolvable
+                    var controller = tracker.GetComponentInParent<CarController>(true);
                     return controller != null ? controller.gameObject : tracker.transform.root.gameObject;
                 }
             }

@@ -77,12 +77,34 @@ namespace GMTK
 
         private void OnRestartRace()
         {
+            ReviveAllCars();
+
             armed = false;
             finished = false;
             InFinalDuel = false;
             eliminated.Clear();
             Level = EliminationWarningLevel.None;
             lastFiredLevel = EliminationWarningLevel.None;
+        }
+
+        /// <summary>
+        /// Re-activates EVERY car and clears its explosion so the next race starts with a full
+        /// grid. Iterates all indices (not just our own <c>eliminated</c> set) because the final
+        /// gate executes the duel loser without routing through this manager. Public so the
+        /// automated playtest can verify the revive rule without firing the kit's restart flow.
+        /// </summary>
+        public void ReviveAllCars()
+        {
+            foreach (var idx in Race.AllCarIndices())
+            {
+                var car = Race.CarByIndex(idx);
+                if (car == null) continue;
+                car.SetActive(true);
+                foreach (var ai in car.GetComponentsInChildren<CarAIControl>(true)) ai.enabled = true;
+                foreach (var user in car.GetComponentsInChildren<CarUserControl>(true)) user.enabled = true;
+                var ex = car.GetComponent<CarExplosion>();
+                if (ex != null) Destroy(ex);
+            }
         }
 
         private void OnRaceFinished(RaceFinishType type) => armed = false;
