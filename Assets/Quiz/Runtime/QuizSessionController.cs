@@ -21,8 +21,8 @@ namespace Gmtk2026.Quiz
         [Header("Schedule")]
         [SerializeField] private bool autoStart = true;
         [SerializeField, Min(0f)] private float initialDelaySeconds = 2f;
-        [SerializeField, Min(1f)] private float minimumIntervalSeconds = 1f;
-        [SerializeField, Min(1f)] private float maximumIntervalSeconds = 1f;
+        [SerializeField, Min(1f)] private float minimumIntervalSeconds = 10f;
+        [SerializeField, Min(1f)] private float maximumIntervalSeconds = 15f;
         [SerializeField, Min(0.1f)] private float feedbackDurationSeconds = 1.8f;
 
         [Header("Gameplay")]
