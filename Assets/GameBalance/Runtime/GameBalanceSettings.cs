@@ -91,6 +91,9 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float wreckDurationSeconds = 2f;
         [Min(0)] public float recoveryDurability = 50f;
         [Min(0)] public float recoveryProtectionSeconds = 2f; // TBD by playtest
+        // a collision only hurts above this relative impulse; light bumps are free
+        [Min(0)] public float strongCollisionImpulse = 8f;    // TBD by playtest
+        [Min(0)] public float strongCollisionDamage = 15f;    // TBD by playtest
     }
 
     [System.Serializable]
