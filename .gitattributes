@@ -74,3 +74,15 @@
 *.ico binary
 *.ttf binary
 *.otf binary
+
+# MVC (BxB Studio) large binaries -> LFS. Path-scoped so the repo-wide png/jpg
+# "binary but not LFS" policy stays unchanged for existing assets. '?' matches the
+# space in "BxB Studio".
+Assets/BxB?Studio/**/*.png filter=lfs diff=lfs merge=lfs -text
+Assets/BxB?Studio/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+Assets/BxB?Studio/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+Assets/BxB?Studio/**/*.skp filter=lfs diff=lfs merge=lfs -text
+Packages/dev.bxbstudio.*/**/*.png filter=lfs diff=lfs merge=lfs -text
+Packages/dev.bxbstudio.*/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+Packages/dev.bxbstudio.*/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+Packages/dev.bxbstudio.*/**/*.skp filter=lfs diff=lfs merge=lfs -text
