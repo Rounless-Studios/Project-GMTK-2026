@@ -68,6 +68,8 @@ namespace GMTK
             float t0 = Time.time;
             while (!Race.IsRaceInProgress && Time.time - t0 < startTimeout) yield return null;
             Check("race started", Race.IsRaceInProgress);
+            Check("phase == Racing", GMTKRaceState.Instance != null && GMTKRaceState.Instance.CurrentPhase == RacePhase.Racing,
+                GMTKRaceState.Instance != null ? GMTKRaceState.Instance.CurrentPhase.ToString() : "no state");
 
             // pin the player to the top so it survives the cascade into the final duel
             if (Race.Positions != null && Race.Positions.LapScores.Count > 0)
@@ -86,6 +88,8 @@ namespace GMTK
 
             int finalDuelCount = GameBalance.Current.race.finalDuelRacerCount;
             Check("final duel started (not auto-win)", finalDuelStarted, raceFinished ? "raceFinished=" + finishType : "timeout");
+            Check("phase == FinalDuel", GMTKRaceState.Instance != null && GMTKRaceState.Instance.CurrentPhase == RacePhase.FinalDuel,
+                GMTKRaceState.Instance != null ? GMTKRaceState.Instance.CurrentPhase.ToString() : "no state");
             Check("no premature race finish", !raceFinished, raceFinished ? finishType.ToString() : "");
             if (elim != null)
             {
