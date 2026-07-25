@@ -208,19 +208,30 @@ namespace GMTK
         }
 
         /// <summary>
-        /// Writes metres driven into the list the kit exposes to everything that ranks cars. The kit
-        /// fills that list when the race starts, so a car is skipped until its slot exists.
+        /// Writes metres driven, and the laps that follow from them, into the lists the kit exposes to
+        /// everything that ranks cars or shows lap counts. The kit fills those lists when the race
+        /// starts, so a car is skipped until its slot exists.
+        /// <para>
+        /// Laps have to come from here too: with a single gate the kit's own counter resets its
+        /// sequence on every crossing, so the next collider of the same car banks another lap, and the
+        /// grid sitting behind the start line banks one before the race even moves.
+        /// </para>
         /// </summary>
         private void PublishStandings()
         {
             if (!ownsStandings || standings == null) return;
 
             List<double> scores = standings.RacePositionTotalScores;
+            List<int> laps = standings.LapScores;
+
             for (int i = 0; i < raceIndices.Length; i++)
             {
                 int raceIndex = raceIndices[i];
-                if (raceIndex < 0 || raceIndex >= scores.Count) continue;
-                scores[raceIndex] = track.DistanceDriven(startCursors[i], cursors[i]) + scoreBonus[i];
+                if (raceIndex < 0) continue;
+
+                double driven = track.DistanceDriven(startCursors[i], cursors[i]);
+                if (raceIndex < scores.Count) scores[raceIndex] = driven + scoreBonus[i];
+                if (raceIndex < laps.Count) laps[raceIndex] = driven <= 0d ? 0 : (int)(driven / track.Length);
             }
         }
 

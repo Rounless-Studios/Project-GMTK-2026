@@ -281,7 +281,7 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 | 승패 판정 단일화 | **미완** | 킷 `RaceFinish`가 `GMTK_Race`에 그대로 배치되어 랩 완주 시 독립적으로 `RaceFinishedEvent(Win/Lose)`를 던진다 | 정적 |
 | 순위·진행도 (웨이포인트 arc-length) | 구현 (2026-07-26) | `TrackProgress.cs`(순수 로직) + `GmtkRaceProgress.cs`가 `RealTimeRacePositions.enabled=false`로 킷 계산을 끄고 `RacePositionTotalScores`에 **그리드 기준 주행 거리(m)** 를 기록. `Race.ScoreOf()` 소비자는 무변경 | 테스트 + 플레이 |
 | 체크포인트 게이트 | 결승선 1개로 축소 | 게이트는 랩 카운터·결승선 연출·`FinalGateDoors` 기준점 용도만. `singleFinishGate` 기본 true, 트리거는 도로 폭(15 m)으로 스케일 | 플레이 |
-| 랩 카운트 | 킷 게이트 유지 (**출발선 오프바이원 있음**) | `CheckpointTracker`가 게이트 통과마다 `LapScores`+1. 그리드가 출발선 뒤라 스폰 직후 1랩이 잡히는 차가 생긴다 (웨이포인트 랩은 0으로 정상) | 플레이 |
+| 랩 카운트 | 웨이포인트 공급 (2026-07-26) | `GmtkRaceProgress`가 주행 거리 ÷ 트랙 길이로 계산해 킷 `LapScores`에 기록. 게이트 1개일 때 킷 `CheckpointTracker`는 통과 직후 `currentCheckpoint=0`으로 리셋되어 **차량의 다음 콜라이더가 트리거에 닿을 때마다 랩이 또 올라가므로** 킷 카운터를 쓸 수 없다 | 플레이 |
 | 탈락 (설정 간격 최하위 처형, 경고 3단, 0초 재판정, 두 대에서 중단) | 구현 | `EliminationManager.cs`(263줄), `CarExplosion.cs`, `EliminationSettings` | 정적 |
 | 처형 CCTV 인셋 (메인=플레이어, 처형 대상=우하단 약 1/3) | 구현·미검증 | `ExecutionCctvDirector.cs`(593줄, Cinemachine 3.1.5 채널 분리), `CameraSettings`. **Git 미추적** | 정적 |
 | 최종 관문 (규칙 + 폐쇄 연출) | 구현·플레이 미검증 | `FinalGate.cs`(규칙·시퀀스 타이밍), `FinalGateDoors.cs`(런타임 2엽 관문·폐쇄 애니메이션·통과 트리거), `PresentationSettings` 관문 6필드 | 정적 |
@@ -300,7 +300,7 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 | AI 성격 배분·성격별 수치 설정화 | 구현 (2026-07-26) | `AISettings.personalityAssignments`가 확정 구성(폭주광 2·난폭자 1·봉쇄자 1·생존자 1)을 담고 `AiPersonalityRoster.BuildOrder(assignments, …)`가 슬롯만 셔플. 성격별 수치는 `AiPersonalityProfile` 한 행으로 통합 (`paceScale`·`lateralStrengthMetres`·`boostTendency`·`quizAvoidChance`·`catchupAcceleration`) | 정적 + 컴파일 |
 | AI 부스트·AI 저주 전술 | **미구현/부분** | `TryBoost()` 호출자 없음(Reckless만 RCCP `nosInput 0.35`). AI 저주 발동은 `CurseManager.UpdateAiCasters`로 동작하나 사전 경고·연속 방지 없음 | 정적 |
 | 추락 리스폰 | 구현 (커밋됨) | `GmtkRccpFallRespawner.cs`, `FallRespawnState.cs` — 둘 다 Git 추적 중 | 정적 |
-| 레이스 씬·트랙 | 구현 | `Assets/Scenes/GMTK_Race.unity` (**텍스트 YAML**, 게이트 축소 후 **130KB**), `Race Track Authoring.prefab`, 웨이포인트 2635개는 `Assets/Prefab/AI Waypoints.prefab` 소유(21 075 m), 그리드 스폰 포인트 **8개** | 정적 |
+| 레이스 씬·트랙 | 구현 | 베이크 산출물 전부를 `Assets/Prefab/Race Track Authoring.prefab`이 소유한다 (도로·웨이포인트 2635개/21 075 m·게이트 1개·그리드 8개). 공유 씬 `Assets/Scenes/GMTK_Race.unity`는 **51.8KB**로 트랙 데이터를 들지 않으며 베이크해도 diff가 0줄이다 | 정적 |
 | Build Settings | 구현 | `ProjectSettings/EditorBuildSettings.asset`에 `Assets/Scenes/GMTK_Race.unity` 단일 씬만 enabled | 정적 |
 | 팀 UI ↔ 레이스 씬 통합 | 구현 | `Assets/Prefab/UI/Main UI.prefab`이 `GMTK_Race`에 배치됨 (`StartScreen`/`Prologue`/`Countdown`/`RaceUI` 중첩, `RaceUI` 안에 `Durability`·`Curse Skill`·`Position TMP`·`Race Timer` 포함) | 정적 |
 | 규칙 HUD (처형 카운트다운·최하위 경고·부스트·도전·관문) | **미배치** | `RaceHud.cs`는 **어떤 씬·프리팹에도 붙어 있지 않다** (스크립트 GUID 참조 0건). 현재 실행 시 이 정보가 화면에 표시되지 않음 | 정적 |
@@ -330,30 +330,44 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 정적 확인으로 새로 드러난 것을 포함한다.
 
-1. **랩 카운터가 출발선에서 오프바이원** — 그리드가 출발선 뒤에 있어 스폰 직후 결승선 게이트를 통과하는
-   차는 킷 `LapScores`가 1로 시작한다(웨이포인트 진행도는 0으로 정상). 게이트 467개 시절부터 있던
-   동작이며, 랩 수를 웨이포인트에서 공급하도록 바꾸면 해소되지만 **킷 `RaceFinish`의 승리 조건
-   (`LapScores > LapsSelected`)이 이 유령 랩을 전제로 하고 있어** 레이스 길이가 1랩 늘어난다. 기획 결정 필요.
-2. **씬에 `AudioListener`가 2개** — 플레이 중 매 프레임 "There are 2 audio listeners in the scene" 로그가
+1. **레이스 시작 직후 여러 대가 추락 리스폰된다** — `RCCP fall respawn: GMTK_RCCP_Player -> waypoint 41`,
+   `AI_1 -> 37`, `AI_3 -> 36`처럼 출발 몇 초 안에 다발로 찍힌다. 도로 콜라이더인지 그리드 높이(도로면 +0.35m)인지
+   **원인 미확인**이며 화면 확인이 필요하다.
+2. **킷 `RaceFinish`의 승리 조건이 랩 수와 어긋난다** — 랩이 이제 사실대로(주행 거리 기준) 기록되므로
+   `LapScores > LapsSelected`는 선택한 랩 수 **+1랩**을 요구한다. 예전 킷 카운터는 출발선 유령 랩을 전제로 해서
+   선택한 랩 수에 끝났다. 우리 승패는 탈락·최종 관문이 결정하고 `RaceFinish` 제거가 이미 미해결 항목이므로,
+   제거하거나 조건을 조정해야 한다.
+3. **씬에 `AudioListener`가 2개** — 플레이 중 매 프레임 "There are 2 audio listeners in the scene" 로그가
    찍혀 콘솔 버퍼(800줄)를 6초마다 밀어낸다. 실제 에러가 콘솔에서 사라지므로 진단을 방해한다.
-3. **킷 `RaceFinish`가 `GMTK_Race`에 남아 있다.** 랩 완주 시 중앙 관리자를 우회해 승패를 확정한다.
+4. **킷 `RaceFinish`가 `GMTK_Race`에 남아 있다.** 랩 완주 시 중앙 관리자를 우회해 승패를 확정한다.
    추가로 `RaceFinish.finishTrigger`는 **어디에서도 대입되지 않는데** `OnRestartRace()`에서
    `finishTrigger.enabled = false`를 호출하므로 **재시작 시 NullReferenceException이 난다.**
    서드파티 폴더라 직접 수정 금지 대상 — 컴포넌트를 씬에서 제거하거나 GMTK 어댑터로 대체해야 한다.
-4. **`RaceHud`가 어디에도 배치되지 않았다.** 처형 카운트다운·최하위 경고·부스트·저주·추월·관문
+5. **`RaceHud`가 어디에도 배치되지 않았다.** 처형 카운트다운·최하위 경고·부스트·저주·추월·관문
    상태가 화면에 전혀 표시되지 않는다.
-5. **`GameJamDefault.maximumDurability = 1000000`** — 대파를 미루기 위한 임시값. 최종 밸런스 값은
+6. **`GameJamDefault.maximumDurability = 1000000`** — 대파를 미루기 위한 임시값. 최종 밸런스 값은
    팀이 정하기로 했고, 프리셋 정규화 도구도 이 값을 덮지 않는다.
-6. **추월 실패 속박이 실제로 감속하지 않는다** (`BindSpeedMultiplier` 소비자 없음).
-7. **저주 사전 경고와 연속 저주 유예가 없다.** 방어형 흐름 자체는 확정·구현이지만, AI가 표적을 연속으로
+7. **추월 실패 속박이 실제로 감속하지 않는다** (`BindSpeedMultiplier` 소비자 없음).
+8. **저주 사전 경고와 연속 저주 유예가 없다.** 방어형 흐름 자체는 확정·구현이지만, AI가 표적을 연속으로
    찍는 것을 막는 유예(`hostileEffectGraceSeconds`)와 "표적이 됐다"는 사전 신호가 없다.
-8. `BoostController`가 레거시 `Input` API를 사용한다 (프로젝트 규칙 위반, Active Input Handling 의존).
-9. RCC 차량 렌즈 플레어가 URP에서 표시되지 않음 (`LegacyLensFlareUrpBridge` 미검증).
-10. 레거시 랜덤 이벤트가 `GMTK_Race`에서 켜져 있다 (`enableEvents: 1`).
-11. 관문 슬램 SFX 음원이 없어 `SFX_VEH_COLLISION_`이 플레이스홀더로 쓰인다 (3.14 범위).
+9. `BoostController`가 레거시 `Input` API를 사용한다 (프로젝트 규칙 위반, Active Input Handling 의존).
+10. RCC 차량 렌즈 플레어가 URP에서 표시되지 않음 (`LegacyLensFlareUrpBridge` 미검증).
+11. 레거시 랜덤 이벤트가 `GMTK_Race`에서 켜져 있다 (`enableEvents: 1`).
+12. 관문 슬램 SFX 음원이 없어 `SFX_VEH_COLLISION_`이 플레이스홀더로 쓰인다 (3.14 범위).
 
 **2026-07-26에 해소된 항목**
 
+- ~~트랙 산출물이 씬과 두 프리팹에 흩어져 있다~~ → 웨이포인트·게이트·스폰 포인트·도로·그리드를 모두
+  `Race Track Authoring.prefab`이 소유한다. `aiWaypoints`/`checkpoints`/`spawnPoints` 참조도 프리팹 내부
+  참조가 되어 공유 씬은 5.78MB → 51.8KB, **베이크 1회당 씬 diff 0줄**(프리팹 2 380줄)이 됐다. Bake Track이
+  프리팹 반영까지 자동으로 하므로 사람이 Apply를 누를 일은 없다. 미사용이 된 `AI Waypoints.prefab`은
+  참조 0건으로 남아 있다(삭제 여부 미결).
+- ~~`Spawning`의 `Spawn Points` 14개~~ → 씬 전체 참조 0건을 확인하고 삭제했다. 스폰 위치는 베이크된
+  `__GeneratedTrack/Starting Grid` 8개가 공급한다.
+- ~~`GMTKAutoPlaytest`가 FastTest 프리셋을 남긴다~~ → 플레이 모드 도메인 리로드가 꺼져 있어 `GameBalance`
+  정적 상태가 다음 세션까지 살아, 스모크 실행 뒤 일반 플레이에서도 **3초마다 처형**이 났다. 하네스가 끝날 때
+  원래 프리셋과 `RaceData.AiBotsSelected`/`LapsSelected`를 복원한다. 하네스가 1프레임에 Play를 눌러
+  `RaceFlow`·`GMTKRaceState`가 이벤트를 놓치던 문제도 함께 고쳤다.
 - ~~체크포인트 게이트가 재베이크 대기 중(컴포넌트 2배·미배선 467개로 매 프레임 NRE)~~ → 게이트를 결승선
   1개로 줄이고 순위를 웨이포인트 진행도로 옮겼다. 생성기 쪽 결함도 함께 고쳤다: `ClearGenerated`가
   `Transform.Find`로 첫 생성 루트만 지워 `__GeneratedTrack`이 2개인 씬에서 수렴하지 못했고, 그 탓에

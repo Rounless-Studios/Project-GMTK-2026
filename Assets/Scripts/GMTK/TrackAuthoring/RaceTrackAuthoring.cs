@@ -38,7 +38,8 @@ namespace GMTK.TrackAuthoring
     [ExecuteAlways, DisallowMultipleComponent]
     public sealed class RaceTrackAuthoring : MonoBehaviour
     {
-        private const string GeneratedRootName = "__GeneratedTrack";
+        /// <summary>Holds the road and the starting grid. The editor reads it to apply bake results.</summary>
+        public const string GeneratedRootName = "__GeneratedTrack";
 
         [Header("Shape")]
         [SerializeField] private bool closed = true;
@@ -245,7 +246,9 @@ namespace GMTK.TrackAuthoring
             }
 
             AutoFindSceneSystems();
-            ClearGenerated();
+            // only the road and grid are thrown away here: the waypoint and checkpoint builders reuse
+            // or trim their own children, which keeps the fileIDs their owning prefabs are saved with
+            DestroyGeneratedRoots();
             SampleCollection samples = BuildSamples();
             Transform generated = NewChild(transform, GeneratedRootName);
 
@@ -284,17 +287,24 @@ namespace GMTK.TrackAuthoring
             Debug.Log($"Baked checkpoints for '{name}': {samples.length:0} m.", this);
         }
 
-        [ContextMenu("Clear Generated Track")]
-        public void ClearGenerated()
+        /// <summary>
+        /// Transform.Find only ever returns the first match, so a scene that somehow holds two
+        /// generated roots could never converge: every bake destroyed one and added one back. Sweep
+        /// every match instead, or the stale road keeps its collider and the mesh asset.
+        /// </summary>
+        private void DestroyGeneratedRoots()
         {
-            // Transform.Find only ever returns the first match, so a scene that somehow holds two
-            // generated roots could never converge: every bake destroyed one and added one back.
-            // Sweep every match instead, or the stale road keeps its collider and the mesh asset.
             for (int i = transform.childCount - 1; i >= 0; i--)
             {
                 Transform child = transform.GetChild(i);
                 if (child.name == GeneratedRootName) DestroySafely(child.gameObject);
             }
+        }
+
+        [ContextMenu("Clear Generated Track")]
+        public void ClearGenerated()
+        {
+            DestroyGeneratedRoots();
 
             if (aiWaypoints != null)
                 ClearChildren(aiWaypoints.transform);
@@ -397,24 +407,35 @@ namespace GMTK.TrackAuthoring
             Transform root = aiWaypoints != null
                 ? aiWaypoints.transform
                 : NewChild(generated, "AI Waypoints");
-            if (aiWaypoints != null) ClearChildren(root);
 
+            // The path is owned by a prefab, and destroying the points would renumber every fileID in
+            // it: an unchanged track would still produce a 70k-line diff. Move the existing points
+            // instead, then add or trim only the difference.
             int count = Mathf.Max(2, Mathf.CeilToInt(samples.length / aiWaypointSpacing));
             for (int i = 0; i < count; i++)
             {
                 float distance = samples.length * i / count;
                 EvaluateSamples(samples, distance, out Vector3 position, out Quaternion rotation, out _);
-                GameObject point = waypointPrefab != null
-                    ? Instantiate(waypointPrefab)
-                    : GameObject.CreatePrimitive(PrimitiveType.Cube);
-                point.name = $"Waypoint_{i:000}";
-                point.transform.SetParent(root, false);
-                point.transform.SetPositionAndRotation(
+                Transform point = i < root.childCount ? root.GetChild(i) : NewWaypoint(root);
+                point.gameObject.name = $"Waypoint_{i:000}";
+                point.SetPositionAndRotation(
                     transform.TransformPoint(position + rotation * Vector3.up * 0.5f),
                     transform.rotation * rotation);
-                point.transform.localScale = Vector3.one;
+                point.localScale = Vector3.one;
                 if (point.TryGetComponent(out Collider collider)) DestroySafely(collider);
             }
+
+            for (int i = root.childCount - 1; i >= count; i--)
+                DestroySafely(root.GetChild(i).gameObject);
+        }
+
+        private Transform NewWaypoint(Transform root)
+        {
+            GameObject point = waypointPrefab != null
+                ? Instantiate(waypointPrefab)
+                : GameObject.CreatePrimitive(PrimitiveType.Cube);
+            point.transform.SetParent(root, false);
+            return point.transform;
         }
 
         private void BuildCheckpoints(Transform generated, SampleCollection samples)

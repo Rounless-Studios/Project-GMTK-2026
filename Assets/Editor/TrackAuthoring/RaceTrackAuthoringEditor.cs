@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using GMTK.TrackAuthoring;
 using SpinMotion;
 using UnityEditor;
@@ -428,7 +429,119 @@ namespace GMTK.Editor.TrackAuthoring
             Undo.RegisterFullObjectHierarchyUndo(track.gameObject, "Bake Race Track");
             track.Bake();
             PersistGeneratedMesh(track);
+            ApplyGeneratedContentToPrefab(track);
             MarkSceneDirty(track);
+        }
+
+        /// <summary>
+        /// Road, starting grid, AI waypoints and checkpoint gates are all bake output owned by the
+        /// track prefab, so a bake that stopped at the scene would leave them behind as instance
+        /// overrides: megabytes of churn per bake on the one file the whole team edits. Only the
+        /// generated subtrees are applied — the authoring component keeps its scene references (the
+        /// players spawner, the menu camera) as overrides, because no prefab can store those.
+        /// </summary>
+        private static void ApplyGeneratedContentToPrefab(RaceTrackAuthoring track)
+        {
+            if (!PrefabUtility.IsPartOfPrefabInstance(track.gameObject)) return;
+
+            GameObject root = PrefabUtility.GetOutermostPrefabInstanceRoot(track.gameObject);
+            if (root != track.gameObject)
+            {
+                Debug.LogWarning($"'{track.name}' is nested inside the prefab instance '{root?.name}', " +
+                    "so the baked track stays in the scene as overrides.", track);
+                return;
+            }
+
+            var so = new SerializedObject(track);
+            Transform waypoints = (so.FindProperty("aiWaypoints")?.objectReferenceValue as AIWaypoints)?.transform;
+            Transform gates = (so.FindProperty("checkpoints")?.objectReferenceValue as Checkpoints)?.transform;
+            string path = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(root);
+
+            // prefab objects this bake deleted first, then the ones it created: an added object cannot
+            // be applied while the object it replaces still exists in the prefab
+            foreach (RemovedGameObject removed in PrefabUtility.GetRemovedGameObjects(root).ToArray())
+                removed.Apply();
+            foreach (AddedGameObject added in PrefabUtility.GetAddedGameObjects(root).ToArray())
+                added.Apply();
+
+            RewireStartingGrid(track, so, path);
+
+            // waypoints are reused rather than recreated, so their new transforms arrive as property
+            // overrides on prefab objects instead of as added objects
+            int moved = 0;
+            foreach (ObjectOverride change in PrefabUtility.GetObjectOverrides(root).ToArray())
+            {
+                if (!IsGeneratedContent(change.instanceObject, track.transform, waypoints, gates)) continue;
+                change.Apply();
+                moved++;
+            }
+
+            Debug.Log($"Applied the baked track to '{path}' ({moved} moved objects).", track);
+        }
+
+        /// <summary>
+        /// Applying the generated root replaces the objects the spawner's grid list pointed at, which
+        /// leaves it holding eight nulls: cars would spawn on top of each other at the world origin.
+        /// Re-point it at the applied children, and hand the list over too when the spawner is part of
+        /// the same prefab — the grid is bake output, not scene setup.
+        /// </summary>
+        private static void RewireStartingGrid(RaceTrackAuthoring track, SerializedObject so, string path)
+        {
+            var spawner = so.FindProperty("playersSpawner")?.objectReferenceValue as PlayersSpawner;
+            Transform grid = track.transform.Find($"{RaceTrackAuthoring.GeneratedRootName}/Starting Grid");
+            if (spawner == null || grid == null) return;
+
+            spawner.spawnPoints.Clear();
+            foreach (Transform point in grid) spawner.spawnPoints.Add(point);
+            EditorUtility.SetDirty(spawner);
+
+            if (PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(spawner.gameObject) != path) return;
+
+            // The spawner lives in the prefab next to the grid, so the list belongs in the asset. It
+            // cannot be applied from the instance: the references still point at instance objects and
+            // a prefab can only store references to its own contents, which is how eight nulls got
+            // saved before. Wire it inside the asset, then let the instance inherit the result.
+            GameObject contents = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                var assetSpawner = contents.GetComponentInChildren<PlayersSpawner>(true);
+                Transform assetGrid =
+                    contents.transform.Find($"{RaceTrackAuthoring.GeneratedRootName}/Starting Grid");
+                if (assetSpawner == null || assetGrid == null) return;
+
+                assetSpawner.spawnPoints.Clear();
+                foreach (Transform point in assetGrid) assetSpawner.spawnPoints.Add(point);
+                PrefabUtility.SaveAsPrefabAsset(contents, path);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+            }
+
+            var spawnerObject = new SerializedObject(spawner);
+            PrefabUtility.RevertPropertyOverride(spawnerObject.FindProperty("spawnPoints"),
+                InteractionMode.AutomatedAction);
+        }
+
+        /// <summary>True for objects a bake writes: the road, the grid, the waypoints and the gates.</summary>
+        private static bool IsGeneratedContent(Object instanceObject, Transform track,
+            Transform waypoints, Transform gates)
+        {
+            Transform candidate = instanceObject switch
+            {
+                GameObject go => go.transform,
+                Component component => component.transform,
+                _ => null
+            };
+
+            for (Transform t = candidate; t != null && t != track.parent; t = t.parent)
+            {
+                if (t.name == RaceTrackAuthoring.GeneratedRootName) return true;
+                if (waypoints != null && t == waypoints) return true;
+                if (gates != null && t == gates) return true;
+            }
+
+            return false;
         }
 
         private static void SyncVisualHandlesToAuthoring(RaceTrackAuthoring track)
