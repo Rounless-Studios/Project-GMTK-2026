@@ -74,8 +74,10 @@ namespace GMTK
                 if (tracker == null) continue;
                 if (tracker.GetCarRacePositionIndex() == raceIndex)
                 {
-                    var controller = tracker.GetComponentInParent<CarController>();
-                    return controller != null ? controller.gameObject : tracker.transform.root.gameObject;
+                    // Trackers are parented directly under the vehicle root by every supported
+                    // spawner. This remains valid for inactive (eliminated) cars and keeps the
+                    // race layer independent of a concrete vehicle package.
+                    return tracker.transform.root.gameObject;
                 }
             }
             return null;

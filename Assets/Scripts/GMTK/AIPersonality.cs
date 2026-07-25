@@ -12,10 +12,9 @@ namespace GMTK
     }
 
     /// <summary>
-    /// Gives an AI car a distinct driving personality by nudging CarAIControl's desired
-    /// speed and steering target through the IAIDriverModifier hook.
+    /// Gives an AI car a distinct driving personality through the active vehicle adapter.
+    /// The IAIDriverModifier implementation remains as a fallback for legacy kit cars.
     /// </summary>
-    [RequireComponent(typeof(CarAIControl))]
     public class AIPersonality : MonoBehaviour, IAIDriverModifier
     {
         public AIPersonalityType type = AIPersonalityType.CleanRacer;
@@ -35,12 +34,39 @@ namespace GMTK
         public float cleanRacerSpeedMultiplier = 1.0f;
 
         private Transform player;
+        private GmtkVehicleAdapter vehicleAdapter;
+        private CarAIControl legacyAi;
 
         private void Awake()
         {
-            // ensure CarAIControl picks us up even though we're added at runtime
-            var ai = GetComponent<CarAIControl>();
-            if (ai != null) ai.RefreshModifier();
+            vehicleAdapter = GetComponent<GmtkVehicleAdapter>();
+            legacyAi = GetComponent<CarAIControl>();
+
+            if (legacyAi != null)
+                legacyAi.RefreshModifier();
+
+            ApplyToDriver();
+        }
+
+        private void FixedUpdate()
+        {
+            if (vehicleAdapter == null)
+                return;
+
+            vehicleAdapter.ApplyAiTargeting(
+                type,
+                Player(),
+                ramStrength,
+                blockStrength,
+                aggroRange);
+        }
+
+        public void ApplyToDriver()
+        {
+            if (vehicleAdapter == null)
+                vehicleAdapter = GetComponent<GmtkVehicleAdapter>();
+
+            vehicleAdapter?.ConfigureAiPersonality(type);
         }
 
         public float SpeedMultiplier

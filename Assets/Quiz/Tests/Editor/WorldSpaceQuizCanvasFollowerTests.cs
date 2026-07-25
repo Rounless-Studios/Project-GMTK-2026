@@ -33,6 +33,30 @@ namespace Gmtk2026.Quiz.Tests
         }
 
         [Test]
+        public void GetTargetPosition_RightOffsetKeepsPhoneAwayFromVehicleCenter()
+        {
+            GameObject cameraObject = new GameObject("TestCamera");
+            try
+            {
+                Vector3 position = WorldSpaceQuizCanvasFollower.GetTargetPosition(
+                    cameraObject.transform,
+                    2.4f,
+                    1.45f,
+                    0.32f);
+
+                Vector3 localPosition =
+                    cameraObject.transform.InverseTransformPoint(position);
+                Assert.That(localPosition.x, Is.GreaterThanOrEqualTo(1.4f));
+                Assert.That(localPosition.y, Is.GreaterThan(0f));
+                Assert.That(localPosition.z, Is.EqualTo(2.4f).Within(0.0001f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(cameraObject);
+            }
+        }
+
+        [Test]
         public void AdvancePresentation_ReachesTargetsUsingConfiguredDurations()
         {
             float shownHalfway = WorldSpaceQuizCanvasFollower.AdvancePresentation(
