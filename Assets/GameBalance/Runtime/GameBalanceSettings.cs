@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Gmtk2026.GameBalance
 {
@@ -140,8 +141,11 @@ namespace Gmtk2026.GameBalance
     public class CameraSettings
     {
         [Min(0)] public float sideBySideActivationSeconds = 0.6f;
-        // bottom-right ~1/3 of the screen (x, y, width, height in 0..1 viewport space)
-        public Rect executionPlayerViewportRect = new Rect(0.66f, 0f, 0.34f, 0.34f);
+        // Execution CCTV inset; the player's camera remains in its original main viewport.
+        [FormerlySerializedAs("executionPlayerViewportRect")]
+        public Rect executionCctvViewportRect = new Rect(0.66f, 0f, 0.34f, 0.34f);
+        [Min(0)] public float executionTransitionSeconds = 0.2f;
+        [Min(0)] public float executionReturnSeconds = 0.25f;
     }
 
     [System.Serializable]
@@ -366,9 +370,12 @@ namespace Gmtk2026.GameBalance
             if (boost.overtakeRewardCharges > boost.maximumCharges)
                 errors.Add("boost.overtakeRewardCharges must be <= boost.maximumCharges");
 
-            var r = camera.executionPlayerViewportRect;
-            if (r.xMin < 0f || r.yMin < 0f || r.xMax > 1f || r.yMax > 1f)
-                errors.Add("camera.executionPlayerViewportRect must be within the 0..1 viewport");
+            var r = camera.executionCctvViewportRect;
+            if (r.width <= 0f || r.height <= 0f ||
+                r.xMin < 0f || r.yMin < 0f || r.xMax > 1f || r.yMax > 1f)
+            {
+                errors.Add("camera.executionCctvViewportRect must have positive size and remain within the 0..1 viewport");
+            }
 
             // non-negative sanity for the common time/charge fields
             if (boost.durationSeconds < 0f) errors.Add("boost.durationSeconds must be >= 0");

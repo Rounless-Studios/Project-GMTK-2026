@@ -33,7 +33,7 @@
 | 퀴즈 | 레이스를 멈추지 않고 마우스로 답 선택 |
 | 추월 도전 | 20초 주기 후보 판정, 8초 안에 추월 후 0.5초 유지 |
 | 특수 이벤트 | 덤프트럭 습격, 지진, 운석 낙하 |
-| 처형 화면 | 처형 차량을 메인 화면에 표시하고 플레이어 화면은 오른쪽 아래 1/3 크기로 축소 |
+| 처형 화면 | 플레이어 주행 화면을 메인으로 유지하고 처형 차량은 오른쪽 아래 약 1/3 CCTV로 표시 |
 | 결과 | 빠른 승리·패배 표시와 재시작 |
 
 ### GDD 내부 불일치
@@ -49,8 +49,8 @@
 
 - [x] 단일 루트 `GameBalanceSettings` ScriptableObject 생성
 - [ ] 설정 그룹 분리 — 구현됨: `RaceSettings`, `EliminationSettings`, `ResultSettings`, `QuizSettings`, `CurseSettings`, `BoostSettings`, `DamageSettings`, `OvertakeSettings`, `CameraSettings`, `AISettings`(+`AiDrivingSettings`, `AiPersonalityAssignmentSettings`), `TrackValidationSettings`, `PresentationSettings`, `PlaytestSettings` / **미구현: `VehicleSettings`, `SpecialEventSettings`** (차량 수치는 RCCP 프리팹, 특수 이벤트 수치는 `RandomEventManager` 인스펙터에 남아 있음)
-- [x] 게임 잼 기본값을 담은 `GameJamDefault` 프리셋 에셋 생성 — `Assets/Resources/GameBalance/GameJamDefault.asset`
-- [x] 빠른 자동 테스트용 `FastTest` 프리셋 에셋 생성 — `Assets/Resources/GameBalance/FastTest.asset`
+- [x] 게임 잼 기본값을 담은 `GameJamDefault` 프리셋 에셋 생성 — `Assets/GameBalance/Resources/GameBalance/GameJamDefault.asset`
+- [x] 빠른 자동 테스트용 `FastTest` 프리셋 에셋 생성 — `Assets/GameBalance/Resources/GameBalance/FastTest.asset`
 - [x] 런타임 시작 시 선택된 설정을 불변 스냅샷으로 만들어 모든 시스템에 공급 — `GameBalance.Current` / `GameBalance.SetActive`
 - [ ] 레이스 관리자, 차량, AI, HUD, 카메라, VFX, 오디오가 같은 설정 스냅샷을 참조
 - [ ] MonoBehaviour와 프리팹에 동일 수치를 중복 직렬화하지 않음
@@ -103,7 +103,7 @@
 | AI Curse | `warningSeconds` | 1 |
 | AI Curse | `hostileEffectGraceSeconds` | 2 |
 | Camera | `sideBySideActivationSeconds` | 0.6 |
-| Camera | `executionPlayerViewportRect` | 오른쪽 아래 약 1/3, Rect로 설정 |
+| Camera | `executionCctvViewportRect` | 처형 CCTV를 오른쪽 아래 약 1/3 Rect로 설정 |
 | Camera | `executionTransitionSeconds` | 0.2 |
 | Camera | `executionReturnSeconds` | 0.25 |
 | Gate | `closeDurationSeconds` | 0.75 |
@@ -179,7 +179,7 @@ GDD에서 선택지가 열려 있는 동작도 코드 분기 수정 없이 프�
 
 | 시스템 | 상태 | 근거 | 검증 |
 |---|---|---|---|
-| 설정 시스템 (`GameBalanceSettings` + 프리셋 2종 + 스냅샷 공급) | 구현 | `Assets/GameBalance/Runtime/GameBalanceSettings.cs`, `GameBalance.cs`, `Assets/Resources/GameBalance/{GameJamDefault,FastTest}.asset` | 테스트 |
+| 설정 시스템 (`GameBalanceSettings` + 프리셋 2종 + 스냅샷 공급) | 구현 | `Assets/GameBalance/Runtime/GameBalanceSettings.cs`, `GameBalance.cs`, `Assets/GameBalance/Resources/GameBalance/{GameJamDefault,FastTest}.asset` | 테스트 |
 | 레이스 상태 흐름 (`Boot→PreRace→Countdown→Racing→FinalDuel→Finished`) | 구현 | `GMTKRaceState.cs`, `RaceFlow.cs`, `RaceBootstrap.cs` | 플레이 |
 | 체크포인트·순위·랩 | 구현 (킷 인프라 유지) | 킷 `Checkpoints`/`CheckpointTracker`/`RealTimeRacePositions` + `Race.cs` 어댑터 | 플레이 |
 | 탈락 (30초 간격 최하위 처형) | 구현 | `EliminationManager.cs`, `CarExplosion.cs`, `EliminationSettings` | 플레이 |
@@ -197,7 +197,7 @@ GDD에서 선택지가 열려 있는 동작도 코드 분기 수정 없이 프�
 | HUD (순위·처형 카운트다운·부스트·저주·도전·관문) | 구현 | `RaceHud.cs`, `RaceHud.prefab` | 플레이 |
 | 시작 화면·오디오 | 구현 | `StartMenuCanvas.cs`, `GameAudioManager.cs`, `Assets/Sound/*` (47) | 플레이 |
 | 추락 리스폰 | 작업 중 (미커밋) | `GmtkRccpFallRespawner.cs`, `FallRespawnState.cs` | 컴파일 |
-| 처형 화면 분할 (메인=처형 대상, 플레이어=우하단 1/3) | **미구현** | `CameraSettings.executionPlayerViewportRect`만 존재, 뷰포트 전환 코드 없음 | — |
+| 처형 화면 분할 (메인=플레이어, 처형 대상=우하단 CCTV 약 1/3) | 코드 구현·플레이 미검증 | `EliminationManager.cs`, `ExecutionCctvDirector.cs`, `CameraSettings` | 컴파일 |
 | `VehicleSettings`·`SpecialEventSettings` 설정화 | **미구현** | 차량 수치는 RCCP 프리팹, 이벤트 수치는 컴포넌트 인스펙터에 산재 | — |
 | 팀 UI ↔ 레이스 씬 통합 | **미완** | `RaceHud`/`StartScreen` 프리팹은 `Assets/Scenes/ui.unity`에만 배치, `GMTK_Race`에는 없음 | — |
 
@@ -408,15 +408,15 @@ GDD에서 선택지가 열려 있는 동작도 코드 분기 수정 없이 프�
 
 ### 3.3 처형 화면
 
-> 상태: **미구현.** `CameraSettings.executionPlayerViewportRect` 설정만 존재하고 뷰포트 분할·카메라 전환 코드가 없다. GDD 시그니처 요소이므로 우선순위 높음.
+> 상태: **코드 구현·플레이 미검증.** 플레이어 주행 화면을 메인으로 유지하면서 3초 전부터 우하단 CCTV가 현재 꼴찌를 추적하고, 0초에 최신 순위로 처형 대상을 확정한다. 실제 화면 구도·조작 지속·WebGL 성능은 플레이 검증이 필요하다.
 
 - [ ] 시작 시점·Viewport Rect·전환 시간·복귀 시간을 `CameraSettings`에서 읽음
 - [ ] 3초 전 처형 대상 카메라 활성화
-- [ ] 처형 차량을 메인 화면에 표시
-- [ ] 플레이어 카메라를 오른쪽 아래로 이동
-- [ ] 플레이어 화면을 약 1/3 크기로 축소
-- [ ] 축소 화면에서도 계속 조작 가능
-- [ ] 처형 종료 후 플레이어 카메라 정상 복귀
+- [ ] 플레이어 카메라를 원래 메인 화면에 유지
+- [ ] 처형 CCTV를 오른쪽 아래로 표시
+- [ ] 처형 CCTV를 약 1/3 크기로 표시
+- [ ] 메인 플레이어 화면에서 계속 조작 가능
+- [ ] 처형 종료 후 CCTV가 닫히고 플레이어 화면 유지
 - [ ] 플레이어 자신이 대상일 때 패배 연출로 전환
 - [ ] 복수 카메라 렌더링의 WebGL 성능 확인
 
@@ -670,11 +670,11 @@ GDD에서 선택지가 열려 있는 동작도 코드 분기 수정 없이 프�
 
 ### 6.2 처형 화면
 
-- [ ] 3초 전 처형 차량이 메인 화면에 표시
-- [ ] 플레이어 화면이 오른쪽 아래 1/3 크기로 축소
-- [ ] 축소 화면으로 계속 조작 가능
+- [ ] 3초 전 처형 차량이 오른쪽 아래 CCTV에 표시
+- [ ] 플레이어 화면이 메인 화면으로 유지
+- [ ] 메인 화면으로 계속 조작 가능
 - [ ] 0초에 대상 차량 폭발
-- [ ] 처형 후 플레이어 화면 정상 복귀
+- [ ] 처형 후 CCTV가 닫히고 플레이어 화면 유지
 - [ ] 플레이어 자신이 대상일 때 패배 흐름 정상
 - [ ] 카메라 전환 중 레이싱 라인을 놓치지 않음
 
@@ -846,16 +846,16 @@ GDD에서 선택지가 열려 있는 동작도 코드 분기 수정 없이 프�
 - [ ] 0초에 최신 순위를 다시 계산해 최하위 처형
 - [ ] 두 대가 남으면 탈락 중단
 - [ ] 순위·처형 타이머·최하위 경고 HUD
-- [ ] 처형 차량을 메인 화면에 표시
-- [ ] 플레이어 화면을 오른쪽 아래 설정 Rect로 축소
-- [ ] 처형 후 카메라 정상 복귀
+- [ ] 플레이어 카메라를 원래 메인 화면에 유지
+- [ ] 처형 차량 CCTV를 오른쪽 아래 설정 Rect로 표시
+- [ ] 처형 후 CCTV 정상 종료
 
 **완료 조건:**
 
 - [ ] 6대에서 네 번의 처형 후 정확히 두 대가 남음
 - [ ] 순위 역전 직후에도 올바른 차량이 처형됨
-- [ ] 플레이어가 축소 화면으로 계속 조작 가능
-- [ ] 플레이어 자신이 대상이면 중복 인셋 없이 플레이어를 메인 화면에 유지하고 0초 처형 시 패배 흐름으로 전환
+- [ ] 플레이어가 메인 화면으로 계속 조작 가능
+- [ ] 플레이어 자신이 대상이어도 메인 주행 화면을 유지하고 CCTV 처형 연출 후 0초 패배 흐름으로 전환
 
 **필수 검증:**
 
@@ -1072,7 +1072,7 @@ GDD에서 선택지가 열려 있는 동작도 코드 분기 수정 없이 프�
 - [x] 파열·엔진 봉인·영혼 교환 3종
 - [x] 레이스를 멈추지 않는 마우스 퀴즈
 - [x] 20초 주기 추월 도전과 실패 시 심판의 사슬
-- [x] 처형 차량 메인 화면과 플레이어 화면 오른쪽 아래 축소
+- [ ] 플레이어 메인 화면 유지와 처형 차량 오른쪽 아래 CCTV
 - [x] 지옥 주조 고속도로와 제한적인 시네마틱 카메라
 
 ### GDD 내부 모순을 최신안으로 정리한 항목
@@ -1120,7 +1120,7 @@ GDD에서 선택지가 열려 있는 동작도 코드 분기 수정 없이 프�
 ### 주요 설계 리스크
 
 - **1랩 길이:** 총 6대가 두 대가 되려면 기본값으로 120초가 필요하므로 최종 진입이 그보다 빨라서는 안 된다.
-- **복수 카메라:** 처형 화면과 플레이어 축소 화면을 동시에 렌더링하므로 WebGL 성능 검증이 필요하다.
+- **복수 카메라:** 플레이어 메인 화면 위에 처형 CCTV를 동시에 렌더링하므로 WebGL 성능 검증이 필요하다.
 - **마우스 퀴즈:** 주행 입력과 포인터 조작을 동시에 요구하므로 버튼 크기와 화면 위치를 조기에 테스트해야 한다.
 - **AI 5대와 네 성격:** 중복 배정되는 성격은 프리셋에서 명시해 레이스마다 예측 불가능하게 바뀌지 않게 한다.
 - **특수 이벤트 과부하:** 처형·퀴즈·도전과 동시에 발생하면 가독성이 무너지므로 상태 차단 규칙과 최대 동시 개수를 반드시 지킨다.

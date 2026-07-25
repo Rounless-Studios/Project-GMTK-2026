@@ -73,12 +73,14 @@ MonoBehaviour:
     bindSpeedMultiplier: 0.5
   camera:
     sideBySideActivationSeconds: 0.6
-    executionPlayerViewportRect:
+    executionCctvViewportRect:
       serializedVersion: 2
       x: 0.66
       y: 0
       width: 0.34
       height: 0.34
+    executionTransitionSeconds: 0.2
+    executionReturnSeconds: 0.25
   ai:
     archetypeAssignments: 0000000001000000020000000300000001000000
     driving:
