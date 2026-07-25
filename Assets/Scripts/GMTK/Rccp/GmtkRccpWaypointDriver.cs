@@ -33,6 +33,10 @@ namespace GMTK.Rccp
         [SerializeField] private float maxLaneOffset = 6f;
         [Tooltip("Small per-car offset kept for the whole race so the pack does not share one line.")]
         [SerializeField] private float laneJitter = 1.2f;
+        [Tooltip("Widest half-width probed when turning a waypoint into a track cross-section line.")]
+        [SerializeField] private float maxRoadHalfWidth = 13f;
+        [Tooltip("Metres kept clear of the measured road edge.")]
+        [SerializeField] private float roadEdgeMargin = 2.2f;
         [SerializeField] private float steerGainLowSpeed = 1.5f;
         [SerializeField] private float steerGainHighSpeed = 0.55f;
         [Tooltip("Damps the steering rate so the car stops sawing at the wheel.")]
@@ -52,6 +56,9 @@ namespace GMTK.Rccp
         private float gridLaneOffset;
         private float mergeTravelled;
         private float personalLaneOffset;
+        private int measuredEdgeIndex = -1;
+        private float edgeLimitLeft;
+        private float edgeLimitRight;
         private float stuckTimer;
         private float reverseTimer;
         private AIPersonalityType personalityType;
@@ -226,15 +233,50 @@ namespace GMTK.Rccp
             float mergeBlend = laneMergeDistance > 0f
                 ? 1f - Mathf.Clamp01(mergeTravelled / laneMergeDistance)
                 : 0f;
-            offset += pathRight * (gridLaneOffset * mergeBlend + personalLaneOffset);
+            float lateral = Vector3.Dot(offset, pathRight)
+                            + gridLaneOffset * mergeBlend
+                            + personalLaneOffset;
 
-            Vector3 candidate = aimPoint + offset;
-            return HasGroundUnder(candidate) ? candidate : aimPoint;
+            // the waypoint is used as a track cross-section line: clamp the chosen position to the
+            // measured road, never fall back to the centre line
+            MeasureRoadEdges(aimPoint, pathRight);
+            lateral = Mathf.Clamp(lateral, -edgeLimitLeft, edgeLimitRight);
+
+            return aimPoint + pathRight * lateral;
         }
 
-        private static bool HasGroundUnder(Vector3 point)
+        /// <summary>
+        /// Turns the aim point into a cross-section line by probing the barriers, and by walking
+        /// outward until the ground stops when a side has no barrier. Cached per waypoint so this
+        /// costs a couple of casts per second, not per frame.
+        /// </summary>
+        private void MeasureRoadEdges(Vector3 centre, Vector3 pathRight)
         {
-            return Physics.Raycast(point + Vector3.up * 4f, Vector3.down, 10f);
+            if (measuredEdgeIndex == waypointIndex)
+                return;
+
+            measuredEdgeIndex = waypointIndex;
+            edgeLimitRight = Mathf.Max(0f, ProbeEdge(centre, pathRight) - roadEdgeMargin);
+            edgeLimitLeft = Mathf.Max(0f, ProbeEdge(centre, -pathRight) - roadEdgeMargin);
+        }
+
+        private float ProbeEdge(Vector3 centre, Vector3 direction)
+        {
+            // a barrier is the hard limit
+            if (Physics.Raycast(centre + Vector3.up * 1.2f, direction, out RaycastHit hit, maxRoadHalfWidth))
+                return hit.distance;
+
+            // otherwise the surface edge: the track has no terrain beside it, so the last sample
+            // with ground under it is the edge
+            for (float distance = 2f; distance <= maxRoadHalfWidth; distance += 2f)
+            {
+                Vector3 probe = centre + direction * distance + Vector3.up * 3f;
+
+                if (!Physics.Raycast(probe, Vector3.down, 8f))
+                    return distance - 2f;
+            }
+
+            return maxRoadHalfWidth;
         }
 
         /// <summary>
