@@ -182,6 +182,7 @@ GDD에서 선택지가 열려 있는 동작도 코드 분기 수정 없이 프�
 | 설정 시스템 (`GameBalanceSettings` + 프리셋 2종 + 스냅샷 공급) | 구현 | `Assets/GameBalance/Runtime/GameBalanceSettings.cs`, `GameBalance.cs`, `Assets/Resources/GameBalance/{GameJamDefault,FastTest}.asset` | 테스트 |
 | 레이스 상태 흐름 (`Boot→PreRace→Countdown→Racing→FinalDuel→Finished`) | 구현 | `GMTKRaceState.cs`, `RaceFlow.cs`, `RaceBootstrap.cs` | 플레이 |
 | 체크포인트·순위·랩 | 구현 (킷 인프라 유지) | 킷 `Checkpoints`/`CheckpointTracker`/`RealTimeRacePositions` + `Race.cs` 어댑터 | 플레이 |
+| 주행 진행도 측정 (경로 arc-length) | 1단계 — 측정·비교만, 순위 공급은 아직 체크포인트 | `TrackProgress.cs`, `GmtkRaceProgress.cs` | 테스트 |
 | 탈락 (30초 간격 최하위 처형) | 구현 | `EliminationManager.cs`, `CarExplosion.cs`, `EliminationSettings` | 플레이 |
 | 최종 관문 | 구현 | `FinalGate.cs`, `PresentationSettings` | 플레이 |
 | 내구도·대파 | 구현 (상태머신) | `DurabilityController.cs`, `DurabilityManager.cs`, `DurabilityState.cs`, `DurabilityHud.cs` | 테스트 |
@@ -203,11 +204,12 @@ GDD에서 선택지가 열려 있는 동작도 코드 분기 수정 없이 프�
 
 ### 자동 테스트 현황
 
-`Assets/GameBalance/Tests/Editor` 8파일 + `Assets/Quiz/Tests/Editor` 5파일 = **13개 테스트 파일**
-(`BoostState`, `CurseCooldownState`, `DurabilityState`, `OvertakeChallengeState`, `FallRespawnState`, `GameBalanceSettings`, `AiDriving`, `AiPersonalityRoster`, `ButtonMashProgress`, `NumberSequenceProgress`, `QuizQuestion`, `QuizSessionController`, `WorldSpaceQuizCanvasFollower`)
+`Assets/GameBalance/Tests/Editor` 9파일 + `Assets/Quiz/Tests/Editor` 5파일 = **14개 테스트 파일**
+(`BoostState`, `CurseCooldownState`, `DurabilityState`, `OvertakeChallengeState`, `FallRespawnState`, `GameBalanceSettings`, `AiDriving`, `AiPersonalityRoster`, `TrackProgress`, `ButtonMashProgress`, `NumberSequenceProgress`, `QuizQuestion`, `QuizSessionController`, `WorldSpaceQuizCanvasFollower`)
 
 ### 알려진 미해결 항목
 
+- **`GMTK_Race.unity`의 체크포인트 게이트가 재베이크 대기 중** — 생성기 버그(게이트당 `Checkpoint` 컴포넌트 2개, 그중 1개는 참조 미배선)를 `RaceTrackAuthoring.BuildCheckpoints`에서 고쳤으나, 이미 베이크된 씬은 고쳐지지 않는다. 현재 씬은 게이트 467개에 컴포넌트 934개·미배선 467개로, 매 프레임 NRE가 나고 랩 판정용 게이트 수가 2배로 집계된다. 씬 소유자가 **Bake Track**을 한 번 눌러야 해소된다
 - 처형 화면 분할 연출 미구현 (GDD 시그니처 요소)
 - 팀 HUD가 레이스 씬에 배치되지 않아 `GMTK_Race` 플레이 시 킷 UI만 표시됨
 - `GameJamDefault.maximumDurability = 1000000` — 대파를 미루기 위한 임시값, 밸런스 확정 시 되돌려야 함

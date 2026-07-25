@@ -388,6 +388,12 @@ namespace GMTK.TrackAuthoring
                 : NewChild(generated, "Checkpoints");
             if (checkpoints != null) ClearChildren(root);
 
+            // Checkpoints.Start() numbers every Checkpoint it finds under the manager, so a gate must
+            // expose exactly one. The kit prefab already carries a wired one on its trigger child.
+            RaceManager raceManager = FindFirstObjectByType<RaceManager>(FindObjectsInactive.Include);
+            RealTimeRacePositions positions =
+                FindFirstObjectByType<RealTimeRacePositions>(FindObjectsInactive.Include);
+
             int count = Mathf.Max(2, Mathf.CeilToInt(samples.length / checkpointSpacing));
             for (int i = 0; i < count; i++)
             {
@@ -403,14 +409,55 @@ namespace GMTK.TrackAuthoring
                     transform.TransformPoint(position + rotation * Vector3.up * (checkpointHeight * 0.5f)),
                     transform.rotation * rotation);
 
-                BoxCollider box = checkpoint.GetComponent<BoxCollider>();
-                if (box == null) box = checkpoint.AddComponent<BoxCollider>();
+                Checkpoint gate = checkpoint.GetComponentInChildren<Checkpoint>(true);
+                if (gate == null) gate = checkpoint.AddComponent<Checkpoint>();
+
+                BoxCollider box = gate.GetComponent<BoxCollider>();
+                if (box == null) box = gate.gameObject.AddComponent<BoxCollider>();
                 box.isTrigger = true;
                 box.center = Vector3.zero;
-                box.size = new Vector3(width, checkpointHeight, 1f);
-                if (checkpoint.GetComponent<Checkpoint>() == null)
-                    checkpoint.AddComponent<Checkpoint>();
+
+                if (gate.transform == checkpoint.transform)
+                {
+                    // no trigger child to stretch: size the gate root's own box instead
+                    box.size = new Vector3(width, checkpointHeight, 1f);
+                }
+                else
+                {
+                    // scaling the trigger child widens its marker mesh with the road as well
+                    box.size = Vector3.one;
+                    gate.transform.localScale = new Vector3(width, checkpointHeight, 0.25f);
+                }
+
+                // an unwired Checkpoint throws in Update() every frame, once per gate
+                if (gate.gameEvents == null && raceManager != null) gate.gameEvents = raceManager.gameEvents;
+                if (gate.raceManager == null && raceManager != null)
+                    gate.raceManager = raceManager.raceManagerRuntimeItem;
+                if (gate.realTimeRacePositions == null && positions != null)
+                    gate.realTimeRacePositions = positions.realTimeRacePositionsRuntimeItem;
             }
+
+            ValidateCheckpoints(root, count);
+        }
+
+        /// <summary>
+        /// The kit derives lap progress from the Checkpoint count under the manager, so a duplicated or
+        /// unwired component silently breaks the race instead of failing here. Report it at bake time.
+        /// </summary>
+        private static void ValidateCheckpoints(Transform root, int expected)
+        {
+            Checkpoint[] gates = root.GetComponentsInChildren<Checkpoint>(true);
+            int unwired = 0;
+            foreach (Checkpoint gate in gates)
+                if (gate.raceManager == null || gate.realTimeRacePositions == null || gate.gameEvents == null)
+                    unwired++;
+
+            if (gates.Length != expected)
+                Debug.LogError($"Baked {expected} checkpoint gates but the manager sees {gates.Length} " +
+                    "Checkpoint components. Lap counting needs exactly one per gate.", root);
+            if (unwired > 0)
+                Debug.LogError($"{unwired} baked checkpoints have unassigned references and will throw " +
+                    "every frame. Add a RaceManager and Real Time Race Positions to the scene.", root);
         }
 
         private void BuildStartingGrid(Transform generated, SampleCollection samples)
