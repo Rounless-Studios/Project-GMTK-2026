@@ -25,10 +25,14 @@ namespace GMTK
         public static event System.Action<CurseController, CurseType, int> CurseCast; // caster, type, target
 
         private CurseSettings C => GameBalance.Current.curse;
+        private GmtkVehicleAdapter vehicleAdapter;
 
         private void Awake()
         {
-            IsPlayer = GetComponentInChildren<CarUserControl>(true) != null;
+            vehicleAdapter = GetComponent<GmtkVehicleAdapter>();
+            IsPlayer = vehicleAdapter != null
+                ? vehicleAdapter.IsPlayer
+                : GetComponentInChildren<CarUserControl>(true) != null;
             Build();
         }
 
@@ -171,8 +175,8 @@ namespace GMTK
         }
 
         // Provisional soul swap: validate distance + phase safety, then swap world poses.
-        // Track-relative swapping (progress-preserving, lateral-safe) is refined once the MVC
-        // vehicle + track data land; the distance/phase safety gate below is the durable part.
+        // Track-relative swapping can be refined against RCCP telemetry later; the
+        // distance/phase safety gate below is the durable part.
         private bool TrySoulSwap(int targetIndex)
         {
             int self = RaceIndex >= 0 ? RaceIndex : ResolveOwnIndex();

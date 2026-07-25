@@ -26,10 +26,14 @@ namespace GMTK
         public bool IsPlayer { get; private set; }
 
         private BoostSettings B => GameBalance.Current.boost;
+        private GmtkVehicleAdapter vehicleAdapter;
 
         private void Awake()
         {
-            IsPlayer = GetComponentInChildren<CarUserControl>(true) != null;
+            vehicleAdapter = GetComponent<GmtkVehicleAdapter>();
+            IsPlayer = vehicleAdapter != null
+                ? vehicleAdapter.IsPlayer
+                : GetComponentInChildren<CarUserControl>(true) != null;
             Build();
         }
 
@@ -63,8 +67,12 @@ namespace GMTK
                              || Input.GetKeyDown(KeyCode.RightShift)))
                 State.TryActivate();
 
-            // TODO(vehicle): feed State.CurrentSpeedMultiplier into the drive once the MVC
-            // vehicle replaces the kit car. The rule/charges/seal are complete and tested here.
+        }
+
+        private void FixedUpdate()
+        {
+            if (vehicleAdapter != null && State != null)
+                vehicleAdapter.ApplyBoost(State.CurrentSpeedMultiplier);
         }
     }
 }

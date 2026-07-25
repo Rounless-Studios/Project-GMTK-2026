@@ -29,11 +29,16 @@ namespace GMTK
 
         private DamageSettings D => GameBalance.Current.damage;
         private bool controlsSuspended;
+        private GmtkVehicleAdapter vehicleAdapter;
         private readonly List<Behaviour> suspendedControls = new();
         private Rigidbody[] suspendedBodies;
         private bool[] originalKinematicStates;
 
-        private void Awake() => Build();
+        private void Awake()
+        {
+            vehicleAdapter = GetComponent<GmtkVehicleAdapter>();
+            Build();
+        }
 
         private void Build()
         {
@@ -80,22 +85,21 @@ namespace GMTK
             if (controlsSuspended) return;
             controlsSuspended = true;
             suspendedControls.Clear();
-            SuspendEnabled(GetComponentsInChildren<CarAIControl>(true));
-            SuspendEnabled(GetComponentsInChildren<CarUserControl>(true));
 
-            // MVC reads input inside MVC.Core.Vehicle. Freezing its rigidbodies as well
-            // guarantees that cached throttle cannot keep moving the wrecked car.
-            foreach (var behaviour in GetComponentsInChildren<MonoBehaviour>(true))
+            // the vehicle package cuts its own input through the adapter; kit cars fall back to
+            // switching their controllers off
+            if (vehicleAdapter != null)
             {
-                if (behaviour != null &&
-                    behaviour.enabled &&
-                    behaviour.GetType().FullName == "MVC.Core.Vehicle")
-                {
-                    behaviour.enabled = false;
-                    suspendedControls.Add(behaviour);
-                }
+                vehicleAdapter.SetControlsEnabled(false);
+            }
+            else
+            {
+                SuspendEnabled(GetComponentsInChildren<CarAIControl>(true));
+                SuspendEnabled(GetComponentsInChildren<CarUserControl>(true));
             }
 
+            // freezing the bodies as well guarantees that cached throttle cannot keep moving the
+            // wrecked car, whichever vehicle package drives it
             suspendedBodies = GetComponentsInChildren<Rigidbody>(true);
             originalKinematicStates = new bool[suspendedBodies.Length];
             for (int i = 0; i < suspendedBodies.Length; i++)
@@ -123,13 +127,22 @@ namespace GMTK
                 }
             }
 
-            foreach (Behaviour control in suspendedControls)
-            {
-                if (control != null) control.enabled = true;
-            }
-            suspendedControls.Clear();
             suspendedBodies = null;
             originalKinematicStates = null;
+
+            if (vehicleAdapter != null)
+            {
+                vehicleAdapter.SetControlsEnabled(true);
+            }
+            else
+            {
+                foreach (Behaviour control in suspendedControls)
+                {
+                    if (control != null) control.enabled = true;
+                }
+            }
+
+            suspendedControls.Clear();
         }
 
         private void SuspendEnabled<T>(T[] controls) where T : Behaviour
