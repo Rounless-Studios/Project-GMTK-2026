@@ -1,134 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &2752989926241407558
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 6110683510136775211}
-  - component: {fileID: 6202081138122310729}
-  m_Layer: 0
-  m_Name: SFX Go
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &6110683510136775211
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2752989926241407558}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 960, y: 540, z: 0}
-  m_LocalScale: {x: 1.2, y: 1.2, z: 1.2}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1908745300221640410}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!82 &6202081138122310729
-AudioSource:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2752989926241407558}
-  m_Enabled: 1
-  serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: da963f44abc744964ae7b5532c010829, type: 3}
-  m_Resource: {fileID: 8300000, guid: da963f44abc744964ae7b5532c010829, type: 3}
-  m_PlayOnAwake: 0
-  m_Volume: 0.5
-  m_Pitch: 1
-  Loop: 0
-  Mute: 0
-  Spatialize: 0
-  SpatializePostEffects: 0
-  Priority: 128
-  DopplerLevel: 0
-  MinDistance: 1
-  MaxDistance: 500
-  Pan2D: 0
-  rolloffMode: 0
-  BypassEffects: 0
-  BypassListenerEffects: 0
-  BypassReverbZones: 0
-  rolloffCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  panLevelCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  spreadCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  reverbZoneMixCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
 --- !u!1 &4809796010336612107
 GameObject:
   m_ObjectHideFlags: 0
@@ -138,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1908745300221640410}
-  - component: {fileID: 7995076090189398458}
+  - component: {fileID: 4664909016428906664}
   m_Layer: 0
   m_Name: SFX
   m_TagString: Untagged
@@ -158,12 +29,10 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 917317446582116327}
-  - {fileID: 6110683510136775211}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &7995076090189398458
+--- !u!114 &4664909016428906664
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -172,139 +41,1385 @@ MonoBehaviour:
   m_GameObject: {fileID: 4809796010336612107}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bcfbd365188764e249c953a9d68f3db5, type: 3}
+  m_Script: {fileID: 11500000, guid: b2cc4f630f8c45dd9f5ba5e7263eadb3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: 
-  gameEvents: {fileID: 11400000, guid: 53a3a1c43dafc4df88b337434e1a6d28, type: 2}
-  sfxs:
-  - {fileID: 7240091497569170697}
-  - {fileID: 6202081138122310729}
---- !u!1 &5779856245053413011
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 917317446582116327}
-  - component: {fileID: 7240091497569170697}
-  m_Layer: 0
-  m_Name: SFX GetReady
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &917317446582116327
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5779856245053413011}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 960, y: 540, z: 0}
-  m_LocalScale: {x: 1.2, y: 1.2, z: 1.2}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1908745300221640410}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!82 &7240091497569170697
-AudioSource:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5779856245053413011}
-  m_Enabled: 1
-  serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: eaef4f143647145b9b7029c298a0dd81, type: 3}
-  m_Resource: {fileID: 8300000, guid: eaef4f143647145b9b7029c298a0dd81, type: 3}
-  m_PlayOnAwake: 0
-  m_Volume: 0.5
-  m_Pitch: 1
-  Loop: 0
-  Mute: 0
-  Spatialize: 0
-  SpatializePostEffects: 0
-  Priority: 128
-  DopplerLevel: 0
-  MinDistance: 1
-  MaxDistance: 500
-  Pan2D: 0
-  rolloffMode: 0
-  BypassEffects: 0
-  BypassListenerEffects: 0
-  BypassReverbZones: 0
-  rolloffCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  panLevelCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  spreadCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  reverbZoneMixCustomCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
+  m_EditorClassIdentifier: Assembly-CSharp::GMTK.GameAudioManager
+  menuMusic: {fileID: 0}
+  raceMusic: {fileID: 0}
+  musicVolume: 0.7
+  buttonClick: {fileID: 0}
+  countdownTick: {fileID: 0}
+  raceStart: {fileID: 0}
+  sfxVolume: 1
+  musicSource: {fileID: 0}
+  sfxSource: {fileID: 0}
+  soundFolder: Assets/Sound
+  cues:
+  - eventId: SFX_VEH_ENGINE_IDLE
+    type: 0
+    clip: {fileID: 8300000, guid: ba735b9abe6fe34428ae7ab5ad526218, type: 3}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_ENGINE_RPM_LOW
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_ENGINE_RPM_MID
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_ENGINE_RPM_HIGH
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_ENGINE_RPM_MAX
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_ENGINE_DECEL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_ENGINE_BRAKE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_ENGINE_GEARSHIFT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_ENGINE_START
+    type: 0
+    clip: {fileID: 8300000, guid: 78a0c815fc112bd42ae35cf1177506a1, type: 3}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_ENGINE_STOP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_BOOST_READY
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_BOOST_START
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_BOOST_LOOP
+    type: 0
+    clip: {fileID: 8300000, guid: 5dbafee33263e0c409b93b4f05657f22, type: 3}
+    variations: []
+    volume: 1
+    loop: 1
+  - eventId: SFX_VEH_BOOST_END
+    type: 0
+    clip: {fileID: 8300000, guid: 301c5925aaabe8a45a9ea42e4292cb23, type: 3}
+    variations:
+    - {fileID: 8300000, guid: 6d1a68be6e4b7274cb9a7816b1de86af, type: 3}
+    - {fileID: 8300000, guid: 27b20d61daf932b4fb29b9e23057c0f1, type: 3}
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_BOOST_CHARGE_DONE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_BOOST_CHARGING
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_BOOST_UNAVAILABLE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_BOOST_SEALED
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_TIRE_ROAD
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_TIRE_SLIP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_TIRE_SHARP_TURN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_TIRE_SPIN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_TIRE_LAND
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_JUMP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_COLLISION_1 ~ 9
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_COLLISION_MID
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_COLLISION_HEAVY
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_COLLISION_SIDE_PVP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_COLLISION_WALL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_COLLISION_ENV
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_COLLISION_DEBRIS
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_DURA_100
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_DURA_60
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_DURA_30
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_DURA_CRITICAL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_WRECK
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_WRECK_SPIN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_BURNING
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_REPAIR_START
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_REPAIR_DONE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_VEH_INVINCIBLE_LOOP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 1
+  - eventId: SFX_ELIM_TIMER_30
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_TIMER_20
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_TIMER_10
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_TIMER_05
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_TIMER_04
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_TIMER_03
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_TIMER_02
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_TIMER_01
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_TIMER_00
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_WARN_PLAYER_LAST
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_WARN_AI_LAST
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_WARN_START
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_WARN_ESCALATE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_WARN_PEAK
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_WARN_VITAL_BEEP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_WARN_ALARM
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_MARK_SPAWN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_HELL_MARK
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_LOCK
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_CHARGE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_TWITCH
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_EXPLOSION
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_DEBRIS
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_FIRE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_SHOCKWAVE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_CAM_IMPACT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_PLAYER
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_EXEC_PLAYER_EXPLOSION
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_DEATH
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_SCREEN_FADE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_RESPAWN_READY
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_ELIM_SPECTATE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_COOLDOWN_DONE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_READY
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_TARGET_SEARCH
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_TARGET_SET
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_TARGET_CHANGE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_QUIZ_APPEAR
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_QUIZ_MOVE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_QUIZ_SELECT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_QUIZ_CORRECT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_QUIZ_WRONG
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_QUIZ_TIMEOUT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_QUIZ_END
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_CAST
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_DEMON_ENERGY
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_HIT_SUCCESS
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_EFFECT_APPLY
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_FAIL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_CONSUME
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_COOLDOWN_START
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_BURST_LAUNCH
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_BURST_FLY
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_BURST_HIT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_BURST_HURT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_BURST_EXPLOSION
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_BURST_KNOCKBACK
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_SEAL_START
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_SEAL_CHAIN_SPAWN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_SEAL_LOOP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 1
+  - eventId: SFX_CURSE_SEAL_RELEASE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_SWAP_PREP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_SWAP_TELEPORT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_SWAP_DISTORTION
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_SWAP_POSITION_CHANGE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_SWAP_END
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_AI_CAST
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_AI_WARNING
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_AI_HIT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_AI_FAIL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_AI_SEAL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CURSE_AI_SWAP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_START
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_TARGET_SET
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_TARGET_HIGHLIGHT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_TIME_TICK
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_SUCCESS
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_FAIL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_REWARD
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_CHAIN_SPAWN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_CHAIN_BIND
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_CHAIN_RESTRAIN_LOOP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 1
+  - eventId: SFX_CHAL_CHAIN_BREAK
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CHAL_CHAIN_RELEASE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_RANK_UP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_RANK_DOWN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_RANK_FIRST
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_RANK_LAST
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_RANK_SWAP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CP_PASS
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CP_LAP_COMPLETE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CP_FINISH_ENTER
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_GATE_ACTIVATE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_GATE_WARNING
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_GATE_CLOSE_START
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_GATE_MOVE_LOOP
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 1
+  - eventId: SFX_GATE_COLLISION
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_GATE_PASS
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_GATE_CLOSE_COMPLETE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_GATE_FAIL_EXECUTION
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_UI_MENU_MOVE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_UI_SELECT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_UI_CANCEL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_UI_CONFIRM
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_UI_BUTTON_HOVER
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_UI_OPTION_CHANGE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_UI_RESTART
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_UI_RESULT_SCREEN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_WARN_LAST
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_CURSE_READY
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_CURSE_HIT
+    type: 0
+    clip: {fileID: 8300000, guid: d7e4bfdd8baef5d44ac8cdcad7aa0a82, type: 3}
+    variations:
+    - {fileID: 8300000, guid: 47c04f5aa637ee14e82ee90b481099ed, type: 3}
+    - {fileID: 8300000, guid: 299230fa802ba0e4d989b899d54e4c13, type: 3}
+    - {fileID: 8300000, guid: bb3ec2561248da34da7f1f344b155c7e, type: 3}
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_QUIZ_APPEAR
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_BOOST_CHARGE
+    type: 0
+    clip: {fileID: 8300000, guid: d6208d7b8b4c91a45a54a1e425a51b4e, type: 3}
+    variations:
+    - {fileID: 8300000, guid: 0e4fa9d682b3eb04fbc0b458a1f1f3ce, type: 3}
+    - {fileID: 8300000, guid: bbca80dfee1f23b4bb25a9ee30a74aa7, type: 3}
+    - {fileID: 8300000, guid: 5109e1d087047f449b42efb90951a9d6, type: 3}
+    - {fileID: 8300000, guid: 84dec1521330f964988e24b3cabd6c99, type: 3}
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_BOOST_LACK
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_DURA_DANGER
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_CHAL_START
+    type: 0
+    clip: {fileID: 8300000, guid: dd42dac5cca6a8247b473a2c6096bd58, type: 3}
+    variations:
+    - {fileID: 8300000, guid: ef7eba628a7fd8b4794b592339a519aa, type: 3}
+    - {fileID: 8300000, guid: 8429254a5db1fe348bed618b5ed885e0, type: 3}
+    - {fileID: 8300000, guid: 517e9b7dbcb8f6141a0ddf8ceed30915, type: 3}
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_CHAL_SUCCESS
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_CHAL_FAIL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_HUD_GATE_START
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_INPUT_BOOST_BTN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_INPUT_CURSE_BTN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_INPUT_QUIZ_INPUT
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_INPUT_ERROR
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_INPUT_RESTRICTED
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_HELL
+    type: 1
+    clip: {fileID: 8300000, guid: d0e9ef5d81728e24c917db962a4c555a, type: 3}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_FLAME
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_FURNACE
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_MOLTEN_METAL
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_MACHINERY
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_CHAIN_RATTLE
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_DEMON_CRY
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_DISTANT_SCREAM
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_DEMON_BREATH
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_VOLCANO
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_SPARKS
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: AMB_ASH_FALL
+    type: 1
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_OBJ_FIRE_BURST
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_OBJ_FURNACE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_OBJ_MACHINE_ROTATE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_OBJ_GIANT_DOOR
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_OBJ_CHAIN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_OBJ_METAL_SCRAPE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_OBJ_COMPRESSOR
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_OBJ_STEAM
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CAM_CLOSE_OVERTAKE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CAM_EXECUTION_CINE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CAM_FINAL_DUEL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CAM_GATE_CLIMAX
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_CAM_EXPLOSION_SHAKE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_RESULT_WIN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_RESULT_LOSE
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_RESULT_NEXT_HELL
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_RESULT_GAME_END
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: SFX_RESULT_SCREEN_OPEN
+    type: 0
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_MAIN_THEME
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_RACE_START_STINGER
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_RACE_EARLY
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_RACE_MID
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_RACE_TENSION
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_ELIM_1ST
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_ELIM_2ND
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_ELIM_3RD
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_RACE_LAYER_ADD
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_FINAL_TWO_TENSION
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_FINAL_TWO_STRIPPED
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_FINAL_TWO_HEARTBEAT
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_GATE_TEMPO_UP
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_GATE_CLIMAX
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_VICTORY_THEME
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_NEXT_HELL_TRANSITION
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_DEFEAT_THEME
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_DEATH_THEME
+    type: 2
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_READY
+    type: 3
+    clip: {fileID: 8300000, guid: 79861cf6ab4983149971118d7fde1736, type: 3}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_GO
+    type: 3
+    clip: {fileID: 8300000, guid: 7c82a773bee8ced4e968108b51a19d72, type: 3}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_30SEC
+    type: 3
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_LOWEST_DRIVER
+    type: 3
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_EXECUTION
+    type: 3
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_FINAL_DUEL
+    type: 3
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_GATE_CLOSING
+    type: 3
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_VICTORY
+    type: 3
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_DEFEAT
+    type: 3
+    clip: {fileID: 8300000, guid: 5aa19159af779e74986b8e50632e959e, type: 3}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_CURSE_READY
+    type: 3
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_CHALLENGE_START
+    type: 3
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_CHALLENGE_SUCCESS
+    type: 3
+    clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: VO_ANNOUNCER_CHALLENGE_FAILED
+    type: 3
+    clip: {fileID: 8300000, guid: e067c0fa314a1dd47bae7df1cc291698, type: 3}
+    variations: []
+    volume: 1
+    loop: 0

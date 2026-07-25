@@ -20,11 +20,27 @@ namespace SpinMotion
         {
             raceManagerRuntimeItem.Set(this);
 
+            // Runtime listeners can survive editor Play sessions when domain reload is disabled.
+            // Remove this target first so a fresh scene instance never creates duplicate callbacks.
+            gameEvents.RaceStartedEvent.RemoveListener(OnRaceStarted);
+            gameEvents.RaceFinishedEvent.RemoveListener(OnRaceFinished);
+            gameEvents.OnClickPlayRaceEvent.RemoveListener(OnPlayRace);
+            gameEvents.OnClickRestartRaceEvent.RemoveListener(OnRestartRace);
             gameEvents.RaceStartedEvent.AddListener(OnRaceStarted);
             gameEvents.RaceFinishedEvent.AddListener(OnRaceFinished);
             // gui buttons:
             gameEvents.OnClickPlayRaceEvent.AddListener(OnPlayRace);
             gameEvents.OnClickRestartRaceEvent.AddListener(OnRestartRace);
+        }
+
+        private void OnDestroy()
+        {
+            if (gameEvents == null) return;
+
+            gameEvents.RaceStartedEvent.RemoveListener(OnRaceStarted);
+            gameEvents.RaceFinishedEvent.RemoveListener(OnRaceFinished);
+            gameEvents.OnClickPlayRaceEvent.RemoveListener(OnPlayRace);
+            gameEvents.OnClickRestartRaceEvent.RemoveListener(OnRestartRace);
         }
 
         private void OnPlayRace()

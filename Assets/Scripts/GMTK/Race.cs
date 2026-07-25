@@ -16,6 +16,12 @@ namespace GMTK
         private static RaceManager _raceManager;
         private static RealTimeRacePositions _positions;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetRuntimeState()
+        {
+            ClearCache();
+        }
+
         public static GameEvents Events
         {
             get
