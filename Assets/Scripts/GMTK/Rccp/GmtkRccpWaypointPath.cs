@@ -121,6 +121,29 @@ namespace GMTK.Rccp
             return change;
         }
 
+        /// <summary>
+        /// Signed distance in metres from the centre line to <paramref name="position"/> at the
+        /// segment starting at <paramref name="index"/> (positive is to the right of travel).
+        /// </summary>
+        public float SignedLateralOffset(int index, Vector3 position)
+        {
+            if (waypoints.Count < 2)
+                return 0f;
+
+            Vector3 current = waypoints[index].position;
+            Vector3 direction = waypoints[(index + 1) % waypoints.Count].position - current;
+            direction.y = 0f;
+
+            if (direction.sqrMagnitude < 0.01f)
+                return 0f;
+
+            Vector3 right = Vector3.Cross(Vector3.up, direction.normalized);
+            Vector3 toPosition = position - current;
+            toPosition.y = 0f;
+
+            return Vector3.Dot(toPosition, right);
+        }
+
         public int FindClosestIndex(Vector3 position)
         {
             int closestIndex = 0;

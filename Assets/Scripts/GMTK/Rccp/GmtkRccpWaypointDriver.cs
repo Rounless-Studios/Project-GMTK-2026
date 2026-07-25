@@ -26,6 +26,12 @@ namespace GMTK.Rccp
         [SerializeField] private float entryOffset = 3.5f;
         [Tooltip("Turn angle treated as a full-tightness corner when placing the racing line.")]
         [SerializeField] private float racingLineReferenceDegrees = 30f;
+        [Tooltip("Seconds spent merging from the grid lane onto the racing line after the start.")]
+        [SerializeField] private float laneMergeSeconds = 7f;
+        [Tooltip("Largest grid lane offset kept from the spawn position.")]
+        [SerializeField] private float maxLaneOffset = 6f;
+        [Tooltip("Small per-car offset kept for the whole race so the pack does not share one line.")]
+        [SerializeField] private float laneJitter = 1.2f;
         [SerializeField] private float steerGainLowSpeed = 1.5f;
         [SerializeField] private float steerGainHighSpeed = 0.55f;
         [Tooltip("Damps the steering rate so the car stops sawing at the wheel.")]
@@ -42,6 +48,9 @@ namespace GMTK.Rccp
         private int waypointIndex;
         private float throttleScale = 0.9f;
         private float previousSteerAngle;
+        private float gridLaneOffset;
+        private float gridLaneBlend;
+        private float personalLaneOffset;
         private float stuckTimer;
         private float reverseTimer;
         private AIPersonalityType personalityType;
@@ -70,8 +79,22 @@ namespace GMTK.Rccp
         {
             path = waypointPath;
 
-            if (path != null && path.Count > 0)
-                waypointIndex = path.FindClosestIndex(transform.position);
+            if (path == null || path.Count == 0)
+                return;
+
+            waypointIndex = path.FindClosestIndex(transform.position);
+
+            // Every car shares one waypoint ring, so without this they all aim at the same centre
+            // line point and dive into the middle of the track the moment the race starts. Keep the
+            // grid lane and merge onto the racing line over the first seconds instead.
+            gridLaneOffset = Mathf.Clamp(
+                path.SignedLateralOffset(waypointIndex, transform.position),
+                -maxLaneOffset,
+                maxLaneOffset);
+            gridLaneBlend = 1f;
+
+            // deterministic per-car spread so the pack does not stack on one line afterwards
+            personalLaneOffset = ((GetInstanceID() % 5) - 2) * 0.5f * laneJitter;
         }
 
         public void ConfigurePersonality(AIPersonalityType type)
@@ -196,6 +219,12 @@ namespace GMTK.Rccp
                 float entryAmount = Mathf.Clamp01(Mathf.Abs(farTurnDegrees) / reference) * entryOffset;
                 offset -= pathRight * Mathf.Sign(farTurnDegrees) * entryAmount;
             }
+
+            // grid lane fades out after the start, the small personal offset stays
+            gridLaneBlend = laneMergeSeconds > 0f
+                ? Mathf.MoveTowards(gridLaneBlend, 0f, Time.fixedDeltaTime / laneMergeSeconds)
+                : 0f;
+            offset += pathRight * (gridLaneOffset * gridLaneBlend + personalLaneOffset);
 
             Vector3 candidate = aimPoint + offset;
             return HasGroundUnder(candidate) ? candidate : aimPoint;
