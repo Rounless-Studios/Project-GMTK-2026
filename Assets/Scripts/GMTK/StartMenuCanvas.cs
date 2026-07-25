@@ -56,7 +56,9 @@ namespace GMTK
         {
             EnsureUi();
             SetActive(StartPanel, phase == "StartScreen");
-            SetActive(ProloguePanel, phase == "Prologue");
+            // The Prologue phase is presented by PrologueCutscenePlayer as a
+            // full-screen movie. Keep the former text panel disabled.
+            SetActive(ProloguePanel, false);
             SetActive(CountdownPanel, phase == "Countdown");
             SetActive(MenuPanel, phase == "StartScreen");
             SetActive(RacePanel, phase == "Racing" || phase == "Finished");

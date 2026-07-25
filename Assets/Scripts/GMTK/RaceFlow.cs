@@ -24,7 +24,7 @@ namespace GMTK
         public static bool OwnsGameEventsStart { get; private set; }
 
         [Header("Timing")]
-        [SerializeField, Min(0.5f)] private float prologueSeconds = 4f;
+        [SerializeField, Min(0.1f)] private float readyPromptSeconds = 1f;
         [SerializeField, Min(1f)] private float countdownSeconds = 3f;
 
         private Canvas canvas;
@@ -126,12 +126,13 @@ namespace GMTK
         private IEnumerator RunGameEventsPreRace()
         {
             SetPhase(Phase.Prologue);
-            if (statusText != null)
-                statusText.text = "THE GATES OF HELL ARE OPEN...\n\nTHE LAST CAR IS EXECUTED EVERY 30 SECONDS.\nSOLVE QUIZZES WHILE DRIVING AND CAST CURSES.";
-            yield return new WaitForSecondsRealtime(prologueSeconds);
+            yield return PrologueCutscenePlayer.Play();
 
             SetPhase(Phase.Countdown);
             gameEvents.ToggleCarFreezeEvent.Invoke(true);
+            if (countdownText != null) countdownText.text = "Are You Ready?";
+            yield return new WaitForSecondsRealtime(readyPromptSeconds);
+
             int seconds = Mathf.Max(1, Mathf.RoundToInt(countdownSeconds));
             GameAudioManager.Instance?.PlayCountdownTick();
             for (int remaining = seconds; remaining > 0; remaining--)
@@ -297,11 +298,13 @@ namespace GMTK
         private IEnumerator RunPreRace()
         {
             SetPhase(Phase.Prologue);
-            statusText.text = "THE GATES OF HELL ARE OPEN...\n\nTHE LAST CAR IS EXECUTED EVERY 30 SECONDS.\nSOLVE QUIZZES WHILE DRIVING AND CAST CURSES.";
-            yield return new WaitForSecondsRealtime(prologueSeconds);
+            yield return PrologueCutscenePlayer.Play();
 
             SetPhase(Phase.Countdown);
             countdownPanel.SetActive(true);
+            countdownText.text = "Are You Ready?";
+            yield return new WaitForSecondsRealtime(readyPromptSeconds);
+
             float end = Time.unscaledTime + countdownSeconds;
             GameAudioManager.Instance?.PlayCountdownTick();
             while (Time.unscaledTime < end)
@@ -341,7 +344,7 @@ namespace GMTK
             else if (startPanel != null && prologuePanel != null && countdownPanel != null)
             {
                 startPanel.SetActive(phase == Phase.StartScreen);
-                prologuePanel.SetActive(phase == Phase.Prologue);
+                prologuePanel.SetActive(false);
                 countdownPanel.SetActive(phase == Phase.Countdown);
             }
             PhaseChanged?.Invoke(phase);
