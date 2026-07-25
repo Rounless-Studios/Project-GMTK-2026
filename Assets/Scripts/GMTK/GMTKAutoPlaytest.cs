@@ -71,8 +71,11 @@ namespace GMTK
             Check("phase == Racing", GMTKRaceState.Instance != null && GMTKRaceState.Instance.CurrentPhase == RacePhase.Racing,
                 GMTKRaceState.Instance != null ? GMTKRaceState.Instance.CurrentPhase.ToString() : "no state");
 
-            // pin the player to the top so it survives the cascade into the final duel
-            if (Race.Positions != null && Race.Positions.LapScores.Count > 0)
+            // pin the player to the top so it survives the cascade into the final duel. The score now
+            // comes from waypoint progress, so raising the kit's lap count would be overwritten.
+            var progress = Object.FindAnyObjectByType<GmtkRaceProgress>();
+            if (progress != null && progress.SuppliesStandings) progress.PinToLead(0);
+            else if (Race.Positions != null && Race.Positions.LapScores.Count > 0)
                 Race.Positions.LapScores[0] = 999999;
 
             var elim = Object.FindAnyObjectByType<EliminationManager>();

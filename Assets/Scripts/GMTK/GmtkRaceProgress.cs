@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text;
 using Gmtk2026.GameBalance;
 using SpinMotion;
 using UnityEngine;
@@ -7,30 +6,38 @@ using UnityEngine;
 namespace GMTK
 {
     /// <summary>
-    /// Measures how far every car has driven along the AI waypoint path (see
-    /// <see cref="TrackProgress"/>), so ranking and elimination can stop depending on hundreds of
-    /// checkpoint trigger gates. This stage only measures: it runs beside the kit's checkpoint
-    /// scoring and reports whether the two produce the same running order, so the switch-over can be
-    /// verified on a real lap before the gates are removed. Self-attaches to the game-mode host, so
-    /// no scene wiring is needed.
+    /// Supplies the race standings from the distance each car has driven along the AI waypoint path
+    /// (see <see cref="TrackProgress"/>) instead of the kit's checkpoint trigger scoring. The kit
+    /// formula needs a full ring of gates to order cars, which is what put hundreds of trigger
+    /// volumes on the track; measuring progress on the path leaves only the finish line to build.
+    /// <para>
+    /// The kit's <see cref="RealTimeRacePositions"/> stays the interface every consumer reads
+    /// (<see cref="Race.ScoreOf"/>, elimination, the ranking HUD), so its per-frame recompute is
+    /// switched off and this component writes the score list instead. Laps keep coming from the
+    /// finish gate, which leaves the lap HUD and lap events untouched. Self-attaches to the
+    /// game-mode host, so no scene wiring is needed.
+    /// </para>
     /// </summary>
     public class GmtkRaceProgress : MonoBehaviour
     {
-        // diagnostics cadence only: the comparison formats a string, so it must not run every frame
-        private const float ReportIntervalSeconds = 3f;
+        /// <summary>Metres added to a pinned car's score: longer than any track we can author.</summary>
+        private const double PinnedLeadMetres = 1000000d;
 
         private TrackProgress track;
         private Transform[] carRoots;
         private int[] raceIndices;
         private TrackProgress.CarCursor[] cursors;
-        private int[] progressOrder;
-        private int[] checkpointOrder;
-        private readonly StringBuilder report = new();
-        private float nextReportTime;
+        private TrackProgress.CarCursor[] startCursors;
+        private double[] scoreBonus;
+        private RealTimeRacePositions standings;
+        private bool ownsStandings;
 
         public bool HasPath => track != null && track.IsUsable;
         public float TrackLengthMetres => track != null ? track.Length : 0f;
         public int TrackedCarCount => carRoots != null ? carRoots.Length : 0;
+
+        /// <summary>True while the standings come from waypoint progress rather than the gates.</summary>
+        public bool SuppliesStandings => ownsStandings;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttach()
@@ -40,18 +47,31 @@ namespace GMTK
                 host.AddComponent<GmtkRaceProgress>();
         }
 
-        /// <summary>Distance driven along the path, or -1 while the car is not tracked.</summary>
+        /// <summary>Metres driven since the grid, or -1 while the car is not tracked.</summary>
         public double TotalDistanceOf(int raceIndex)
         {
             int slot = SlotOf(raceIndex);
-            return slot < 0 || track == null ? -1d : track.TotalDistance(cursors[slot]);
+            return slot < 0 || track == null ? -1d : track.DistanceDriven(startCursors[slot], cursors[slot]);
         }
 
-        /// <summary>Completed laps, or -1 while the car is not tracked.</summary>
+        /// <summary>Laps finished since the grid, or -1 while the car is not tracked.</summary>
         public int LapOf(int raceIndex)
         {
             int slot = SlotOf(raceIndex);
-            return slot < 0 ? -1 : cursors[slot].lap;
+            if (slot < 0 || track == null || !track.IsUsable) return -1;
+
+            double driven = track.DistanceDriven(startCursors[slot], cursors[slot]);
+            return driven <= 0d ? 0 : (int)(driven / track.Length);
+        }
+
+        /// <summary>
+        /// Parks a car at the front of the field regardless of where it drives. Automated playtests
+        /// use it to keep the player out of the elimination cascade they are exercising.
+        /// </summary>
+        public void PinToLead(int raceIndex)
+        {
+            int slot = SlotOf(raceIndex);
+            if (slot >= 0) scoreBonus[slot] = PinnedLeadMetres;
         }
 
         private void Start()
@@ -65,6 +85,8 @@ namespace GMTK
 
         private void OnDestroy()
         {
+            ReleaseStandings();
+
             GameEvents events = Race.Events;
             if (events == null) return;
 
@@ -83,8 +105,8 @@ namespace GMTK
             carRoots = new Transform[count];
             raceIndices = new int[count];
             cursors = new TrackProgress.CarCursor[count];
-            progressOrder = new int[count];
-            checkpointOrder = new int[count];
+            startCursors = new TrackProgress.CarCursor[count];
+            scoreBonus = new double[count];
 
             int slot = 0;
             foreach (CheckpointTracker tracker in trackers)
@@ -97,17 +119,23 @@ namespace GMTK
             }
 
             BuildTrack();
+            if (HasPath) TakeOverStandings();
         }
 
         private void OnRaceStarted()
         {
             if (cursors == null) return;
 
-            // a restart puts the cars back on the grid: forget where they were on the path
+            // a restart puts the cars back on the grid: forget where they were on the path, and let the
+            // next frame record the new grid slots as the point every distance is measured from
             for (int i = 0; i < cursors.Length; i++)
+            {
                 TrackProgress.Unplace(ref cursors[i]);
+                TrackProgress.Unplace(ref startCursors[i]);
+                scoreBonus[i] = 0d;
+            }
 
-            nextReportTime = 0f;
+            if (HasPath) TakeOverStandings();
         }
 
         private void BuildTrack()
@@ -115,8 +143,8 @@ namespace GMTK
             AIWaypoints source = FindAnyObjectByType<AIWaypoints>();
             if (source == null)
             {
-                Debug.LogWarning("GmtkRaceProgress: no AI waypoint path in the scene, " +
-                    "so race progress cannot be measured.");
+                Debug.LogWarning("GmtkRaceProgress: no AI waypoint path in the scene, so the standings " +
+                    "stay on the kit's checkpoint scoring.");
                 return;
             }
 
@@ -133,12 +161,33 @@ namespace GMTK
             if (!track.IsUsable)
             {
                 Debug.LogWarning($"GmtkRaceProgress: the waypoint path has only {points.Count} usable " +
-                    "points, so race progress cannot be measured.");
+                    "points, so the standings stay on the kit's checkpoint scoring.");
                 return;
             }
 
             Debug.Log($"GmtkRaceProgress: path {points.Count} points, {track.Length:0} m, " +
                 $"{carRoots.Length} cars tracked.");
+        }
+
+        /// <summary>
+        /// Stops the kit recomputing the score from checkpoint triggers. Its formula ranks cars by the
+        /// gate they last crossed, which cannot order anyone once the track carries a single gate.
+        /// </summary>
+        private void TakeOverStandings()
+        {
+            if (ownsStandings) return;
+
+            standings = Race.Positions;
+            if (standings == null) return;
+
+            standings.enabled = false;
+            ownsStandings = true;
+        }
+
+        private void ReleaseStandings()
+        {
+            if (ownsStandings && standings != null) standings.enabled = true;
+            ownsStandings = false;
         }
 
         private void Update()
@@ -149,86 +198,30 @@ namespace GMTK
             for (int i = 0; i < carRoots.Length; i++)
             {
                 if (carRoots[i] == null) continue;
+
+                bool onTheGrid = !cursors[i].placed;
                 track.Advance(ref cursors[i], carRoots[i].position);
+                if (onTheGrid) startCursors[i] = cursors[i];
             }
 
-            if (Time.time < nextReportTime) return;
-            nextReportTime = Time.time + ReportIntervalSeconds;
-            Report();
+            PublishStandings();
         }
 
-        private void Report()
+        /// <summary>
+        /// Writes metres driven into the list the kit exposes to everything that ranks cars. The kit
+        /// fills that list when the race starts, so a car is skipped until its slot exists.
+        /// </summary>
+        private void PublishStandings()
         {
-            if (Race.Positions == null) return;
+            if (!ownsStandings || standings == null) return;
 
-            int count = carRoots.Length;
-            SortByScore(progressOrder, count, true);
-            SortByScore(checkpointOrder, count, false);
-
-            bool sameOrder = true;
-            for (int i = 0; i < count; i++)
+            List<double> scores = standings.RacePositionTotalScores;
+            for (int i = 0; i < raceIndices.Length; i++)
             {
-                if (progressOrder[i] == checkpointOrder[i]) continue;
-                sameOrder = false;
-                break;
+                int raceIndex = raceIndices[i];
+                if (raceIndex < 0 || raceIndex >= scores.Count) continue;
+                scores[raceIndex] = track.DistanceDriven(startCursors[i], cursors[i]) + scoreBonus[i];
             }
-
-            report.Clear();
-            report.Append(sameOrder
-                ? "race progress: waypoint and checkpoint order agree"
-                : "race progress: ORDER DIFFERS");
-            report.Append(" | waypoint:");
-            AppendOrder(progressOrder, count);
-            report.Append(" | checkpoint:");
-            AppendOrder(checkpointOrder, count);
-
-            for (int i = 0; i < count; i++)
-            {
-                int slot = progressOrder[i];
-                report.AppendLine();
-                report.Append("  car ").Append(raceIndices[slot])
-                    .Append(" lap ").Append(cursors[slot].lap)
-                    .Append(" at ").Append(cursors[slot].progressMetres.ToString("0"))
-                    .Append(" m, driven ").Append(track.TotalDistance(cursors[slot]).ToString("0"))
-                    .Append(" m | kit score ").Append(Race.ScoreOf(raceIndices[slot]).ToString("0"));
-            }
-
-            Debug.Log(report.ToString());
-        }
-
-        private void AppendOrder(int[] order, int count)
-        {
-            for (int i = 0; i < count; i++)
-                report.Append(' ').Append(raceIndices[order[i]]);
-        }
-
-        /// <summary>Leading car first. Insertion sort: the grid is at most a handful of cars.</summary>
-        private void SortByScore(int[] order, int count, bool useWaypointProgress)
-        {
-            for (int i = 0; i < count; i++)
-                order[i] = i;
-
-            for (int i = 1; i < count; i++)
-            {
-                int slot = order[i];
-                double score = ScoreOfSlot(slot, useWaypointProgress);
-                int j = i - 1;
-
-                while (j >= 0 && ScoreOfSlot(order[j], useWaypointProgress) < score)
-                {
-                    order[j + 1] = order[j];
-                    j--;
-                }
-
-                order[j + 1] = slot;
-            }
-        }
-
-        private double ScoreOfSlot(int slot, bool useWaypointProgress)
-        {
-            return useWaypointProgress
-                ? track.TotalDistance(cursors[slot])
-                : Race.ScoreOf(raceIndices[slot]);
         }
 
         private int SlotOf(int raceIndex)

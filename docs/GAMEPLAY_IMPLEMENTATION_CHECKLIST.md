@@ -279,8 +279,9 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 | 설정 소비 커버리지 | **부분** | 위 카탈로그 표의 "선언만" 항목 다수 (퀴즈·랩 수·AI 성격 프로필·관문·특수 이벤트·오디오·추월 속박) | 정적 |
 | 레이스 상태 흐름 (`Boot→PreRace→Countdown→Racing→FinalDuel→Finished`) | 구현 | `GMTKRaceState.cs`(`RacePhase` 6단계), `RaceFlow.cs`(`Phase` 5단계 → 매핑), `RaceBootstrap.cs`, `GMTKGameMode.cs` | 정적 |
 | 승패 판정 단일화 | **미완** | 킷 `RaceFinish`가 `GMTK_Race`에 그대로 배치되어 랩 완주 시 독립적으로 `RaceFinishedEvent(Win/Lose)`를 던진다 | 정적 |
-| 체크포인트·순위·랩 | 구현 (킷 인프라 유지) | 킷 `Checkpoints`/`CheckpointTracker`/`RealTimeRacePositions` + `Race.cs` 어댑터. 씬에 `Checkpoint` 컴포넌트 **467개** | 정적 |
-| 주행 진행도 측정 (경로 arc-length) | 1단계 — 측정·비교만, 순위 공급은 아직 체크포인트 | `TrackProgress.cs`, `GmtkRaceProgress.cs` | 테스트 |
+| 순위·진행도 (웨이포인트 arc-length) | 구현 (2026-07-26) | `TrackProgress.cs`(순수 로직) + `GmtkRaceProgress.cs`가 `RealTimeRacePositions.enabled=false`로 킷 계산을 끄고 `RacePositionTotalScores`에 **그리드 기준 주행 거리(m)** 를 기록. `Race.ScoreOf()` 소비자는 무변경 | 테스트 + 플레이 |
+| 체크포인트 게이트 | 결승선 1개로 축소 | 게이트는 랩 카운터·결승선 연출·`FinalGateDoors` 기준점 용도만. `singleFinishGate` 기본 true, 트리거는 도로 폭(15 m)으로 스케일 | 플레이 |
+| 랩 카운트 | 킷 게이트 유지 (**출발선 오프바이원 있음**) | `CheckpointTracker`가 게이트 통과마다 `LapScores`+1. 그리드가 출발선 뒤라 스폰 직후 1랩이 잡히는 차가 생긴다 (웨이포인트 랩은 0으로 정상) | 플레이 |
 | 탈락 (설정 간격 최하위 처형, 경고 3단, 0초 재판정, 두 대에서 중단) | 구현 | `EliminationManager.cs`(263줄), `CarExplosion.cs`, `EliminationSettings` | 정적 |
 | 처형 CCTV 인셋 (메인=플레이어, 처형 대상=우하단 약 1/3) | 구현·미검증 | `ExecutionCctvDirector.cs`(593줄, Cinemachine 3.1.5 채널 분리), `CameraSettings`. **Git 미추적** | 정적 |
 | 최종 관문 (규칙 + 폐쇄 연출) | 구현·플레이 미검증 | `FinalGate.cs`(규칙·시퀀스 타이밍), `FinalGateDoors.cs`(런타임 2엽 관문·폐쇄 애니메이션·통과 트리거), `PresentationSettings` 관문 6필드 | 정적 |
@@ -299,7 +300,7 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 | AI 성격 배분·성격별 수치 설정화 | 구현 (2026-07-26) | `AISettings.personalityAssignments`가 확정 구성(폭주광 2·난폭자 1·봉쇄자 1·생존자 1)을 담고 `AiPersonalityRoster.BuildOrder(assignments, …)`가 슬롯만 셔플. 성격별 수치는 `AiPersonalityProfile` 한 행으로 통합 (`paceScale`·`lateralStrengthMetres`·`boostTendency`·`quizAvoidChance`·`catchupAcceleration`) | 정적 + 컴파일 |
 | AI 부스트·AI 저주 전술 | **미구현/부분** | `TryBoost()` 호출자 없음(Reckless만 RCCP `nosInput 0.35`). AI 저주 발동은 `CurseManager.UpdateAiCasters`로 동작하나 사전 경고·연속 방지 없음 | 정적 |
 | 추락 리스폰 | 구현 (커밋됨) | `GmtkRccpFallRespawner.cs`, `FallRespawnState.cs` — 둘 다 Git 추적 중 | 정적 |
-| 레이스 씬·트랙 | 구현 | `Assets/Scenes/GMTK_Race.unity` (**텍스트 YAML**, 12.6MB), `Race Track Authoring.prefab`, 그리드 스폰 포인트 **8개** | 정적 |
+| 레이스 씬·트랙 | 구현 | `Assets/Scenes/GMTK_Race.unity` (**텍스트 YAML**, 게이트 축소 후 **130KB**), `Race Track Authoring.prefab`, 웨이포인트 2635개는 `Assets/Prefab/AI Waypoints.prefab` 소유(21 075 m), 그리드 스폰 포인트 **8개** | 정적 |
 | Build Settings | 구현 | `ProjectSettings/EditorBuildSettings.asset`에 `Assets/Scenes/GMTK_Race.unity` 단일 씬만 enabled | 정적 |
 | 팀 UI ↔ 레이스 씬 통합 | 구현 | `Assets/Prefab/UI/Main UI.prefab`이 `GMTK_Race`에 배치됨 (`StartScreen`/`Prologue`/`Countdown`/`RaceUI` 중첩, `RaceUI` 안에 `Durability`·`Curse Skill`·`Position TMP`·`Race Timer` 포함) | 정적 |
 | 규칙 HUD (처형 카운트다운·최하위 경고·부스트·도전·관문) | **미배치** | `RaceHud.cs`는 **어떤 씬·프리팹에도 붙어 있지 않다** (스크립트 GUID 참조 0건). 현재 실행 시 이 정보가 화면에 표시되지 않음 | 정적 |
@@ -309,11 +310,11 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 
 ### 자동 테스트 현황
 
-`Assets/GameBalance/Tests/Editor` 9파일 + `Assets/Quiz/Tests/Editor` 5파일 = **14개 테스트 파일 / 128개 테스트 케이스**
+`Assets/GameBalance/Tests/Editor` 9파일 + `Assets/Quiz/Tests/Editor` 5파일 = **14개 테스트 파일 / 132개 테스트 케이스**
 
 | 파일 | 케이스 | 파일 | 케이스 |
 |---|---:|---|---:|
-| `GameBalanceSettingsTests` | 24 | `TrackProgressTests` | 10 |
+| `GameBalanceSettingsTests` | 24 | `TrackProgressTests` | 14 |
 | `AiDrivingTests` | 14 | `OvertakeChallengeStateTests` | 8 |
 | `CurseCooldownStateTests` | 14 | `QuizSessionControllerTests` | 8 |
 | `AiPersonalityRosterTests` | 12 | `QuizQuestionTests` | 5 |
@@ -322,35 +323,43 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 | | | `ButtonMashProgressTests` | 2 |
 | | | `NumberSequenceProgressTests` | 2 |
 
-**이번 리뷰에서 실행하지 못했다** (Unity 에디터 미실행). 통과 여부는 사용자가 `run_tests --mode EditMode`로 확인해야 한다.
+2026-07-26 `run_tests --mode EditMode` 실행 결과 **132개 전부 통과**.
 PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모크 하네스 `GMTKAutoPlaytest.cs` / `RccpMigrationPlaytest.cs`가 있다.
 
 ### 알려진 미해결 항목
 
 정적 확인으로 새로 드러난 것을 포함한다.
 
-1. **`GMTK_Race.unity`의 체크포인트 게이트가 재베이크 대기 중** — 생성기 버그(게이트당 `Checkpoint`
-   컴포넌트 2개, 그중 1개는 참조 미배선)를 `RaceTrackAuthoring.BuildCheckpoints`에서 고쳤으나, 이미
-   베이크된 씬은 고쳐지지 않는다. 현재 씬은 게이트 467개에 컴포넌트 934개·미배선 467개로, **매 프레임
-   NRE가 나고 랩 판정용 게이트 수가 2배로 집계된다.** 씬 소유자가 **Bake Track**을 한 번 눌러야 해소된다.
-2. **킷 `RaceFinish`가 `GMTK_Race`에 남아 있다.** 랩 완주 시 중앙 관리자를 우회해 승패를 확정한다.
+1. **랩 카운터가 출발선에서 오프바이원** — 그리드가 출발선 뒤에 있어 스폰 직후 결승선 게이트를 통과하는
+   차는 킷 `LapScores`가 1로 시작한다(웨이포인트 진행도는 0으로 정상). 게이트 467개 시절부터 있던
+   동작이며, 랩 수를 웨이포인트에서 공급하도록 바꾸면 해소되지만 **킷 `RaceFinish`의 승리 조건
+   (`LapScores > LapsSelected`)이 이 유령 랩을 전제로 하고 있어** 레이스 길이가 1랩 늘어난다. 기획 결정 필요.
+2. **씬에 `AudioListener`가 2개** — 플레이 중 매 프레임 "There are 2 audio listeners in the scene" 로그가
+   찍혀 콘솔 버퍼(800줄)를 6초마다 밀어낸다. 실제 에러가 콘솔에서 사라지므로 진단을 방해한다.
+3. **킷 `RaceFinish`가 `GMTK_Race`에 남아 있다.** 랩 완주 시 중앙 관리자를 우회해 승패를 확정한다.
    추가로 `RaceFinish.finishTrigger`는 **어디에서도 대입되지 않는데** `OnRestartRace()`에서
    `finishTrigger.enabled = false`를 호출하므로 **재시작 시 NullReferenceException이 난다.**
    서드파티 폴더라 직접 수정 금지 대상 — 컴포넌트를 씬에서 제거하거나 GMTK 어댑터로 대체해야 한다.
-3. **`RaceHud`가 어디에도 배치되지 않았다.** 처형 카운트다운·최하위 경고·부스트·저주·추월·관문
+4. **`RaceHud`가 어디에도 배치되지 않았다.** 처형 카운트다운·최하위 경고·부스트·저주·추월·관문
    상태가 화면에 전혀 표시되지 않는다.
-4. **`GameJamDefault.maximumDurability = 1000000`** — 대파를 미루기 위한 임시값. 최종 밸런스 값은
+5. **`GameJamDefault.maximumDurability = 1000000`** — 대파를 미루기 위한 임시값. 최종 밸런스 값은
    팀이 정하기로 했고, 프리셋 정규화 도구도 이 값을 덮지 않는다.
-5. **추월 실패 속박이 실제로 감속하지 않는다** (`BindSpeedMultiplier` 소비자 없음).
-6. **저주 사전 경고와 연속 저주 유예가 없다.** 방어형 흐름 자체는 확정·구현이지만, AI가 표적을 연속으로
+6. **추월 실패 속박이 실제로 감속하지 않는다** (`BindSpeedMultiplier` 소비자 없음).
+7. **저주 사전 경고와 연속 저주 유예가 없다.** 방어형 흐름 자체는 확정·구현이지만, AI가 표적을 연속으로
    찍는 것을 막는 유예(`hostileEffectGraceSeconds`)와 "표적이 됐다"는 사전 신호가 없다.
-7. `BoostController`가 레거시 `Input` API를 사용한다 (프로젝트 규칙 위반, Active Input Handling 의존).
-8. RCC 차량 렌즈 플레어가 URP에서 표시되지 않음 (`LegacyLensFlareUrpBridge` 미검증).
-9. 레거시 랜덤 이벤트가 `GMTK_Race`에서 켜져 있다 (`enableEvents: 1`).
-10. 관문 슬램 SFX 음원이 없어 `SFX_VEH_COLLISION_`이 플레이스홀더로 쓰인다 (3.14 범위).
+8. `BoostController`가 레거시 `Input` API를 사용한다 (프로젝트 규칙 위반, Active Input Handling 의존).
+9. RCC 차량 렌즈 플레어가 URP에서 표시되지 않음 (`LegacyLensFlareUrpBridge` 미검증).
+10. 레거시 랜덤 이벤트가 `GMTK_Race`에서 켜져 있다 (`enableEvents: 1`).
+11. 관문 슬램 SFX 음원이 없어 `SFX_VEH_COLLISION_`이 플레이스홀더로 쓰인다 (3.14 범위).
 
 **2026-07-26에 해소된 항목**
 
+- ~~체크포인트 게이트가 재베이크 대기 중(컴포넌트 2배·미배선 467개로 매 프레임 NRE)~~ → 게이트를 결승선
+  1개로 줄이고 순위를 웨이포인트 진행도로 옮겼다. 생성기 쪽 결함도 함께 고쳤다: `ClearGenerated`가
+  `Transform.Find`로 첫 생성 루트만 지워 `__GeneratedTrack`이 2개인 씬에서 수렴하지 못했고, 그 탓에
+  `PersistGeneratedMesh`가 낡은 Road(= 도로 메시 에셋 자신)를 `Clear()`해 에셋을 비웠다.
+  씬 레벨 전체 베이크는 웨이포인트 2635개를 프리팹에서 씬 override로 끌어와 씬을 5.8MB→12.9MB로
+  부풀리므로, 게이트 수정은 새 **Bake Checkpoints Only** 버튼을 쓴다.
 - ~~`FinalGate`에 씬 트리거가 없다~~ → `FinalGateDoors`가 결승선 체크포인트 위에 관문과 통과 트리거를
   런타임 생성해 `ReportGateCrossing()`을 호출한다. 20초 타임아웃 폴백도 `duelCars[0]`(최저 인덱스)에서
   실제 선두(`Race.ScoreOf` 최대) 판정으로 교체했다. **남은 일: Play Mode에서 관문 위치·방향·폭(16m)과
@@ -481,7 +490,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 동률 처리와 안전 위치 제공은 코드에 없다.
 
 - [x] 순위표·탈락·저주·위치 교환·추월·리스폰이 같은 진행도 사용 — `EliminationManager` / `CurseController` / `OvertakeManager` / `RaceHud` 모두 `Race.ScoreOf()` 사용
-- [ ] 체크포인트 구간 진행 거리 정밀화 — 킷 점수 계산 그대로. 씬 체크포인트가 467개라 해상도는 높지만 구간 내 보간은 검증하지 않음
+- [x] 진행도 해상도 — 순위 점수가 8 m 간격 웨이포인트 폴리라인의 arc-length 투영값(m)이라 구간 내 보간이 연속적이다 (`TrackProgress`)
 - [x] 탈락 차량 순위 제외 — `EliminationManager.eliminated` 집합을 `FindLastPlace` / `PickRivalAhead` / `SelectTarget` / `RaceHud.GetRank`에서 모두 건너뜀
 - [x] 탈락 직전 순위 강제 갱신 — 0초에 `FindLastPlace()` 재호출
 - [ ] 동률 시 트랙상 앞선 차량 우선 — 동점 시 인덱스가 낮은 쪽이 선택된다(`score < lowest` 비교). 명시적 타이브레이크 없음
@@ -992,7 +1001,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 - [ ] 스폰과 레이스 선택기가 `RaceSettings`를 사용하도록 변경 — **미착수.** `GmtkRccpPlayersSpawner`는 `RaceData.AiBotsSelected`를 읽는다
 - [x] AI 5대와 플레이어 1대 스폰 — `BotSelectorGUI.defaultQuantity: 5`로 6대 구성. 스폰 포인트 8개
-- [x] 1랩 목표 지점과 체크포인트 구성 — `LapSelectorGUI.defaultQuantity: 1`, 씬 체크포인트 467개
+- [x] 1랩 목표 지점과 체크포인트 구성 — `LapSelectorGUI.defaultQuantity: 1`, 씬 체크포인트는 결승선 **1개**
 - [x] 게임 전용 레이스 씬 분리 및 Build Settings 등록 — `GMTK_Race.unity` 단일 씬 enabled
 - [ ] 레거시 자동 랜덤 이벤트를 특수 이벤트 단계 완료 전까지 비활성화 — **미완.** 씬에 `enableEvents: 1`
 
@@ -1038,7 +1047,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 **목표:** 순위, 탈락, 저주, 추월, 리스폰이 하나의 진행도와 판정을 공유한다.
 
-- [ ] 체크포인트 구간 진행 거리를 포함한 공용 진행도 구현 — 킷 `RacePositionTotalScores`를 `Race.ScoreOf()`로 공유하는 형태. 구간 내 보간 정밀화는 미확인
+- [x] 공용 진행도 구현 — `GmtkRaceProgress`가 웨이포인트 arc-length 주행 거리를 킷 `RacePositionTotalScores`에 기록하고, 모든 규칙 시스템은 그대로 `Race.ScoreOf()`를 읽는다
 - [ ] 동률 안정화와 탈락 차량 제외 — 탈락 제외는 구현, **동률 안정화는 없음**
 - [x] 레이스 최상위 상태 흐름 구현 — `GMTKRaceState` + `RacePhase` 6단계
 - [ ] 기존 `RaceFinish`의 독립 승패 판정 제거 또는 어댑터화 — **미착수.** 씬에 그대로 있고 `finishTrigger` NRE 결함도 남아 있다

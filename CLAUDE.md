@@ -70,6 +70,11 @@ GMTK 2026 잼 출품용 레이싱 게임. 이 파일은 이 저장소에서 작�
 - `create_script`로 만든 타입은 `recompile` → `recompile_status` 완료 전에는 `attach_script` 불가
 - 에디터가 안 떠 있으면: 테스트는 `"$U" test --mode EditMode`(배치 모드, 프로젝트 루트에서), 빌드는 `"$U" build`
 - 스크립트 편집 자체는 파일 도구로 직접 한다. `eval`은 조사용 최후 수단
+- **플레이 중 `eval`을 부르면 강제 동기 재컴파일 → 어셈블리 리로드로 플레이 모드가 끊긴다.** 이 프로젝트는
+  Enter Play Mode Options(도메인·씬 리로드 비활성)를 쓰므로 더 잘 끊긴다. 런타임 상태는 로그로 보고,
+  꼭 값을 읽어야 하면 **주행 마지막에 eval 한 번**으로 필요한 값을 전부 덤프한다 (반환값은 리로드 전에 나온다)
+- 콘솔 버퍼는 800줄이라 `AudioListener` 중복 경고처럼 매 프레임 찍히는 로그가 있으면 6초 만에 에러가
+  밀려난다. `console`이 비어 보여도 안심하지 말고 `%LOCALAPPDATA%\Unity\Editor\Editor.log`로 교차 확인
 
 ## 검증 정책
 
