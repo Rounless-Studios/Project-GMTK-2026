@@ -29,6 +29,7 @@ namespace GMTK
         [Header("Default Cue IDs")]
         [SerializeField] private string menuMusicId = "MUS_MAIN_THEME";
         [SerializeField] private string raceMusicId = "MUS_RACE_EARLY";
+        [SerializeField] private string finalDuelMusicId = "MUS_TIMER_COUNT";
         [SerializeField] private string raceAmbienceId = "AMB_HELL";
         [SerializeField] private string buttonClickId = "SFX_UI_BUTTON_CLICK";
         [SerializeField] private string countdownTickId = "VO_ANNOUNCER_READY";
@@ -268,6 +269,7 @@ namespace GMTK
             "MUS_ELIM_2ND",
             "MUS_ELIM_3RD",
             "MUS_RACE_LAYER_ADD",
+            "MUS_TIMER_COUNT",
             "MUS_FINAL_TWO_TENSION",
             "MUS_FINAL_TWO_STRIPPED",
             "MUS_FINAL_TWO_HEARTBEAT",
@@ -430,8 +432,17 @@ namespace GMTK
             if (cue != null) cue.clip = clip;
         }
 
-        private void OnEnable() => RaceFlow.PhaseChanged += OnPhaseChanged;
-        private void OnDisable() => RaceFlow.PhaseChanged -= OnPhaseChanged;
+        private void OnEnable()
+        {
+            RaceFlow.PhaseChanged += OnPhaseChanged;
+            EliminationManager.FinalDuelStarted += OnFinalDuelStarted;
+        }
+
+        private void OnDisable()
+        {
+            RaceFlow.PhaseChanged -= OnPhaseChanged;
+            EliminationManager.FinalDuelStarted -= OnFinalDuelStarted;
+        }
 
         private void Start()
         {
@@ -493,6 +504,11 @@ namespace GMTK
             }
         }
 
+        private void OnFinalDuelStarted()
+        {
+            PlayCue(finalDuelMusicId, 1f, true);
+        }
+
         private void PlayContinuous(
             AudioSource source,
             AudioClip clip,
@@ -535,6 +551,8 @@ namespace GMTK
             AudioClip clip = cue.clip;
             if (cue.variations != null && cue.variations.Length > 0)
                 clip = cue.variations[UnityEngine.Random.Range(0, cue.variations.Length)];
+            if (clip == null)
+                clip = Resources.Load<AudioClip>(eventId);
             if (clip == null) return;
             float scaledVolume = Mathf.Clamp01(volume * cue.volume);
             bool loop = loopOverride ?? cue.loop;
