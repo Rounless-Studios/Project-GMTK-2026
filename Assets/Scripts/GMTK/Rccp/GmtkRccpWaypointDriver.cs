@@ -106,6 +106,20 @@ namespace GMTK.Rccp
             aggroRange = range;
         }
 
+        public void ResetAfterRespawn(int closestWaypointIndex)
+        {
+            if (path == null || path.Count == 0)
+                return;
+
+            waypointIndex = ((closestWaypointIndex % path.Count) + path.Count) % path.Count;
+            stuckTimer = 0f;
+            reverseTimer = 0f;
+            previousSteerAngle = 0f;
+            lastTargetSpeed = 0f;
+            measuredEdgeIndex = -1;
+            inputs?.Clear();
+        }
+
         private void FixedUpdate()
         {
             if (path == null || path.Count == 0 || inputReceiver == null)

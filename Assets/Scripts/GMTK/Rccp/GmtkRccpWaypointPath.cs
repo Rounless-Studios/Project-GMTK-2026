@@ -169,6 +169,45 @@ namespace GMTK.Rccp
             return closestIndex;
         }
 
+        public bool TryGetRespawnPose(
+            Vector3 lastTrackPosition,
+            float heightAboveWaypoint,
+            out int waypointIndex,
+            out Vector3 position,
+            out Quaternion rotation)
+        {
+            if (waypoints.Count == 0)
+            {
+                waypointIndex = -1;
+                position = lastTrackPosition;
+                rotation = Quaternion.identity;
+                return false;
+            }
+
+            waypointIndex = FindClosestIndex(lastTrackPosition);
+            position = waypoints[waypointIndex].position
+                       + Vector3.up * Mathf.Max(0f, heightAboveWaypoint);
+
+            Vector3 forward = Vector3.zero;
+
+            for (int step = 1; step < waypoints.Count; step++)
+            {
+                forward = waypoints[(waypointIndex + step) % waypoints.Count].position
+                          - waypoints[waypointIndex].position;
+                forward.y = 0f;
+
+                if (forward.sqrMagnitude > 0.01f)
+                    break;
+            }
+
+            if (forward.sqrMagnitude <= 0.01f)
+                forward = waypoints[waypointIndex].forward;
+
+            forward.y = 0f;
+            rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
+            return true;
+        }
+
         private void CollectWaypoints()
         {
             AIWaypoints source = Object.FindAnyObjectByType<AIWaypoints>();

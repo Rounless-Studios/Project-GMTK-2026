@@ -57,6 +57,12 @@ MonoBehaviour:
     recoveryProtectionSeconds: 2
     strongCollisionImpulse: 8
     strongCollisionDamage: 15
+  vehicleRecovery:
+    fallDistanceBelowTrack: 8
+    respawnHeightAboveWaypoint: 2
+    maximumTrackDistanceFromWaypoint: 20
+    groundProbeDistance: 5
+    trackSampleIntervalSeconds: 0.1
   overtake:
     checkIntervalSeconds: 20
     challengeDurationSeconds: 8

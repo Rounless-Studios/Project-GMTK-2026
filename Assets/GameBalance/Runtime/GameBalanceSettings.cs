@@ -97,6 +97,21 @@ namespace Gmtk2026.GameBalance
     }
 
     [System.Serializable]
+    public class VehicleRecoverySettings
+    {
+        [Tooltip("Vertical distance below the last supported track position that triggers a respawn.")]
+        [Min(0.1f)] public float fallDistanceBelowTrack = 8f;
+        [Tooltip("Vertical clearance above the waypoint when placing the car back on track.")]
+        [Min(0f)] public float respawnHeightAboveWaypoint = 2f;
+        [Tooltip("Largest horizontal waypoint distance still considered part of the track.")]
+        [Min(1f)] public float maximumTrackDistanceFromWaypoint = 20f;
+        [Tooltip("Downward ray length used to confirm static track geometry below the car.")]
+        [Min(0.1f)] public float groundProbeDistance = 5f;
+        [Tooltip("How often each car refreshes its last supported track position.")]
+        [Min(0.02f)] public float trackSampleIntervalSeconds = 0.1f;
+    }
+
+    [System.Serializable]
     public class OvertakeSettings
     {
         [Min(0)] public float checkIntervalSeconds = 20f;
@@ -278,6 +293,7 @@ namespace Gmtk2026.GameBalance
         public CurseSettings curse = new();
         public BoostSettings boost = new();
         public DamageSettings damage = new();
+        public VehicleRecoverySettings vehicleRecovery = new();
         public OvertakeSettings overtake = new();
         public CameraSettings camera = new();
         public AISettings ai = new();
@@ -318,6 +334,15 @@ namespace Gmtk2026.GameBalance
                 errors.Add("damage thresholds must satisfy maximumDurability > damagedThreshold > criticalThreshold > wreckedThreshold");
             if (damage.recoveryDurability > damage.maximumDurability)
                 errors.Add("damage.recoveryDurability must be <= maximumDurability");
+
+            if (vehicleRecovery.fallDistanceBelowTrack <= 0f)
+                errors.Add("vehicleRecovery.fallDistanceBelowTrack must be > 0");
+            if (vehicleRecovery.maximumTrackDistanceFromWaypoint <= 0f)
+                errors.Add("vehicleRecovery.maximumTrackDistanceFromWaypoint must be > 0");
+            if (vehicleRecovery.groundProbeDistance <= 0f)
+                errors.Add("vehicleRecovery.groundProbeDistance must be > 0");
+            if (vehicleRecovery.trackSampleIntervalSeconds <= 0f)
+                errors.Add("vehicleRecovery.trackSampleIntervalSeconds must be > 0");
 
             if (curse.soulSwapMinimumDistanceMeters > curse.soulSwapMaximumDistanceMeters)
                 errors.Add("curse.soulSwapMinimumDistanceMeters must be <= soulSwapMaximumDistanceMeters");
