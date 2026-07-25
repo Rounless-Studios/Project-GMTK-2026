@@ -30,6 +30,126 @@ namespace GMTK.Rccp
             return path;
         }
 
+        /// <summary>
+        /// Point <paramref name="distance"/> metres further along the path, measured from
+        /// <paramref name="origin"/> through the waypoint at <paramref name="startIndex"/>. Lets the
+        /// AI aim where the track goes instead of at the next marker.
+        /// </summary>
+        public Vector3 SamplePointAhead(int startIndex, Vector3 origin, float distance)
+        {
+            if (waypoints.Count == 0)
+                return origin;
+
+            Vector3 from = origin;
+            int index = startIndex;
+
+            for (int step = 0; step < waypoints.Count; step++)
+            {
+                Vector3 to = waypoints[index].position;
+                float segment = Vector3.Distance(from, to);
+
+                if (segment >= distance)
+                    return segment <= 0.001f ? to : Vector3.Lerp(from, to, distance / segment);
+
+                distance -= segment;
+                from = to;
+                index = (index + 1) % waypoints.Count;
+            }
+
+            return from;
+        }
+
+        /// <summary>
+        /// Aim point <paramref name="lookAhead"/> metres along the path together with the local path
+        /// direction and the signed turn it makes there (positive turns right). Callers use the turn
+        /// to place the aim point on a racing line instead of on the centre line.
+        /// </summary>
+        public void SampleAim(
+            int startIndex,
+            Vector3 origin,
+            float lookAhead,
+            out Vector3 aimPoint,
+            out Vector3 pathDirection,
+            out float signedTurnDegrees)
+        {
+            Vector3 near = SamplePointAhead(startIndex, origin, lookAhead * 0.5f);
+            aimPoint = SamplePointAhead(startIndex, origin, lookAhead);
+            Vector3 far = SamplePointAhead(startIndex, origin, lookAhead * 1.75f);
+
+            Vector3 incoming = aimPoint - near;
+            Vector3 outgoing = far - aimPoint;
+            incoming.y = 0f;
+            outgoing.y = 0f;
+
+            pathDirection = incoming.sqrMagnitude > 0.01f ? incoming.normalized : Vector3.forward;
+            signedTurnDegrees = incoming.sqrMagnitude > 0.01f && outgoing.sqrMagnitude > 0.01f
+                ? Vector3.SignedAngle(incoming, outgoing, Vector3.up)
+                : 0f;
+        }
+
+        /// <summary>
+        /// Total heading change in degrees over the next <paramref name="distance"/> metres, used to
+        /// pick a corner speed before the corner instead of reacting inside it.
+        /// <paramref name="arcMetres"/> is the path length actually walked: waypoints are ~22m apart,
+        /// so the walk overshoots the request, and reading the angle against the requested distance
+        /// would understate the corner radius and slow the AI down for nothing.
+        /// </summary>
+        public float HeadingChangeAhead(int startIndex, float distance, out float arcMetres)
+        {
+            arcMetres = Mathf.Max(1f, distance);
+
+            if (waypoints.Count < 3)
+                return 0f;
+
+            float travelled = 0f;
+            float change = 0f;
+            int index = startIndex;
+
+            for (int step = 0; step < waypoints.Count && travelled < distance; step++)
+            {
+                Vector3 current = waypoints[index].position;
+                Vector3 next = waypoints[(index + 1) % waypoints.Count].position;
+                Vector3 after = waypoints[(index + 2) % waypoints.Count].position;
+
+                Vector3 incoming = next - current;
+                Vector3 outgoing = after - next;
+                incoming.y = 0f;
+                outgoing.y = 0f;
+
+                if (incoming.sqrMagnitude > 0.01f && outgoing.sqrMagnitude > 0.01f)
+                    change += Vector3.Angle(incoming, outgoing);
+
+                travelled += incoming.magnitude;
+                index = (index + 1) % waypoints.Count;
+            }
+
+            arcMetres = Mathf.Max(1f, travelled);
+            return change;
+        }
+
+        /// <summary>
+        /// Signed distance in metres from the centre line to <paramref name="position"/> at the
+        /// segment starting at <paramref name="index"/> (positive is to the right of travel).
+        /// </summary>
+        public float SignedLateralOffset(int index, Vector3 position)
+        {
+            if (waypoints.Count < 2)
+                return 0f;
+
+            Vector3 current = waypoints[index].position;
+            Vector3 direction = waypoints[(index + 1) % waypoints.Count].position - current;
+            direction.y = 0f;
+
+            if (direction.sqrMagnitude < 0.01f)
+                return 0f;
+
+            Vector3 right = Vector3.Cross(Vector3.up, direction.normalized);
+            Vector3 toPosition = position - current;
+            toPosition.y = 0f;
+
+            return Vector3.Dot(toPosition, right);
+        }
+
         public int FindClosestIndex(Vector3 position)
         {
             int closestIndex = 0;
@@ -47,6 +167,45 @@ namespace GMTK.Rccp
             }
 
             return closestIndex;
+        }
+
+        public bool TryGetRespawnPose(
+            Vector3 lastTrackPosition,
+            float heightAboveWaypoint,
+            out int waypointIndex,
+            out Vector3 position,
+            out Quaternion rotation)
+        {
+            if (waypoints.Count == 0)
+            {
+                waypointIndex = -1;
+                position = lastTrackPosition;
+                rotation = Quaternion.identity;
+                return false;
+            }
+
+            waypointIndex = FindClosestIndex(lastTrackPosition);
+            position = waypoints[waypointIndex].position
+                       + Vector3.up * Mathf.Max(0f, heightAboveWaypoint);
+
+            Vector3 forward = Vector3.zero;
+
+            for (int step = 1; step < waypoints.Count; step++)
+            {
+                forward = waypoints[(waypointIndex + step) % waypoints.Count].position
+                          - waypoints[waypointIndex].position;
+                forward.y = 0f;
+
+                if (forward.sqrMagnitude > 0.01f)
+                    break;
+            }
+
+            if (forward.sqrMagnitude <= 0.01f)
+                forward = waypoints[waypointIndex].forward;
+
+            forward.y = 0f;
+            rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
+            return true;
         }
 
         private void CollectWaypoints()

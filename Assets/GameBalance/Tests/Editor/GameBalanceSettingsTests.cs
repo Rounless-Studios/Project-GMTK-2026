@@ -58,6 +58,15 @@ namespace Gmtk2026.GameBalance.Tests
         }
 
         [Test]
+        public void VehicleRecovery_NonPositiveFallDistance_IsInvalid()
+        {
+            var s = NewDefault();
+            s.vehicleRecovery.fallDistanceBelowTrack = 0f;
+            CollectionAssert.IsNotEmpty(s.Validate());
+            Object.DestroyImmediate(s);
+        }
+
+        [Test]
         public void AnswerCount_MinGreaterThanMax_IsInvalid()
         {
             var s = NewDefault();

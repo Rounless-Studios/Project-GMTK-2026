@@ -97,6 +97,21 @@ namespace Gmtk2026.GameBalance
     }
 
     [System.Serializable]
+    public class VehicleRecoverySettings
+    {
+        [Tooltip("Vertical distance below the last supported track position that triggers a respawn.")]
+        [Min(0.1f)] public float fallDistanceBelowTrack = 8f;
+        [Tooltip("Vertical clearance above the waypoint when placing the car back on track.")]
+        [Min(0f)] public float respawnHeightAboveWaypoint = 2f;
+        [Tooltip("Largest horizontal waypoint distance still considered part of the track.")]
+        [Min(1f)] public float maximumTrackDistanceFromWaypoint = 20f;
+        [Tooltip("Downward ray length used to confirm static track geometry below the car.")]
+        [Min(0.1f)] public float groundProbeDistance = 5f;
+        [Tooltip("How often each car refreshes its last supported track position.")]
+        [Min(0.02f)] public float trackSampleIntervalSeconds = 0.1f;
+    }
+
+    [System.Serializable]
     public class OvertakeSettings
     {
         [Min(0)] public float checkIntervalSeconds = 20f;
@@ -140,6 +155,8 @@ namespace Gmtk2026.GameBalance
             AIArchetype.Rammer, AIArchetype.Speedster, AIArchetype.Schemer,
             AIArchetype.Survivor, AIArchetype.Speedster
         };
+        public AiDrivingSettings driving = new();
+        public AiPersonalityAssignmentSettings personalityAssignment = new();
         public List<AIArchetypeProfile> profiles = new()
         {
             new AIArchetypeProfile { archetype = AIArchetype.Rammer, aggression = 0.9f, avoidance = 0.3f },
@@ -154,6 +171,81 @@ namespace Gmtk2026.GameBalance
                 if (p != null && p.archetype == archetype) return p;
             return null;
         }
+    }
+
+    [System.Serializable]
+    public class AiDrivingSettings
+    {
+        [Header("Look ahead")]
+        [Tooltip("Aim distance at a standstill; speed adds to it so corners are seen early.")]
+        [Min(1)] public float minLookAheadMetres = 14f;
+        [Min(0)] public float lookAheadMetresPerKph = 0.32f;
+
+        [Header("Corner speed")]
+        [Tooltip("Shortest path length scanned for a corner; slow cars do not look further than this.")]
+        [Min(1)] public float minCornerScanMetres = 45f;
+        [Tooltip("Braking the AI assumes (m/s^2) when deciding how far ahead to scan for corners. The " +
+                 "scan covers the braking distance, so fast cars start slowing early enough.")]
+        [Min(1)] public float cornerBrakingDecel = 8f;
+        [Tooltip("How fast the corner speed target may rise again (kph/s). Prevents brake-release " +
+                 "hunting as a corner enters and leaves the speed-dependent scan window.")]
+        [Min(1)] public float targetSpeedRiseKphPerSecond = 50f;
+        [Min(1)] public float straightSpeedKph = 160f;
+        [Tooltip("Slowest an AI will take any corner.")]
+        [Min(1)] public float minCornerSpeedKph = 55f;
+        [Tooltip("Sideways grip the AI assumes (m/s^2). Higher takes corners faster: corner speed is " +
+                 "sqrt(grip x radius), so a wide sweeper stays fast while a hairpin still slows.")]
+        [Min(1)] public float cornerGrip = 14f;
+
+        [Header("Steering")]
+        [Min(0)] public float steerGainLowSpeed = 1.5f;
+        [Min(0)] public float steerGainHighSpeed = 0.55f;
+        [Tooltip("Damps the steering rate so the car stops sawing at the wheel.")]
+        [Min(0)] public float steerDamping = 0.06f;
+
+        [Header("Racing line")]
+        [Tooltip("Metres the aim point moves toward the inside of a corner at the apex.")]
+        [Min(0)] public float apexOffsetMetres = 4.5f;
+        [Tooltip("Metres the aim point moves to the outside while a sharp corner is still ahead.")]
+        [Min(0)] public float entryOffsetMetres = 3.5f;
+        [Min(1)] public float racingLineReferenceDegrees = 30f;
+
+        [Header("Grid lane")]
+        [Tooltip("Metres driven while merging from the grid lane onto the racing line.")]
+        [Min(0)] public float laneMergeMetres = 140f;
+        [Min(0)] public float maxLaneOffsetMetres = 6f;
+        [Tooltip("Per-car offset kept after merging so the pack does not share one line.")]
+        [Min(0)] public float laneSpreadMetres = 1.2f;
+
+        [Header("Road probing")]
+        [Min(1)] public float maxRoadHalfWidthMetres = 13f;
+        [Min(0)] public float roadEdgeMarginMetres = 2.2f;
+
+        [Header("Diagnostics")]
+        [Tooltip("Logs one AI car's speed target versus what the car actually does, once a second.")]
+        public bool logDriveTelemetry = false;
+
+        [Header("Waypoints and recovery")]
+        [Min(1)] public float waypointReachMetres = 9f;
+        [Tooltip("Largest sideways nudge the ram/block personality may add to the racing line.")]
+        [Min(0)] public float maxPersonalityLateralMetres = 3f;
+        [Min(0)] public float stuckSpeedKph = 1.5f;
+        [Min(0)] public float stuckDelaySeconds = 2.5f;
+        [Min(0)] public float reverseDurationSeconds = 1.25f;
+    }
+
+    [System.Serializable]
+    public class AiPersonalityAssignmentSettings
+    {
+        [Tooltip("0 shuffles the personalities freshly every race; any other value reproduces one mix.")]
+        public int shuffleSeed = 0;
+        [Tooltip("Logs the seed and the resulting grid so an odd race can be reproduced.")]
+        public bool logAssignment = true;
+
+        [Header("Aggression")]
+        [Min(0)] public float ramStrengthMetres = 7f;
+        [Min(0)] public float blockStrengthMetres = 5f;
+        [Min(0)] public float aggroRangeMetres = 45f;
     }
 
     [System.Serializable]
@@ -201,6 +293,7 @@ namespace Gmtk2026.GameBalance
         public CurseSettings curse = new();
         public BoostSettings boost = new();
         public DamageSettings damage = new();
+        public VehicleRecoverySettings vehicleRecovery = new();
         public OvertakeSettings overtake = new();
         public CameraSettings camera = new();
         public AISettings ai = new();
@@ -241,6 +334,15 @@ namespace Gmtk2026.GameBalance
                 errors.Add("damage thresholds must satisfy maximumDurability > damagedThreshold > criticalThreshold > wreckedThreshold");
             if (damage.recoveryDurability > damage.maximumDurability)
                 errors.Add("damage.recoveryDurability must be <= maximumDurability");
+
+            if (vehicleRecovery.fallDistanceBelowTrack <= 0f)
+                errors.Add("vehicleRecovery.fallDistanceBelowTrack must be > 0");
+            if (vehicleRecovery.maximumTrackDistanceFromWaypoint <= 0f)
+                errors.Add("vehicleRecovery.maximumTrackDistanceFromWaypoint must be > 0");
+            if (vehicleRecovery.groundProbeDistance <= 0f)
+                errors.Add("vehicleRecovery.groundProbeDistance must be > 0");
+            if (vehicleRecovery.trackSampleIntervalSeconds <= 0f)
+                errors.Add("vehicleRecovery.trackSampleIntervalSeconds must be > 0");
 
             if (curse.soulSwapMinimumDistanceMeters > curse.soulSwapMaximumDistanceMeters)
                 errors.Add("curse.soulSwapMinimumDistanceMeters must be <= soulSwapMaximumDistanceMeters");

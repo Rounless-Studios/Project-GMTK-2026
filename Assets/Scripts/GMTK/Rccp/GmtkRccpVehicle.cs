@@ -13,6 +13,7 @@ namespace GMTK.Rccp
 
         private RCCP_CarController carController;
         private GmtkRccpWaypointDriver aiDriver;
+        private GmtkRccpFallRespawner fallRespawner;
         private Rigidbody carRigidbody;
         private bool isPlayer;
         private bool controlsEnabled = true;
@@ -36,10 +37,11 @@ namespace GMTK.Rccp
             {
                 Race.Events.ToggleCarFreezeEvent.RemoveListener(OnToggleFreeze);
                 Race.Events.RaceStartedEvent.RemoveListener(OnRaceStarted);
+                Race.Events.RestartRaceEvent.RemoveListener(OnRestartRace);
             }
         }
 
-        public void Initialize(bool player, GmtkRccpWaypointPath waypointPath)
+        public void Initialize(bool player, GmtkRccpWaypointPath waypointPath, int raceIndex)
         {
             isPlayer = player;
 
@@ -58,16 +60,24 @@ namespace GMTK.Rccp
                 if (aiDriver == null)
                     aiDriver = gameObject.AddComponent<GmtkRccpWaypointDriver>();
 
-                aiDriver.Initialize(waypointPath);
+                aiDriver.Initialize(waypointPath, raceIndex);
                 carController.externalControl = true;
                 carController.SetCanControl(true);
                 carController.StartEngine();
             }
 
+            fallRespawner = GetComponent<GmtkRccpFallRespawner>();
+
+            if (fallRespawner == null)
+                fallRespawner = gameObject.AddComponent<GmtkRccpFallRespawner>();
+
+            fallRespawner.Initialize(waypointPath);
+
             if (!subscribedToFreeze && Race.Events != null)
             {
                 Race.Events.ToggleCarFreezeEvent.AddListener(OnToggleFreeze);
                 Race.Events.RaceStartedEvent.AddListener(OnRaceStarted);
+                Race.Events.RestartRaceEvent.AddListener(OnRestartRace);
                 subscribedToFreeze = true;
             }
         }
@@ -133,7 +143,11 @@ namespace GMTK.Rccp
         {
             if (carRigidbody != null)
                 carRigidbody.constraints = RigidbodyConstraints.None;
+
+            fallRespawner?.ResetTracking();
         }
+
+        private void OnRestartRace() => fallRespawner?.ResetTracking();
 
         public override void SetControlsEnabled(bool enabled)
         {

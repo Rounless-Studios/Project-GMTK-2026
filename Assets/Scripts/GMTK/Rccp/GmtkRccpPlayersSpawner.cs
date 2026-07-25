@@ -201,7 +201,7 @@ namespace GMTK.Rccp
 
                 CheckpointTracker tracker = AttachCheckpointTracker(vehicle, raceIndex);
                 vehicle.SetActive(true);
-                adapter.Initialize(isPlayer, waypointPath);
+                adapter.Initialize(isPlayer, waypointPath, raceIndex);
 
                 if (isPlayer)
                     playerAdapter = adapter;
