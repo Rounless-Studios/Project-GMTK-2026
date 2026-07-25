@@ -60,6 +60,34 @@ namespace GMTK.Rccp
         }
 
         /// <summary>
+        /// Aim point <paramref name="lookAhead"/> metres along the path together with the local path
+        /// direction and the signed turn it makes there (positive turns right). Callers use the turn
+        /// to place the aim point on a racing line instead of on the centre line.
+        /// </summary>
+        public void SampleAim(
+            int startIndex,
+            Vector3 origin,
+            float lookAhead,
+            out Vector3 aimPoint,
+            out Vector3 pathDirection,
+            out float signedTurnDegrees)
+        {
+            Vector3 near = SamplePointAhead(startIndex, origin, lookAhead * 0.5f);
+            aimPoint = SamplePointAhead(startIndex, origin, lookAhead);
+            Vector3 far = SamplePointAhead(startIndex, origin, lookAhead * 1.75f);
+
+            Vector3 incoming = aimPoint - near;
+            Vector3 outgoing = far - aimPoint;
+            incoming.y = 0f;
+            outgoing.y = 0f;
+
+            pathDirection = incoming.sqrMagnitude > 0.01f ? incoming.normalized : Vector3.forward;
+            signedTurnDegrees = incoming.sqrMagnitude > 0.01f && outgoing.sqrMagnitude > 0.01f
+                ? Vector3.SignedAngle(incoming, outgoing, Vector3.up)
+                : 0f;
+        }
+
+        /// <summary>
         /// Total heading change in degrees over the next <paramref name="distance"/> metres, used to
         /// pick a corner speed before the corner instead of reacting inside it.
         /// </summary>

@@ -20,6 +20,12 @@ namespace GMTK.Rccp
         [SerializeField] private float tightCornerSpeedKph = 42f;
         [Tooltip("Heading change over the scan window that counts as a full-tightness corner.")]
         [SerializeField] private float tightCornerDegrees = 75f;
+        [Tooltip("Metres the aim point moves toward the inside of a corner at the apex.")]
+        [SerializeField] private float apexOffset = 4.5f;
+        [Tooltip("Metres the aim point moves to the outside while a sharp corner is still ahead.")]
+        [SerializeField] private float entryOffset = 3.5f;
+        [Tooltip("Turn angle treated as a full-tightness corner when placing the racing line.")]
+        [SerializeField] private float racingLineReferenceDegrees = 30f;
         [SerializeField] private float steerGainLowSpeed = 1.5f;
         [SerializeField] private float steerGainHighSpeed = 0.55f;
         [Tooltip("Damps the steering rate so the car stops sawing at the wheel.")]
@@ -106,7 +112,7 @@ namespace GMTK.Rccp
             // aim further ahead the faster we go, so corners are entered on a line instead of
             // being noticed once the marker is already alongside the car
             float lookAhead = minLookAhead + speedKph * lookAheadPerKph;
-            Vector3 aimPoint = path.SamplePointAhead(waypointIndex, transform.position, lookAhead);
+            Vector3 aimPoint = GetRacingLinePoint(lookAhead);
             aimPoint += GetPersonalityOffset(aimPoint);
 
             Vector3 localTarget = transform.InverseTransformPoint(aimPoint);
@@ -151,6 +157,53 @@ namespace GMTK.Rccp
             inputs.clutchInput = 0f;
             inputs.nosInput = personalityType == AIPersonalityType.Reckless ? 0.35f : 0f;
             inputReceiver.OverrideInputs(inputs);
+        }
+
+        /// <summary>
+        /// Places the aim point on a racing line rather than on the centre line: pushed toward the
+        /// inside of the corner it is entering, and widened to the outside while a sharper corner is
+        /// still ahead. The offset is dropped when there is no ground under it, which keeps the line
+        /// off the run-off and off the crossover bridge edge.
+        /// </summary>
+        private Vector3 GetRacingLinePoint(float lookAhead)
+        {
+            path.SampleAim(
+                waypointIndex,
+                transform.position,
+                lookAhead,
+                out Vector3 aimPoint,
+                out Vector3 pathDirection,
+                out float turnDegrees);
+
+            path.SampleAim(
+                waypointIndex,
+                transform.position,
+                lookAhead * 2f,
+                out Vector3 _,
+                out Vector3 _,
+                out float farTurnDegrees);
+
+            Vector3 pathRight = Vector3.Cross(Vector3.up, pathDirection);
+            float reference = Mathf.Max(1f, racingLineReferenceDegrees);
+
+            // inside of the corner being entered
+            float apexAmount = Mathf.Clamp01(Mathf.Abs(turnDegrees) / reference) * apexOffset;
+            Vector3 offset = pathRight * Mathf.Sign(turnDegrees) * apexAmount;
+
+            // widen to the outside while the sharp part is still further ahead
+            if (Mathf.Abs(farTurnDegrees) > Mathf.Abs(turnDegrees))
+            {
+                float entryAmount = Mathf.Clamp01(Mathf.Abs(farTurnDegrees) / reference) * entryOffset;
+                offset -= pathRight * Mathf.Sign(farTurnDegrees) * entryAmount;
+            }
+
+            Vector3 candidate = aimPoint + offset;
+            return HasGroundUnder(candidate) ? candidate : aimPoint;
+        }
+
+        private static bool HasGroundUnder(Vector3 point)
+        {
+            return Physics.Raycast(point + Vector3.up * 4f, Vector3.down, 10f);
         }
 
         /// <summary>
