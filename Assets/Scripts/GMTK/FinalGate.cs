@@ -18,6 +18,8 @@ namespace GMTK
 
         public bool IsOpen { get; private set; }      // duel active, awaiting a crossing
         public int WinnerIndex { get; private set; } = -1;
+        [SerializeField] private float gateDurationSeconds = 20f;
+        public float TimeRemaining { get; private set; }
 
         private readonly List<int> duelCars = new();
         private bool resolved;
@@ -55,6 +57,15 @@ namespace GMTK
             resolved = false;
             WinnerIndex = -1;
             IsOpen = true;
+            TimeRemaining = gateDurationSeconds;
+        }
+
+        private void Update()
+        {
+            if (!IsOpen || resolved) return;
+            TimeRemaining = Mathf.Max(0f, TimeRemaining - Time.deltaTime);
+            if (TimeRemaining <= 0f && duelCars.Count > 0)
+                ResolveWinner(duelCars[0]);
         }
 
         /// <summary>Report that a surviving car crossed the gate (gate trigger or test).</summary>
@@ -92,6 +103,7 @@ namespace GMTK
             IsOpen = false;
             resolved = false;
             WinnerIndex = -1;
+            TimeRemaining = 0f;
             duelCars.Clear();
         }
     }

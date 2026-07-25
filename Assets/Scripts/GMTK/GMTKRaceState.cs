@@ -34,6 +34,9 @@ namespace GMTK
 
         private void Start()
         {
+            // bora uses BxB MVC rather than the optional RSK event bus. Mirror its
+            // playable flow into the same central phase authority when present.
+            RaceFlow.PhaseChanged += OnRacePhaseChanged;
             var e = Race.Events;
             if (e == null) return;
             e.OnClickPlayRaceEvent.AddListener(OnPlayRace);
@@ -46,6 +49,7 @@ namespace GMTK
 
         private void OnDestroy()
         {
+            RaceFlow.PhaseChanged -= OnRacePhaseChanged;
             EliminationManager.FinalDuelStarted -= OnFinalDuel;
             if (Instance == this) Instance = null;
         }
@@ -54,6 +58,29 @@ namespace GMTK
         private void OnCountdown() => SetPhase(RacePhase.Countdown);
         private void OnRestart() => SetPhase(RacePhase.PreRace);
         private void OnFinalDuel() => SetPhase(RacePhase.FinalDuel);
+
+        private void OnRacePhaseChanged(RaceFlow.Phase phase)
+        {
+            switch (phase)
+            {
+                case RaceFlow.Phase.StartScreen:
+                    SetPhase(RacePhase.Boot);
+                    break;
+                case RaceFlow.Phase.Prologue:
+                    SetPhase(RacePhase.PreRace);
+                    break;
+                case RaceFlow.Phase.Countdown:
+                    SetPhase(RacePhase.Countdown);
+                    break;
+                case RaceFlow.Phase.Racing:
+                    GameBalance.BeginRace();
+                    SetPhase(RacePhase.Racing);
+                    break;
+                case RaceFlow.Phase.Finished:
+                    SetPhase(RacePhase.Finished);
+                    break;
+            }
+        }
 
         private void OnRaceStarted()
         {

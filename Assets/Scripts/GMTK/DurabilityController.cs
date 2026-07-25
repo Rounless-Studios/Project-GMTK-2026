@@ -1,6 +1,7 @@
 using UnityEngine;
 using SpinMotion;
 using Gmtk2026.GameBalance;
+using System.Collections.Generic;
 
 namespace GMTK
 {
@@ -28,6 +29,9 @@ namespace GMTK
 
         private DamageSettings D => GameBalance.Current.damage;
         private bool controlsSuspended;
+        private readonly List<Behaviour> suspendedControls = new();
+        private Rigidbody[] suspendedBodies;
+        private bool[] originalKinematicStates;
 
         private void Awake() => Build();
 
@@ -75,16 +79,67 @@ namespace GMTK
         {
             if (controlsSuspended) return;
             controlsSuspended = true;
-            foreach (var ai in GetComponentsInChildren<CarAIControl>(true)) ai.enabled = false;
-            foreach (var user in GetComponentsInChildren<CarUserControl>(true)) user.enabled = false;
+            suspendedControls.Clear();
+            SuspendEnabled(GetComponentsInChildren<CarAIControl>(true));
+            SuspendEnabled(GetComponentsInChildren<CarUserControl>(true));
+
+            // MVC reads input inside MVC.Core.Vehicle. Freezing its rigidbodies as well
+            // guarantees that cached throttle cannot keep moving the wrecked car.
+            foreach (var behaviour in GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (behaviour != null &&
+                    behaviour.enabled &&
+                    behaviour.GetType().FullName == "MVC.Core.Vehicle")
+                {
+                    behaviour.enabled = false;
+                    suspendedControls.Add(behaviour);
+                }
+            }
+
+            suspendedBodies = GetComponentsInChildren<Rigidbody>(true);
+            originalKinematicStates = new bool[suspendedBodies.Length];
+            for (int i = 0; i < suspendedBodies.Length; i++)
+            {
+                Rigidbody body = suspendedBodies[i];
+                originalKinematicStates[i] = body.isKinematic;
+                body.linearVelocity = Vector3.zero;
+                body.angularVelocity = Vector3.zero;
+                body.isKinematic = true;
+            }
         }
 
         private void RestoreControls()
         {
             if (!controlsSuspended) return;
             controlsSuspended = false;
-            foreach (var ai in GetComponentsInChildren<CarAIControl>(true)) ai.enabled = true;
-            foreach (var user in GetComponentsInChildren<CarUserControl>(true)) user.enabled = true;
+
+            if (suspendedBodies != null && originalKinematicStates != null)
+            {
+                int count = Mathf.Min(suspendedBodies.Length, originalKinematicStates.Length);
+                for (int i = 0; i < count; i++)
+                {
+                    if (suspendedBodies[i] != null)
+                        suspendedBodies[i].isKinematic = originalKinematicStates[i];
+                }
+            }
+
+            foreach (Behaviour control in suspendedControls)
+            {
+                if (control != null) control.enabled = true;
+            }
+            suspendedControls.Clear();
+            suspendedBodies = null;
+            originalKinematicStates = null;
+        }
+
+        private void SuspendEnabled<T>(T[] controls) where T : Behaviour
+        {
+            foreach (T control in controls)
+            {
+                if (control == null || !control.enabled) continue;
+                control.enabled = false;
+                suspendedControls.Add(control);
+            }
         }
     }
 }
