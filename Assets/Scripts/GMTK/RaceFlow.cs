@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
 using Gmtk2026.Quiz;
+using SpinMotion;
 
 namespace GMTK
 {
@@ -20,10 +21,11 @@ namespace GMTK
         public static RaceFlow Instance { get; private set; }
         public Phase CurrentPhase { get; private set; } = Phase.StartScreen;
         public static event System.Action<Phase> PhaseChanged;
+        public static bool OwnsGameEventsStart { get; private set; }
 
         [Header("Timing")]
         [SerializeField, Min(0.5f)] private float prologueSeconds = 4f;
-        [SerializeField, Min(1f)] private float countdownSeconds = 5f;
+        [SerializeField, Min(1f)] private float countdownSeconds = 3f;
 
         private Canvas canvas;
         private GameObject startPanel;
@@ -34,12 +36,14 @@ namespace GMTK
         private Button startButton;
         private QuizSessionController quiz;
         private StartMenuCanvas sceneMenu;
+        private GameEvents gameEvents;
         private bool started;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttach()
         {
-            if (SceneManager.GetActiveScene().name != "bora") return;
+            string sceneName = SceneManager.GetActiveScene().name;
+            if (sceneName != "bora" && sceneName != "GMTK_Race") return;
             if (FindFirstObjectByType<RaceFlow>(FindObjectsInactive.Include) != null) return;
             new GameObject("RaceFlow").AddComponent<RaceFlow>();
         }
@@ -54,6 +58,8 @@ namespace GMTK
 
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            gameEvents = Race.Events;
+            OwnsGameEventsStart = gameEvents != null && SceneManager.GetActiveScene().name == "GMTK_Race";
             sceneMenu = FindFirstObjectByType<StartMenuCanvas>(FindObjectsInactive.Include);
             if (sceneMenu != null)
             {
@@ -65,11 +71,21 @@ namespace GMTK
                 statusText = sceneMenu.StatusText;
                 countdownText = sceneMenu.CountdownText;
             }
-            else Debug.LogError("RaceFlow requires a scene-authored StartMenuCanvas with assigned UI references.", this);
+            else if (!OwnsGameEventsStart)
+                Debug.LogError("RaceFlow requires a scene-authored StartMenuCanvas with assigned UI references.", this);
         }
 
         private void Start()
         {
+            if (OwnsGameEventsStart)
+            {
+                SubscribeToGameEvents();
+                HideSceneUi();
+                HideLegacyCountdownUi();
+                StartCoroutine(PrepareQuizBeforeStart());
+                return;
+            }
+
             Time.timeScale = 0f;
             SetPhase(Phase.StartScreen);
             if (startButton != null)
@@ -78,6 +94,96 @@ namespace GMTK
                 startButton.onClick.AddListener(BeginPrologue);
             }
             StartCoroutine(PrepareQuizBeforeStart());
+        }
+
+        private void SubscribeToGameEvents()
+        {
+            if (gameEvents == null) return;
+            gameEvents.OnClickPlayRaceEvent.AddListener(OnGameEventsPlayRace);
+            gameEvents.RaceStartedEvent.AddListener(OnGameEventsRaceStarted);
+        }
+
+        private void UnsubscribeFromGameEvents()
+        {
+            if (gameEvents == null) return;
+            gameEvents.OnClickPlayRaceEvent.RemoveListener(OnGameEventsPlayRace);
+            gameEvents.RaceStartedEvent.RemoveListener(OnGameEventsRaceStarted);
+        }
+
+        private void OnGameEventsPlayRace()
+        {
+            if (started) return;
+            started = true;
+            StartCoroutine(RunGameEventsPreRace());
+        }
+
+        private void OnGameEventsRaceStarted()
+        {
+            if (!OwnsGameEventsStart || CurrentPhase == Phase.Racing) return;
+            SetPhase(Phase.Racing);
+        }
+
+        private IEnumerator RunGameEventsPreRace()
+        {
+            SetPhase(Phase.Prologue);
+            if (statusText != null)
+                statusText.text = "THE GATES OF HELL ARE OPEN...\n\nTHE LAST CAR IS EXECUTED EVERY 30 SECONDS.\nSOLVE QUIZZES WHILE DRIVING AND CAST CURSES.";
+            yield return new WaitForSecondsRealtime(prologueSeconds);
+
+            SetPhase(Phase.Countdown);
+            gameEvents.ToggleCarFreezeEvent.Invoke(true);
+            int seconds = Mathf.Max(1, Mathf.RoundToInt(countdownSeconds));
+            GameAudioManager.Instance?.PlayCountdownTick();
+            for (int remaining = seconds; remaining > 0; remaining--)
+            {
+                if (countdownText != null) countdownText.text = remaining.ToString();
+                yield return new WaitForSecondsRealtime(1f);
+            }
+
+            if (countdownText != null) countdownText.text = "GO!";
+            GameAudioManager.Instance?.PlayRaceStart();
+            gameEvents.ToggleCarFreezeEvent.Invoke(false);
+            gameEvents.ChangeToRaceCamerasEvent.Invoke();
+            try
+            {
+                // The kit initializes RaceManager before its HUD and pause controls
+                // are allowed to observe the Racing phase.
+                gameEvents.RaceStartedEvent.Invoke();
+            }
+            finally
+            {
+                // Keep the UI transition deterministic even if another race-start
+                // listener fails before RaceFlow receives the event.
+                if (CurrentPhase != Phase.Racing)
+                    SetPhase(Phase.Racing);
+            }
+            gameEvents.PreRaceUpdateGuiEvent.Invoke();
+            if (quiz != null)
+            {
+                quiz.enabled = true;
+                quiz.ConfigureSchedule(12f, 12f, 20f, 1.8f);
+            }
+            yield return new WaitForSecondsRealtime(0.45f);
+            if (countdownPanel != null) countdownPanel.SetActive(false);
+        }
+
+        private void HideSceneUi()
+        {
+            if (startPanel != null) startPanel.SetActive(false);
+            if (prologuePanel != null) prologuePanel.SetActive(false);
+            if (countdownPanel != null) countdownPanel.SetActive(false);
+        }
+
+        private static void HideLegacyCountdownUi()
+        {
+            foreach (var legacyCountdown in FindObjectsByType<PreRaceCountdownGUI>(
+                         FindObjectsInactive.Include,
+                         FindObjectsSortMode.None))
+            {
+                if (legacyCountdown.countdownTMP != null)
+                    legacyCountdown.countdownTMP.gameObject.SetActive(false);
+                legacyCountdown.gameObject.SetActive(false);
+            }
         }
 
         private IEnumerator PrepareQuizBeforeStart()
@@ -97,10 +203,12 @@ namespace GMTK
 
         private void OnDestroy()
         {
+            UnsubscribeFromGameEvents();
             if (Instance == this)
             {
                 Time.timeScale = 1f;
                 Instance = null;
+                OwnsGameEventsStart = false;
             }
         }
 
@@ -182,6 +290,7 @@ namespace GMTK
         {
             if (started) return;
             started = true;
+            GameAudioManager.Instance?.PlayButtonClick();
             StartCoroutine(RunPreRace());
         }
 
@@ -194,6 +303,7 @@ namespace GMTK
             SetPhase(Phase.Countdown);
             countdownPanel.SetActive(true);
             float end = Time.unscaledTime + countdownSeconds;
+            GameAudioManager.Instance?.PlayCountdownTick();
             while (Time.unscaledTime < end)
             {
                 float remaining = Mathf.Ceil(end - Time.unscaledTime);
@@ -202,6 +312,7 @@ namespace GMTK
             }
 
             countdownText.text = "GO!";
+            GameAudioManager.Instance?.PlayRaceStart();
             yield return new WaitForSecondsRealtime(0.45f);
             countdownPanel.SetActive(false);
 
@@ -227,7 +338,7 @@ namespace GMTK
             {
                 sceneMenu.SetVisible(phase.ToString());
             }
-            else
+            else if (startPanel != null && prologuePanel != null && countdownPanel != null)
             {
                 startPanel.SetActive(phase == Phase.StartScreen);
                 prologuePanel.SetActive(phase == Phase.Prologue);

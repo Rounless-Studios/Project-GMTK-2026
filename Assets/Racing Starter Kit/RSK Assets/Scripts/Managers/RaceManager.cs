@@ -31,6 +31,15 @@ namespace SpinMotion
         {
             gameEvents.SpawnPlayersEvent.Invoke();
             gameEvents.PreRaceUpdateGuiEvent.Invoke();
+
+            // GMTK.RaceFlow owns the custom UI countdown in GMTK_Race, while this
+            // manager still owns the vehicle spawn and event-bus setup.
+            if (GMTK.RaceFlow.OwnsGameEventsStart)
+            {
+                gameEvents.ChangeToRaceCamerasEvent.Invoke();
+                return;
+            }
+
             gameEvents.PlayPreRaceCountdownEvent.Invoke();
             gameEvents.ChangeToRaceCamerasEvent.Invoke();
         }

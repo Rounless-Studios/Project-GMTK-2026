@@ -12,9 +12,9 @@ namespace Gmtk2026.Quiz
         private const float HiddenHorizontalOffset = 2.7f;
         private const float HiddenVerticalOffset = -2.8f;
 
-        // Keep the phone in the camera's right-side safe area. The former position
-        // (3.2m forward, 0.62m right) sat directly over a third-person vehicle.
-        [SerializeField, Min(0.5f)] private float distance = 2.4f;
+        // Keep the phone in the camera's right-side safe area. The former horizontal
+        // offset (0.62m right) sat directly over a third-person vehicle.
+        [SerializeField, Min(0.5f)] private float distance = 3.2f;
         [SerializeField] private float horizontalOffset = 1.45f;
         [SerializeField] private float verticalOffset = 0.32f;
         [SerializeField, Min(0.05f)] private float showDuration = 0.28f;

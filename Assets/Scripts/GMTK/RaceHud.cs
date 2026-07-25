@@ -9,7 +9,7 @@ namespace GMTK
     [ExecuteAlways]
     public sealed class RaceHud : MonoBehaviour
     {
-        [SerializeField] private Canvas hudCanvas;
+        [SerializeField] private GameObject hudCanvas;
         [Tooltip("Drag the existing DurabilityHud panel here to keep its original slider design inside RaceHud.")]
         [SerializeField] private RectTransform durabilityPanel;
         [SerializeField] private Text positionText;
@@ -37,15 +37,6 @@ namespace GMTK
         [ContextMenu("Build HUD UI")]
         public void BuildUi()
         {
-            if (hudCanvas == null)
-            {
-                var canvasObject = new GameObject("RaceHudCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-                canvasObject.transform.SetParent(transform, false);
-                hudCanvas = canvasObject.GetComponent<Canvas>();
-                hudCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                hudCanvas.sortingOrder = 900;
-            }
-
             if (positionText != null) return;
             positionText = CreateLabel("Position", 0);
             executionText = CreateLabel("ExecutionCountdown", 1);
@@ -78,8 +69,8 @@ namespace GMTK
                 : RaceFlow.Instance.CurrentPhase == RaceFlow.Phase.Racing;
             // RaceHud lives on the canvas root, so disabling the GameObject would also
             // disable this Update loop permanently. Toggle the Canvas component instead.
-            if (hudCanvas != null && hudCanvas.enabled != raceStarted)
-                hudCanvas.enabled = raceStarted;
+            if (hudCanvas != null && hudCanvas.activeSelf != raceStarted)
+                hudCanvas.SetActive(raceStarted);
             if (!raceStarted) return;
 
             var player = Race.CarByIndex(0);

@@ -40,7 +40,7 @@ namespace Gmtk2026.Quiz.Tests
             {
                 Vector3 position = WorldSpaceQuizCanvasFollower.GetTargetPosition(
                     cameraObject.transform,
-                    2.4f,
+                    3.2f,
                     1.45f,
                     0.32f);
 
@@ -48,7 +48,7 @@ namespace Gmtk2026.Quiz.Tests
                     cameraObject.transform.InverseTransformPoint(position);
                 Assert.That(localPosition.x, Is.GreaterThanOrEqualTo(1.4f));
                 Assert.That(localPosition.y, Is.GreaterThan(0f));
-                Assert.That(localPosition.z, Is.EqualTo(2.4f).Within(0.0001f));
+                Assert.That(localPosition.z, Is.EqualTo(3.2f).Within(0.0001f));
             }
             finally
             {
