@@ -25,6 +25,7 @@ namespace GMTK
 
         // ---- state exposed for HUD / execution camera ----
         public int CurrentLastPlaceIndex { get; private set; } = -1;
+        public int LockedEliminationIndex { get; private set; } = -1;
         public float SecondsToElimination { get; private set; }
         public EliminationWarningLevel Level { get; private set; }
         public bool InFinalDuel { get; private set; }
@@ -33,6 +34,8 @@ namespace GMTK
 
         // ---- events for HUD / camera / other systems ----
         public static event System.Action<int, EliminationWarningLevel> WarningChanged; // (lastPlaceIndex, level)
+        public static event System.Action<int> ExecutionTargetChanged;                   // (live last-place raceIndex)
+        public static event System.Action<int> EliminationTargetLocked;                  // (raceIndex)
         public static event System.Action<int> CarEliminated;                            // (raceIndex)
         public static event System.Action FinalDuelStarted;
 
@@ -41,6 +44,7 @@ namespace GMTK
         private bool armed;
         private bool finished;
         private EliminationWarningLevel lastFiredLevel = EliminationWarningLevel.None;
+        private int lastExecutionTargetIndex = -1;
 
         private EliminationSettings E => GameBalance.Current.elimination;
         private int FinalDuelCount => GameBalance.Current.race.finalDuelRacerCount;
@@ -70,6 +74,8 @@ namespace GMTK
             Level = EliminationWarningLevel.None;
             lastFiredLevel = EliminationWarningLevel.None;
             CurrentLastPlaceIndex = -1;
+            LockedEliminationIndex = -1;
+            lastExecutionTargetIndex = -1;
             armed = true;
             // first elimination also fires after a full interval (GDD: 30s consistently)
             nextEliminationTime = Time.time + E.intervalSeconds;
@@ -85,6 +91,9 @@ namespace GMTK
             eliminated.Clear();
             Level = EliminationWarningLevel.None;
             lastFiredLevel = EliminationWarningLevel.None;
+            CurrentLastPlaceIndex = -1;
+            LockedEliminationIndex = -1;
+            lastExecutionTargetIndex = -1;
         }
 
         /// <summary>
@@ -112,6 +121,11 @@ namespace GMTK
         private void Update()
         {
             if (!armed || finished || !Race.IsRaceInProgress) return;
+            if (ActiveCarCount <= FinalDuelCount)
+            {
+                EnterFinalDuel();
+                return;
+            }
 
             UpdateWarnings();
 
@@ -133,6 +147,22 @@ namespace GMTK
             else if (SecondsToElimination <= E.warningSeconds) level = EliminationWarningLevel.Warning;
             Level = level;
 
+            // The execution camera starts early, but its subject remains the live last-place
+            // car. The actual condemned car is deliberately not locked until time reaches zero.
+            if (level == EliminationWarningLevel.Execution)
+            {
+                if (CurrentLastPlaceIndex >= 0 &&
+                    CurrentLastPlaceIndex != lastExecutionTargetIndex)
+                {
+                    lastExecutionTargetIndex = CurrentLastPlaceIndex;
+                    ExecutionTargetChanged?.Invoke(CurrentLastPlaceIndex);
+                }
+            }
+            else
+            {
+                lastExecutionTargetIndex = -1;
+            }
+
             if (level != lastFiredLevel)
             {
                 lastFiredLevel = level;
@@ -140,7 +170,8 @@ namespace GMTK
             }
         }
 
-        // lowest race score among active cars (re-evaluated live, so a late overtake counts)
+        // Lowest race score among active cars. This remains live through the execution
+        // camera window and is called once more at zero before the explosion.
         private int FindLastPlace()
         {
             int carCount = Race.CarCount;
@@ -160,8 +191,19 @@ namespace GMTK
             if (Race.CarCount <= 1) { armed = false; return; }
             if (ActiveCarCount <= FinalDuelCount) { EnterFinalDuel(); return; }
 
+            // GDD: zero seconds is the decision point. Re-evaluate the latest race
+            // progress now, even if the execution camera followed another car a frame ago.
             int last = FindLastPlace();
             if (last < 0) return;
+
+            CurrentLastPlaceIndex = last;
+            LockedEliminationIndex = last;
+            if (last != lastExecutionTargetIndex)
+            {
+                lastExecutionTargetIndex = last;
+                ExecutionTargetChanged?.Invoke(last);
+            }
+            EliminationTargetLocked?.Invoke(last);
 
             eliminated.Add(last);
             CarEliminated?.Invoke(last);
@@ -170,6 +212,9 @@ namespace GMTK
             // reset the warning cycle for the next countdown
             Level = EliminationWarningLevel.None;
             lastFiredLevel = EliminationWarningLevel.None;
+            CurrentLastPlaceIndex = -1;
+            LockedEliminationIndex = -1;
+            lastExecutionTargetIndex = -1;
 
             if (last == 0)
             {
@@ -188,6 +233,8 @@ namespace GMTK
             if (InFinalDuel) return;
             InFinalDuel = true;
             armed = false;
+            LockedEliminationIndex = -1;
+            lastExecutionTargetIndex = -1;
             FinalDuelStarted?.Invoke();
         }
 

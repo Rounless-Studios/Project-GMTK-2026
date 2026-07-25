@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9b0f04d15b8523a47bc043a053dee25b, type: 3}
-  m_Name: GameJamDefault
+  m_Name: FastTest
   m_EditorClassIdentifier: GMTK.GameBalance.Runtime::Gmtk2026.GameBalance.GameBalanceSettings
   race:
     aiCount: 5
@@ -19,16 +19,16 @@ MonoBehaviour:
     targetRaceDurationMinSeconds: 180
     targetRaceDurationMaxSeconds: 300
   elimination:
-    intervalSeconds: 30
-    warningSeconds: 10
-    intenseWarningSeconds: 5
-    executionCameraLeadSeconds: 3
+    intervalSeconds: 3
+    warningSeconds: 1.5
+    intenseWarningSeconds: 1
+    executionCameraLeadSeconds: 1
     executeAtRemainingSeconds: 0
   result:
     playerDeathCinematicMaxSeconds: 3
     restartToControlMaxSeconds: 5
   quiz:
-    answerTimeSeconds: 4
+    answerTimeSeconds: 2
     minimumAnswerCount: 2
     maximumAnswerCount: 3
   curse:
@@ -41,6 +41,9 @@ MonoBehaviour:
     soulSwapMinimumDistanceMeters: 15
     soulSwapMaximumDistanceMeters: 40
     soulSwapCollisionIgnoreSeconds: 0.3
+    aiInitialCastDelayMinimumSeconds: 2
+    aiInitialCastDelayMaximumSeconds: 5
+    aiFailedCastRetrySeconds: 1
   boost:
     maximumCharges: 2
     durationSeconds: 1.25
@@ -64,8 +67,8 @@ MonoBehaviour:
     groundProbeDistance: 5
     trackSampleIntervalSeconds: 0.1
   overtake:
-    checkIntervalSeconds: 20
-    challengeDurationSeconds: 8
+    checkIntervalSeconds: 5
+    challengeDurationSeconds: 3
     requiredLeadHoldSeconds: 0.5
     cooldownRewardMode: 0
     cooldownReductionSeconds: 6
@@ -73,14 +76,16 @@ MonoBehaviour:
     bindSpeedMultiplier: 0.5
   camera:
     sideBySideActivationSeconds: 0.6
-    executionPlayerViewportRect:
+    executionCctvViewportRect:
       serializedVersion: 2
       x: 0.66
       y: 0
       width: 0.34
       height: 0.34
+    executionTransitionSeconds: 0.2
+    executionReturnSeconds: 0.25
   ai:
-    archetypeAssignments: 0000000001000000020000000300000001000000
+    personalityAssignments: 0300000003000000010000000200000000000000
     driving:
       minLookAheadMetres: 14
       lookAheadMetresPerKph: 0.32
@@ -110,53 +115,43 @@ MonoBehaviour:
     personalityAssignment:
       shuffleSeed: 0
       logAssignment: 1
-      ramStrengthMetres: 7
-      blockStrengthMetres: 5
       aggroRangeMetres: 45
-    profiles:
-    - archetype: 0
-      speedMultiplier: 1
-      aggression: 0.9
-      avoidance: 0.3
-      boostTendency: 0.5
-      curseTendency: 0.3
-      curseCooldownSeconds: 12
-      curseWarningSeconds: 1.5
-      catchupAcceleration: 0.1
-    - archetype: 1
-      speedMultiplier: 1.1
-      aggression: 0.3
-      avoidance: 0.7
+    defaultQuizAvoidChance: 0.5
+    personalityProfiles:
+    - personality: 3
+      paceScale: 1
+      lateralStrengthMetres: 0
       boostTendency: 0.8
-      curseTendency: 0.3
-      curseCooldownSeconds: 12
-      curseWarningSeconds: 1.5
+      quizAvoidChance: 0.3
       catchupAcceleration: 0.1
-    - archetype: 2
-      speedMultiplier: 1
-      aggression: 0.3
-      avoidance: 0.7
+    - personality: 1
+      paceScale: 0.96
+      lateralStrengthMetres: 7
       boostTendency: 0.5
-      curseTendency: 0.9
-      curseCooldownSeconds: 12
-      curseWarningSeconds: 1.5
+      quizAvoidChance: 0.35
       catchupAcceleration: 0.1
-    - archetype: 3
-      speedMultiplier: 1
-      aggression: 0.1
-      avoidance: 0.95
+    - personality: 2
+      paceScale: 0.86
+      lateralStrengthMetres: 5
       boostTendency: 0.5
-      curseTendency: 0.3
-      curseCooldownSeconds: 12
-      curseWarningSeconds: 1.5
+      quizAvoidChance: 0.65
+      catchupAcceleration: 0.1
+    - personality: 0
+      paceScale: 0.9
+      lateralStrengthMetres: 0
+      boostTendency: 0.5
+      quizAvoidChance: 0.8
       catchupAcceleration: 0.1
   trackValidation:
     minimumBoostStraights: 2
     minimumParallelSections: 1
   presentation:
-    gateCloseSpeed: 2
+    gateOpenDurationSeconds: 20
+    gateWidthMeters: 16
+    gateHeightMeters: 7
     gateCloseDelaySeconds: 0.2
-    gateExecutionDelaySeconds: 0.5
+    gateCloseDurationSeconds: 0.75
+    gateExecutionDelaySeconds: 0.25
     explosionVfxDurationSeconds: 0.45
     wreckLingerSeconds: 2.5
     masterSfxVolume: 1

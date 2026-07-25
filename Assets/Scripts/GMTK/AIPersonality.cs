@@ -4,32 +4,20 @@ using SpinMotion;
 
 namespace GMTK
 {
-    public enum AIPersonalityType
-    {
-        CleanRacer, // fast, tidy lines, focused on lap times
-        Rammer,     // actively veers into the player
-        Blocker,    // slides across to cut the player off
-        Reckless    // flat out, little regard for corners
-    }
-
     /// <summary>
     /// Gives an AI car a distinct driving personality through the active vehicle adapter.
+    /// Every number comes from <c>AISettings.personalityProfiles</c>: this component is added at
+    /// runtime, so anything serialized here would reset on every spawn and could never be tuned.
     /// The IAIDriverModifier implementation remains as a fallback for legacy kit cars.
     /// </summary>
     public class AIPersonality : MonoBehaviour, IAIDriverModifier
     {
         public AIPersonalityType type = AIPersonalityType.CleanRacer;
 
-        // Aggression numbers live in the balance asset: this component is added at runtime, so
-        // anything serialized here would reset on every spawn and could never be tuned.
         private static AiPersonalityAssignmentSettings Aggression =>
             GameBalance.Current.ai.personalityAssignment;
 
-        [Header("Speed Multipliers (x normal desired speed)")]
-        public float recklessSpeedMultiplier = 1.15f;
-        public float rammerSpeedMultiplier = 1.05f;
-        public float blockerSpeedMultiplier = 0.97f;
-        public float cleanRacerSpeedMultiplier = 1.0f;
+        private AiPersonalityProfile Profile => GameBalance.Current.ai.GetProfile(type);
 
         private Transform player;
         private GmtkVehicleAdapter vehicleAdapter;
@@ -54,9 +42,18 @@ namespace GMTK
             vehicleAdapter.ApplyAiTargeting(
                 type,
                 Player(),
-                Aggression.ramStrengthMetres,
-                Aggression.blockStrengthMetres,
+                LateralStrength,
                 Aggression.aggroRangeMetres);
+        }
+
+        /// <summary>Sideways pull toward the player; 0 for personalities that keep the racing line.</summary>
+        public float LateralStrength
+        {
+            get
+            {
+                var profile = Profile;
+                return profile != null ? profile.lateralStrengthMetres : 0f;
+            }
         }
 
         public void ApplyToDriver()
@@ -67,42 +64,37 @@ namespace GMTK
             vehicleAdapter?.ConfigureAiPersonality(type);
         }
 
+        /// <summary>
+        /// Pace for the legacy kit driver. Reads the same <c>paceScale</c> the RCCP driver uses, so
+        /// a personality has one speed number rather than one per vehicle package.
+        /// </summary>
         public float SpeedMultiplier
         {
             get
             {
-                return type switch
-                {
-                    AIPersonalityType.Reckless => recklessSpeedMultiplier,
-                    AIPersonalityType.Rammer => rammerSpeedMultiplier,
-                    AIPersonalityType.Blocker => blockerSpeedMultiplier,
-                    _ => cleanRacerSpeedMultiplier,
-                };
+                var profile = Profile;
+                return profile != null ? profile.paceScale : 1f;
             }
         }
 
         public Vector3 GetTargetOffset(Transform self, Vector3 baseTargetPosition)
         {
+            float strength = LateralStrength;
+            if (strength <= 0f) return Vector3.zero;
+
+            var p = Player();
+            if (p == null) return Vector3.zero;
+
+            Vector3 toPlayer = p.position - self.position;
+            if (toPlayer.magnitude > Aggression.aggroRangeMetres) return Vector3.zero;
+
             switch (type)
             {
                 case AIPersonalityType.Rammer:
-                {
-                    var p = Player();
-                    if (p == null) return Vector3.zero;
-                    Vector3 toPlayer = p.position - self.position;
-                    if (toPlayer.magnitude > Aggression.aggroRangeMetres) return Vector3.zero;
-                    return toPlayer.normalized * Aggression.ramStrengthMetres;
-                }
+                    return toPlayer.normalized * strength;
                 case AIPersonalityType.Blocker:
-                {
-                    var p = Player();
-                    if (p == null) return Vector3.zero;
-                    Vector3 toPlayer = p.position - self.position;
-                    if (toPlayer.magnitude > Aggression.aggroRangeMetres) return Vector3.zero;
                     // slide sideways toward the player's lane to block their path
-                    Vector3 lateral = Vector3.Project(toPlayer, self.right);
-                    return lateral.normalized * Aggression.blockStrengthMetres;
-                }
+                    return Vector3.Project(toPlayer, self.right).normalized * strength;
                 default:
                     return Vector3.zero;
             }

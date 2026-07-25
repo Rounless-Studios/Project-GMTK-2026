@@ -36,8 +36,7 @@ namespace GMTK.Rccp
         private float reverseTimer;
         private AIPersonalityType personalityType;
         private Transform personalityTarget;
-        private float ramStrength;
-        private float blockStrength;
+        private float lateralStrength;
         private float aggroRange;
 
         private void Awake()
@@ -83,26 +82,21 @@ namespace GMTK.Rccp
         public void ConfigurePersonality(AIPersonalityType type)
         {
             personalityType = type;
-            throttleScale = type switch
-            {
-                AIPersonalityType.Reckless => 1f,
-                AIPersonalityType.Rammer => 0.96f,
-                AIPersonalityType.Blocker => 0.86f,
-                _ => 0.9f,
-            };
+
+            // pace is the personality's own number in the balance asset, not a switch here
+            var profile = GameBalance.Current.ai.GetProfile(type);
+            throttleScale = profile != null ? profile.paceScale : 0.9f;
         }
 
         public void SetPersonalityTarget(
             AIPersonalityType type,
             Transform target,
-            float ramAmount,
-            float blockAmount,
+            float lateralAmount,
             float range)
         {
             personalityType = type;
             personalityTarget = target;
-            ramStrength = ramAmount;
-            blockStrength = blockAmount;
+            lateralStrength = lateralAmount;
             aggroRange = range;
         }
 
@@ -339,11 +333,14 @@ namespace GMTK.Rccp
             if (toTarget.sqrMagnitude > aggroRange * aggroRange)
                 return Vector3.zero;
 
+            if (lateralStrength <= 0f)
+                return Vector3.zero;
+
             return personalityType switch
             {
-                AIPersonalityType.Rammer => toTarget.normalized * ramStrength,
+                AIPersonalityType.Rammer => toTarget.normalized * lateralStrength,
                 AIPersonalityType.Blocker =>
-                    Vector3.Project(toTarget, transform.right).normalized * blockStrength,
+                    Vector3.Project(toTarget, transform.right).normalized * lateralStrength,
                 _ => Vector3.zero,
             };
         }
