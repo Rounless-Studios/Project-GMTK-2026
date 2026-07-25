@@ -161,7 +161,7 @@ namespace GMTK
             if (quiz != null)
             {
                 quiz.enabled = true;
-                quiz.ConfigureSchedule(12f, 12f, 20f, 1.8f);
+                quiz.ConfigureFeedbackDuration(1.8f);
             }
             yield return new WaitForSecondsRealtime(0.45f);
             if (countdownPanel != null) countdownPanel.SetActive(false);
@@ -327,7 +327,7 @@ namespace GMTK
             if (quiz != null)
             {
                 quiz.enabled = true;
-                quiz.ConfigureSchedule(12f, 12f, 20f, 1.8f);
+                quiz.ConfigureFeedbackDuration(1.8f);
             }
         }
 

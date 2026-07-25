@@ -7,10 +7,9 @@ namespace GMTK
     /// <summary>
     /// Per-car curse actuation (checklist stages 3.7-3.10). Owns the shared cooldown/rotation
     /// (<see cref="CurseCooldownState"/>), auto-selects a target from the live race order, and
-    /// applies the chosen curse: Rupture -> target durability, Engine Seal -> target boost,
-    /// Soul Swap -> a guarded position swap. Casting is caster-agnostic: the player triggers a
-    /// successful cast through the quiz, AI (stage 9) calls <see cref="CastAtAutoTarget"/>
-    /// directly. The E-input / quiz / HUD layer is wired on top of these hooks.
+    /// activates the chosen curse challenge on the target. The target avoids the effect by
+    /// succeeding at a quiz; a failed human quiz or AI ability roll applies Rupture, Engine Seal
+    /// or Soul Swap. The caster spends its cooldown when the challenge begins.
     /// </summary>
     [DisallowMultipleComponent]
     public class CurseController : MonoBehaviour
@@ -18,6 +17,7 @@ namespace GMTK
         public CurseCooldownState State { get; private set; }
         public bool CanCast => State != null && State.IsReady;
         public float CooldownRemaining => State != null ? State.CooldownRemaining : 0f;
+        public float CooldownProgress => State != null ? State.CooldownProgress : 1f;
         public bool IsPlayer { get; private set; }
         public int RaceIndex { get; set; } = -1;
 
@@ -47,29 +47,24 @@ namespace GMTK
         private void Update() => State?.Tick(Time.deltaTime);
 
         /// <summary>
-        /// Cast the next curse at the auto-selected target. Returns false if on cooldown or no
-        /// valid target exists. Call on a successful player quiz answer or an AI decision.
+        /// Activate the next curse on an auto-selected target. Returns false if the skill is on
+        /// cooldown, no valid target exists, or the target cannot begin a curse challenge.
         /// </summary>
         public bool CastAtAutoTarget()
         {
             if (!CanCast) return false;
-            int target = SelectTarget();
-            if (target < 0) return false;
             var type = SelectCurse();
-            if (!ApplyCurse(type, target)) return false;
+            int target = SelectTarget(type);
+            if (target < 0 || CurseManager.Instance == null) return false;
+            if (!CurseManager.Instance.TryActivateCurse(this, type, target)) return false;
             State.OnCastSucceeded();
             Changed?.Invoke(this);
             CurseCast?.Invoke(this, type, target);
             return true;
         }
 
-        /// <summary>Player attempted a cast but failed the quiz (wrong answer / timeout).</summary>
-        public void NotifyFailedAttempt()
-        {
-            if (State == null) return;
-            State.OnCastFailed();
-            Changed?.Invoke(this);
-        }
+        /// <summary>Apply the stored curse after the target fails its quiz.</summary>
+        public bool ApplyPenalty(CurseType type, int targetIndex) => ApplyCurse(type, targetIndex);
 
         /// <summary>Overtake reward (Reset mode): clear the curse cooldown.</summary>
         public void ResetCooldown()
@@ -98,8 +93,8 @@ namespace GMTK
             }
         }
 
-        // NearestAheadThenNearestActive / NearestActive / CurrentLeader over the live race order
-        private int SelectTarget()
+        // Every targeting mode is restricted to valid racers strictly ahead in the live race order.
+        private int SelectTarget(CurseType type)
         {
             int self = RaceIndex >= 0 ? RaceIndex : ResolveOwnIndex();
             if (self < 0) return -1;
@@ -117,8 +112,11 @@ namespace GMTK
             {
                 if (i == self) continue;
                 if (elim != null && elim.IsEliminated(i)) continue;
+                if (!CanApplyPenaltyTo(type, i)) continue;
 
                 double sc = Race.ScoreOf(i);
+                if (!CurseCooldownState.IsValidTargetByScore(selfScore, sc)) continue;
+
                 if (sc > leaderScore) { leaderScore = sc; leader = i; }
 
                 double gap = sc - selfScore;
@@ -158,12 +156,14 @@ namespace GMTK
             {
                 case CurseType.Rupture:
                     var dur = target.GetComponent<DurabilityController>();
-                    if (dur != null) dur.ApplyDamage(C.ruptureDurabilityDamage);
+                    if (dur == null) return false;
+                    dur.ApplyDamage(C.ruptureDurabilityDamage);
                     return true;
 
                 case CurseType.EngineSeal:
                     var boost = target.GetComponent<BoostController>();
-                    if (boost != null) boost.ApplySeal(C.engineSealDurationSeconds);
+                    if (boost == null) return false;
+                    boost.ApplySeal(C.engineSealDurationSeconds);
                     return true;
 
                 case CurseType.SoulSwap:
@@ -174,9 +174,26 @@ namespace GMTK
             }
         }
 
-        // Provisional soul swap: validate distance + phase safety, then swap world poses.
-        // Track-relative swapping can be refined against RCCP telemetry later; the
-        // distance/phase safety gate below is the durable part.
+        private bool CanApplyPenaltyTo(CurseType type, int targetIndex)
+        {
+            var target = Race.CarByIndex(targetIndex);
+            if (target == null) return false;
+
+            switch (type)
+            {
+                case CurseType.Rupture:
+                    return target.GetComponent<DurabilityController>() != null;
+                case CurseType.EngineSeal:
+                    return target.GetComponent<BoostController>() != null;
+                case CurseType.SoulSwap:
+                    return CanSoulSwap(targetIndex);
+                default:
+                    return false;
+            }
+        }
+
+        // Distance is checked when the curse target is selected. Do not check it again after
+        // the quiz because both cars keep moving while the question is on screen.
         private bool TrySoulSwap(int targetIndex)
         {
             int self = RaceIndex >= 0 ? RaceIndex : ResolveOwnIndex();
@@ -184,19 +201,84 @@ namespace GMTK
             var targetCar = Race.CarByIndex(targetIndex);
             if (selfCar == null || targetCar == null) return false;
 
-            // never swap during the final duel / gate phase
-            if (GMTKRaceState.Instance != null && GMTKRaceState.Instance.CurrentPhase == RacePhase.FinalDuel)
+            if (GMTKRaceState.Instance != null &&
+                GMTKRaceState.Instance.CurrentPhase == RacePhase.FinalDuel)
                 return false;
 
-            float dist = Vector3.Distance(selfCar.transform.position, targetCar.transform.position);
-            if (dist < C.soulSwapMinimumDistanceMeters || dist > C.soulSwapMaximumDistanceMeters)
-                return false;
+            Rigidbody selfBody = FindVehicleBody(selfCar);
+            Rigidbody targetBody = FindVehicleBody(targetCar);
 
-            Vector3 selfPos = selfCar.transform.position;
-            Quaternion selfRot = selfCar.transform.rotation;
-            selfCar.transform.SetPositionAndRotation(targetCar.transform.position, targetCar.transform.rotation);
-            targetCar.transform.SetPositionAndRotation(selfPos, selfRot);
+            Vector3 selfPos = selfBody != null ? selfBody.position : selfCar.transform.position;
+            Quaternion selfRot = selfBody != null ? selfBody.rotation : selfCar.transform.rotation;
+            Vector3 selfVelocity = selfBody != null ? selfBody.linearVelocity : Vector3.zero;
+            Vector3 selfAngularVelocity = selfBody != null ? selfBody.angularVelocity : Vector3.zero;
+
+            Vector3 targetPos = targetBody != null ? targetBody.position : targetCar.transform.position;
+            Quaternion targetRot = targetBody != null ? targetBody.rotation : targetCar.transform.rotation;
+            Vector3 targetVelocity = targetBody != null ? targetBody.linearVelocity : Vector3.zero;
+            Vector3 targetAngularVelocity = targetBody != null ? targetBody.angularVelocity : Vector3.zero;
+
+            TeleportVehicle(
+                selfCar,
+                selfBody,
+                targetPos,
+                targetRot,
+                targetVelocity,
+                targetAngularVelocity);
+            TeleportVehicle(
+                targetCar,
+                targetBody,
+                selfPos,
+                selfRot,
+                selfVelocity,
+                selfAngularVelocity);
+            Physics.SyncTransforms();
             return true;
+        }
+
+        private static Rigidbody FindVehicleBody(GameObject car)
+        {
+            Rigidbody body = car.GetComponent<Rigidbody>();
+            return body != null ? body : car.GetComponentInChildren<Rigidbody>(true);
+        }
+
+        private static void TeleportVehicle(
+            GameObject car,
+            Rigidbody body,
+            Vector3 position,
+            Quaternion rotation,
+            Vector3 linearVelocity,
+            Vector3 angularVelocity)
+        {
+            if (body == null)
+            {
+                car.transform.SetPositionAndRotation(position, rotation);
+                return;
+            }
+
+            body.position = position;
+            body.rotation = rotation;
+            body.linearVelocity = linearVelocity;
+            body.angularVelocity = angularVelocity;
+            body.WakeUp();
+        }
+
+        private bool CanSoulSwap(int targetIndex)
+        {
+            int self = RaceIndex >= 0 ? RaceIndex : ResolveOwnIndex();
+            var selfCar = Race.CarByIndex(self);
+            var targetCar = Race.CarByIndex(targetIndex);
+            if (selfCar == null || targetCar == null) return false;
+
+            if (GMTKRaceState.Instance != null &&
+                GMTKRaceState.Instance.CurrentPhase == RacePhase.FinalDuel)
+                return false;
+
+            float distance = Vector3.Distance(
+                selfCar.transform.position,
+                targetCar.transform.position);
+            return distance >= C.soulSwapMinimumDistanceMeters &&
+                   distance <= C.soulSwapMaximumDistanceMeters;
         }
     }
 }

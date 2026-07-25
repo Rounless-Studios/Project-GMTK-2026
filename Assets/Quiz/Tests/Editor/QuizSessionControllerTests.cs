@@ -15,7 +15,7 @@ namespace Gmtk2026.Quiz.Tests
             gameObject = new GameObject("QuizSessionControllerTests");
             controller = gameObject.AddComponent<QuizSessionController>();
             controller.Initialize(randomSeed: 42);
-            controller.ConfigureSchedule(999f, 10f, 10f, 0.1f);
+            controller.ConfigureFeedbackDuration(0.1f);
         }
 
         [TearDown]
@@ -33,6 +33,16 @@ namespace Gmtk2026.Quiz.Tests
             Assert.That(controller.CurrentQuestion, Is.Not.Null);
             Assert.That(controller.RemainingSeconds, Is.GreaterThan(0f));
             Assert.That(controller.TotalQuestionCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Tick_DoesNotStartPeriodicQuestion()
+        {
+            controller.Tick(1000f, float.MaxValue);
+
+            Assert.That(controller.State, Is.EqualTo(QuizSessionState.Waiting));
+            Assert.That(controller.CurrentQuestion, Is.Null);
+            Assert.That(controller.TotalQuestionCount, Is.Zero);
         }
 
         [Test]
