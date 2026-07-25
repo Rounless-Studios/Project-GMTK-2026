@@ -39,10 +39,6 @@ namespace GMTK
         {
             ApplyRuntimeSpawner();
             ApplyLiveRaceCars();
-            ApplyVehicleGroup("Drivable", Vector3.zero);
-            // Keep the second MVC vehicle set behind the main grid so duplicate
-            // demo vehicles do not spawn inside one another.
-            ApplyVehicleGroup("AI", new Vector3(0f, 0f, -12f));
             BuildWaypoints();
         }
 
@@ -74,44 +70,6 @@ namespace GMTK
                     rb.linearVelocity = Vector3.zero;
                     rb.angularVelocity = Vector3.zero;
                 }
-            }
-        }
-
-        private void ApplyVehicleGroup(string groupName, Vector3 offset)
-        {
-            if (startingGridPoints.Count == 0)
-            {
-                Debug.LogWarning($"{nameof(TrackLayout)} on {name} has no starting grid points assigned. Vehicles in '{groupName}' were left untouched.", this);
-                return;
-            }
-
-            var group = transform.parent != null
-                ? transform.parent.Find("Vehicles/" + groupName)
-                : GameObject.Find("Vehicles/" + groupName)?.transform;
-            if (group == null) return;
-
-            var vehicleRoots = new List<Transform>();
-            for (int i = 0; i < group.childCount; i++)
-            {
-                var child = group.GetChild(i);
-                bool isVehicle = false;
-                foreach (var component in child.GetComponentsInChildren<MonoBehaviour>(true))
-                {
-                    if (component != null && component.GetType().FullName == "MVC.Core.Vehicle")
-                    {
-                        isVehicle = true;
-                        break;
-                    }
-                }
-
-                if (isVehicle) vehicleRoots.Add(child);
-            }
-
-            for (int i = 0; i < vehicleRoots.Count && i < startingGridPoints.Count; i++)
-            {
-                var spawnPoint = startingGridPoints[i];
-                if (spawnPoint == null) continue;
-                vehicleRoots[i].SetPositionAndRotation(spawnPoint.position + offset, spawnPoint.rotation);
             }
         }
 

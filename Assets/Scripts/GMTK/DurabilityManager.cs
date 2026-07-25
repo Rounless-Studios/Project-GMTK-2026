@@ -56,19 +56,6 @@ namespace GMTK
                 if (car != null) cars.Add(car);
             }
 
-            // Avoid a compile-time dependency on the optional MVC package. Its main
-            // vehicle component is stable and uniquely identifies the car root.
-            foreach (var behaviour in FindObjectsByType<MonoBehaviour>(
-                         FindObjectsInactive.Exclude,
-                         FindObjectsSortMode.None))
-            {
-                if (behaviour != null &&
-                    behaviour.GetType().FullName == "MVC.Core.Vehicle")
-                {
-                    cars.Add(behaviour.gameObject);
-                }
-            }
-
             foreach (var car in cars)
             {
                 var controller = car.GetComponent<DurabilityController>();
