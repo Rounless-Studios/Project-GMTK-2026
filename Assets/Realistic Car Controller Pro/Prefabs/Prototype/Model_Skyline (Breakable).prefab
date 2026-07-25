@@ -199,7 +199,7 @@ PrefabInstance:
     - target: {fileID: 6388582635880233415, guid: afaf9f587fedc8744801fc7b35d90351,
         type: 3}
       propertyPath: InitialModule.startSize.scalar
-      value: 5
+      value: 6
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -293,7 +293,7 @@ PrefabInstance:
     - target: {fileID: 8307345576314165555, guid: 315b3b14b5f381a418e5a6a81d5224b5,
         type: 3}
       propertyPath: InitialModule.startSize.scalar
-      value: 5
+      value: 6
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -1048,7 +1048,7 @@ PrefabInstance:
     - target: {fileID: 4207185165829304779, guid: 16e093340da1f06459d3a45cb092f76f,
         type: 3}
       propertyPath: InitialModule.startSize.scalar
-      value: 5
+      value: 6
       objectReference: {fileID: 0}
     - target: {fileID: 5747550062325394750, guid: 16e093340da1f06459d3a45cb092f76f,
         type: 3}
