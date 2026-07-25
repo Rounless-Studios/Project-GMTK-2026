@@ -28,8 +28,13 @@ namespace GMTK
 
         private DamageSettings D => GameBalance.Current.damage;
         private bool controlsSuspended;
+        private GmtkVehicleAdapter vehicleAdapter;
 
-        private void Awake() => Build();
+        private void Awake()
+        {
+            vehicleAdapter = GetComponent<GmtkVehicleAdapter>();
+            Build();
+        }
 
         private void Build()
         {
@@ -75,6 +80,13 @@ namespace GMTK
         {
             if (controlsSuspended) return;
             controlsSuspended = true;
+
+            if (vehicleAdapter != null)
+            {
+                vehicleAdapter.SetControlsEnabled(false);
+                return;
+            }
+
             foreach (var ai in GetComponentsInChildren<CarAIControl>(true)) ai.enabled = false;
             foreach (var user in GetComponentsInChildren<CarUserControl>(true)) user.enabled = false;
         }
@@ -83,6 +95,13 @@ namespace GMTK
         {
             if (!controlsSuspended) return;
             controlsSuspended = false;
+
+            if (vehicleAdapter != null)
+            {
+                vehicleAdapter.SetControlsEnabled(true);
+                return;
+            }
+
             foreach (var ai in GetComponentsInChildren<CarAIControl>(true)) ai.enabled = true;
             foreach (var user in GetComponentsInChildren<CarUserControl>(true)) user.enabled = true;
         }

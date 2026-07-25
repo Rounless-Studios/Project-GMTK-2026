@@ -45,13 +45,13 @@ namespace GMTK
                 int raceIndex = tracker.GetCarRacePositionIndex();
                 if (raceIndex == 0) continue; // skip the human player
 
-                var controller = tracker.GetComponentInParent<CarController>();
-                if (controller == null) continue;
-                var car = controller.gameObject;
+                var car = Race.CarByIndex(raceIndex);
+                if (car == null) continue;
 
                 var personality = car.GetComponent<AIPersonality>();
                 if (personality == null) personality = car.AddComponent<AIPersonality>();
                 personality.type = Rotation[aiOrdinal % Rotation.Length];
+                personality.ApplyToDriver();
                 aiOrdinal++;
             }
         }

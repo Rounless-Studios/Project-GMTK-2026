@@ -74,13 +74,9 @@ namespace GMTK
                 if (tracker == null) continue;
                 if (tracker.GetCarRacePositionIndex() == raceIndex)
                 {
-                    // includeInactive so eliminated (SetActive(false)) cars are still resolvable.
-                    // Resolve the car root vehicle-agnostically: kit CarController, then MVC
-                    // Vehicle, then the transform root (covers the MVC-transition period).
-                    var controller = tracker.GetComponentInParent<CarController>(true);
-                    if (controller != null) return controller.gameObject;
-                    var mvc = tracker.GetComponentInParent<MVC.Core.Vehicle>(true);
-                    if (mvc != null) return mvc.gameObject;
+                    // Trackers are parented directly under the vehicle root by every supported
+                    // spawner. This remains valid for inactive (eliminated) cars and keeps the
+                    // race layer independent of a concrete vehicle package.
                     return tracker.transform.root.gameObject;
                 }
             }

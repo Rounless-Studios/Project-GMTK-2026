@@ -295,10 +295,9 @@ namespace GMTK
         public float boostForce = 25f;
         private void OnTriggerEnter(Collider other)
         {
-            var controller = other.transform.root.GetComponent<CarController>();
-            if (controller == null) return;
-            var rb = controller.GetComponent<Rigidbody>();
-            if (rb != null) rb.AddForce(controller.transform.forward * boostForce, ForceMode.VelocityChange);
+            var adapter = other.GetComponentInParent<GmtkVehicleAdapter>();
+            if (adapter != null)
+                adapter.ApplyForwardImpulse(boostForce);
         }
     }
 }
