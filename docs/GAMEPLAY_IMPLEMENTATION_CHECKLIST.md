@@ -282,7 +282,7 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 | 체크포인트·순위·랩 | 구현 (킷 인프라 유지) | 킷 `Checkpoints`/`CheckpointTracker`/`RealTimeRacePositions` + `Race.cs` 어댑터. 씬에 `Checkpoint` 컴포넌트 **467개** | 정적 |
 | 탈락 (설정 간격 최하위 처형, 경고 3단, 0초 재판정, 두 대에서 중단) | 구현 | `EliminationManager.cs`(263줄), `CarExplosion.cs`, `EliminationSettings` | 정적 |
 | 처형 CCTV 인셋 (메인=플레이어, 처형 대상=우하단 약 1/3) | 구현·미검증 | `ExecutionCctvDirector.cs`(593줄, Cinemachine 3.1.5 채널 분리), `CameraSettings`. **Git 미추적** | 정적 |
-| 최종 관문 | **부분 (규칙만)** | `FinalGate.cs` — 물리 관문 오브젝트·애니메이션 없음, `PresentationSettings` 미참조, `ReportGateCrossing`을 호출하는 씬 트리거가 없어 **실제 주행으로 승리 불가**. 20초 후 `duelCars[0]` 자동 승리 | 정적 |
+| 최종 관문 (규칙 + 폐쇄 연출) | 구현·플레이 미검증 | `FinalGate.cs`(규칙·시퀀스 타이밍), `FinalGateDoors.cs`(런타임 2엽 관문·폐쇄 애니메이션·통과 트리거), `PresentationSettings` 관문 6필드 | 정적 |
 | 내구도·대파 | 구현 (상태머신) | `DurabilityController.cs`, `DurabilityManager.cs`, `DurabilityState.cs`, `DurabilityHud.cs`. 단계별 VFX 없음 | 정적 |
 | 부스트 (2칸·1.25초·6초 재충전) | 구현 | `BoostController.cs`, `BoostManager.cs`, `BoostState.cs`, `GmtkRccpVehicle.ApplyBoost` | 정적 |
 | 부스트 입력 | **규칙 위반** | `BoostController.Update`가 레거시 `Input.GetKeyDown(Space/LeftShift/RightShift)` 사용. 프로젝트 규칙은 새 Input System 전용 | 정적 |
@@ -585,20 +585,22 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 ### 3.4 최종 관문
 
-> 상태: **규칙만 구현.** `FinalGate.cs`는 승자 판정과 패자 처형 규칙을 갖고 있지만, 물리 관문 오브젝트·
-> 애니메이션·트리거가 전부 없다. `ReportGateCrossing()`의 호출자가 `GMTKAutoPlaytest`뿐이므로
-> **실제 플레이에서는 관문을 통과해도 승리가 발생하지 않고, 20초 뒤 `duelCars[0]`이 자동 승리한다.**
-> `PresentationSettings`의 관문 값 3개는 선언만 되어 있고 `gateDurationSeconds = 20f`가 컴포넌트 필드로 남았다.
+> 상태: **코드 구현·플레이 미검증.** 규칙과 시퀀스 타이밍은 `FinalGate.cs`가, 관문 실물과 폐쇄 연출은
+> `FinalGateDoors.cs`(신규)가 담당한다. 관문은 결승선 체크포인트 위에 런타임 생성되므로 씬 배선이 없다
+> (다른 GMTK 매니저와 같은 `AutoAttach` 방식). 통과 트리거가 `ReportGateCrossing`을 호출하므로 실제
+> 주행으로 승리가 성립한다. 두 스크립트가 **같은 `PresentationSettings` 필드**를 읽어 애니메이션과 판정이
+> 어긋날 수 없다. 화면 구도(관문 위치·방향·폭 16m가 트랙에 맞는지)와 시퀀스 체감은 Play Mode 확인 필요.
 
-- [ ] 관문 폐쇄 속도·지연·처형 지연·애니메이션 시간을 `PresentationSettings`에서 읽음 — **미구현.** `FinalGate`는 `GameBalance`를 참조하지 않는다
-- [ ] 닫히는 탈출문 오브젝트 — 씬·프리팹에 관문 오브젝트 없음
-- [x] 최종 두 대에서 관문 단계 활성화 — `EliminationManager.FinalDuelStarted` → `FinalGate.OnFinalDuel`이 생존자 목록을 만들고 `IsOpen = true`
-- [ ] 첫 번째 관문 통과 차량 판정과 승리 — 판정 메서드는 있으나 **이를 호출하는 씬 트리거가 없다**
-- [ ] 승자 뒤에서 관문 즉시 폐쇄 — 미구현
-- [x] 패자 즉시 처형 — `ResolveWinner`가 승자 외 전원에 `CarExplosion.Explode()`. 다만 GDD의 `loserExecutionDelaySeconds`(0.25초) 지연은 없다
-- [ ] 관문 애니메이션과 충돌 판정 동기화 — 애니메이션 없음
-- [ ] 승리 관문 시퀀스 — 없음
-- [ ] 20초 타임아웃 시 `duelCars[0]` 자동 승리 규칙 제거 또는 정당화 — 현재는 낮은 레이스 인덱스가 무조건 이긴다
+- [x] 관문 폐쇄 속도·지연·처형 지연·애니메이션 시간을 `PresentationSettings`에서 읽음 — `gateOpenDurationSeconds`·`gateWidthMeters`·`gateHeightMeters`·`gateCloseDelaySeconds`·`gateCloseDurationSeconds`(0.75)·`gateExecutionDelaySeconds`(0.25) 신설, 검증 6줄 추가. 아무도 읽지 않던 `gateCloseSpeed`는 제거하고 컴포넌트의 `gateDurationSeconds = 20f` 리터럴도 제거
+- [ ] 닫히는 탈출문 오브젝트 — `FinalGateDoors.BuildGate`가 2엽 문짝 + 하우징을 런타임 생성. 방향은 직전 체크포인트→결승선 벡터로 산출해 체크포인트 프리팹 회전에 의존하지 않는다. **화면상 배치 미검증**
+- [x] 최종 두 대에서 관문 단계 활성화 — `EliminationManager.FinalDuelStarted` → `FinalGate.OnFinalDuel`이 생존자 목록을 만들고 `IsOpen = true`, `GateOpened` 발행
+- [x] 첫 번째 관문 통과 차량 판정과 승리 — `FinalGateCrossingTrigger`가 차량 루트를 raceIndex로 해석해 `ReportGateCrossing` 호출. 호출자가 `GMTKAutoPlaytest`뿐이던 문제 해소
+- [ ] 승자 뒤에서 관문 즉시 폐쇄 — `GateSlamming` → `gateCloseDelaySeconds` 후 `gateCloseDurationSeconds` 동안 SmoothStep 폐쇄. 문짝 콜라이더를 유지해 닫히면 실제로 막힌다. **연출 체감 미검증**
+- [x] 패자 즉시 처형 — `CloseGateThenExecute`가 문이 닫힌 뒤 `gateExecutionDelaySeconds`(0.25초) 후 처형. GDD 지연 규정 반영
+- [ ] 관문 애니메이션과 충돌 판정 동기화 — 문짝이 콜라이더를 항상 갖고 이동하므로 보이는 것과 막히는 것이 같은 지오메트리. **다만 Rigidbody 없이 transform 이동이라 밀착 시 관통 가능, Play Mode 확인 필요**
+- [ ] 승리 관문 시퀀스 — 폐쇄 → 처형 → 결과 보고 순서(총 1.2초)로 구성. 전용 카메라 프레이밍과 승리 연출은 3.13 범위로 남음
+- [x] 20초 타임아웃 시 `duelCars[0]` 자동 승리 규칙 제거 또는 정당화 — 타임아웃 시 `LeadingDuelCar()`로 실제 선두(`Race.ScoreOf` 최대)를 승자로 판정. 낮은 인덱스가 무조건 이기던 버그 수정
+- [ ] 관문 슬램 SFX — `Assets/Sound`에 음원이 없어 `SFX_VEH_COLLISION_`을 플레이스홀더로 인스펙터 노출 (3.14 범위)
 
 ### 3.5 핵심 HUD와 전용 씬
 
@@ -1077,19 +1079,21 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 **목표:** 두 대가 남은 뒤 실제 목표 지점에서 승자를 결정하는 P0 레이스를 완성한다.
 
-**진행률: 이 단계가 현재 P0의 최대 공백이다. 관문 트리거가 없어 승리 조건이 성립하지 않는다.**
+**진행률: 관문 실물·트리거·폐쇄 연출이 코드로 구현되어 승리 조건이 성립한다(Play Mode 미검증).
+남은 공백은 킷 `RaceFinish`의 랩 완주 승리 우회와 결과 화면 규정이다.**
 
 - [x] 두 대가 남으면 최종 결투 상태로 전환 — `EliminationManager.EnterFinalDuel` → `GMTKRaceState`/`FinalGate`
-- [ ] 최종 결투 전에는 일반 결승선이 승패를 발생시키지 않도록 보호 — **미착수.** 킷 `RaceFinish`가 페이즈를 확인하지 않는다
-- [ ] 첫 관문 통과 차량 승리 — **판정 메서드만 존재.** `ReportGateCrossing`을 호출하는 씬 트리거가 없어 실제로 발생하지 않는다
-- [ ] 승자 뒤 관문 폐쇄와 패자 처형 — 패자 처형은 구현, **관문 폐쇄는 오브젝트 자체가 없다**
+- [ ] 최종 결투 전에는 일반 결승선이 승패를 발생시키지 않도록 보호 — **미착수.** 킷 `RaceFinish`가 페이즈를 확인하지 않는다. 단 관문 자체는 결투 시작 시에만 생성되므로 조기 통과로 관문 승패가 발생하지는 않는다
+- [x] 첫 관문 통과 차량 승리 — `FinalGateCrossingTrigger` → `FinalGate.ReportGateCrossing`. 타임아웃 폴백도 실제 선두 판정으로 교체
+- [ ] 승자 뒤 관문 폐쇄와 패자 처형 — 폐쇄 애니메이션(0.75초) → 0.25초 후 처형까지 구현. **연출 체감 Play Mode 확인 필요**
 - [ ] 승리·패배 결과 화면 — 킷 `RaceFinishGUI`(`RaceUI/RaceFinishUI`)에 의존. GDD의 3초·5초 규정 미구현
 - [ ] 모든 런타임 상태를 초기화하는 빠른 재시작 — 각 매니저의 `RestartRaceEvent` 구독은 모두 존재하지만 킷 `RaceFinish.OnRestartRace`의 NRE로 흐름이 끊길 수 있다
 
 **1랩 구조 안전 규칙:**
 
 - 6대에서 두 대가 되려면 기본 설정 기준 네 번의 처형, 즉 최소 120초가 필요하다.
-  **단 현재 프리셋은 10초 간격이라 40초면 결투에 도달한다.**
+  `GameJamDefault.elimination.intervalSeconds`는 GDD 값 30초로 정상화되어 이 전제가 성립한다
+  (이전에는 10초로 드리프트해 40초면 결투에 도달했다).
 - [ ] 트랙 최종 진입 예상 시점을 네 번째 처형 이후로 튜닝
 - [ ] 차량이 너무 일찍 도착해도 최종 결투 전에는 관문 승패가 발생하지 않게 처리 — `FinalGate.ReportGateCrossing`은 `IsOpen` 가드로 막지만, 킷 `RaceFinish`의 랩 완주 승리는 막히지 않는다
 
@@ -1428,8 +1432,9 @@ P0 레이스가 성립하지 않게 만드는 것부터 정렬했다. 위쪽 4�
 
 **P0 차단 요소 (코드 작업)**
 
-5. 최종 관문 실물: 트랙 종단에 관문 오브젝트와 트리거를 배치하고 `FinalGate.ReportGateCrossing`을 호출한다.
-   `gateDurationSeconds` 자동 승리 폴백은 제거하거나 명시적 규칙으로 바꾼다.
+5. ~~최종 관문 실물~~ → **코드 완료 (2026-07-26).** `FinalGateDoors`가 결승선 위에 관문과 통과 트리거를
+   런타임 생성하고 `ReportGateCrossing`을 호출한다. 자동 승리 폴백은 실제 선두 판정으로 교체.
+   **남은 일: Play Mode에서 관문 위치·방향·폭(16m)과 폐쇄 시퀀스 확인.**
 6. 규칙 HUD 배치: `RaceHud`를 씬에 올리거나, 그 라벨들을 `Main UI.prefab`의 `RaceUI` 안으로 통합한다.
    최소한 처형 카운트다운·최하위 표시·부스트 충전량은 필요하다.
 7. `race.aiCount` / `race.lapCount`를 `RaceData`에 주입해 프리셋이 실제 차량 수·랩 수를 정하게 한다.
