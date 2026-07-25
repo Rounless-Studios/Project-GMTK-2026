@@ -19,6 +19,7 @@ namespace GMTK.Rccp
         private bool isPlayer;
         private bool controlsEnabled = true;
         private bool subscribedToFreeze;
+        private bool frozen;
         private RigidbodyConstraints constraintsBeforeFreeze;
 
         public override bool IsPlayer => isPlayer;
@@ -81,6 +82,11 @@ namespace GMTK.Rccp
                 Race.Events.RestartRaceEvent.AddListener(OnRestartRace);
                 subscribedToFreeze = true;
             }
+
+            // Cars are spawned when Play is clicked, but the flow still has a prologue and a countdown
+            // to show, and the freeze event that covers those was already broadcast before this vehicle
+            // existed to hear it. A car that arrives before the lights go out starts frozen instead.
+            if (!Race.IsRaceInProgress) OnToggleFreeze(true);
         }
 
         /// <summary>
@@ -145,6 +151,9 @@ namespace GMTK.Rccp
             if (carRigidbody != null)
                 carRigidbody.constraints = RigidbodyConstraints.None;
 
+            // released here rather than through the freeze path, so record it: otherwise the next
+            // pre-race freeze would be skipped as redundant and the restart grid could drive away
+            frozen = false;
             fallRespawner?.ResetTracking();
         }
 
@@ -190,13 +199,15 @@ namespace GMTK.Rccp
                 aiDriver.SetPersonalityTarget(type, player, lateralStrength, aggroRange);
         }
 
-        private void OnToggleFreeze(bool frozen)
+        private void OnToggleFreeze(bool freeze)
         {
-            if (carRigidbody == null)
+            if (carRigidbody == null || freeze == frozen)
                 return;
 
-            if (frozen)
+            if (freeze)
             {
+                // only the first freeze may record the constraints: a second one would record the
+                // frozen constraints as the originals and the car would never be released again
                 constraintsBeforeFreeze = carRigidbody.constraints;
                 carRigidbody.constraints =
                     RigidbodyConstraints.FreezePositionX |
@@ -207,6 +218,8 @@ namespace GMTK.Rccp
             {
                 carRigidbody.constraints = constraintsBeforeFreeze;
             }
+
+            frozen = freeze;
         }
     }
 }

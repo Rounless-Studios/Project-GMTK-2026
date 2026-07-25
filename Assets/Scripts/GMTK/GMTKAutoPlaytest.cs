@@ -33,7 +33,42 @@ namespace GMTK
         private RaceFinishType finishType;
         private bool finalDuelStarted;
 
+        private GameBalanceSettings previousPreset;
+        private int previousAiBots;
+        private int previousLaps;
+        private bool editorStateCaptured;
+
         private void Start() => StartCoroutine(Run());
+
+        /// <summary>
+        /// Play-mode domain reloads are off in this project, so the balance preset and RaceData are
+        /// statics that outlive the run. Restoring at the end of the coroutine is not enough — leaving
+        /// play mode, a recompile or any abort would skip it and leave FastTest active, which executes
+        /// a car every three seconds in the next ordinary playtest. Restore on teardown as well.
+        /// </summary>
+        private void OnDestroy() => RestoreEditorState();
+
+        private void CaptureEditorState()
+        {
+            if (editorStateCaptured) return;
+
+            previousPreset = GameBalance.Active;
+            previousAiBots = RaceData.AiBotsSelected;
+            previousLaps = RaceData.LapsSelected;
+            editorStateCaptured = true;
+        }
+
+        private void RestoreEditorState()
+        {
+            if (!editorStateCaptured) return;
+            editorStateCaptured = false;
+
+            GameBalance.EndRace();
+            if (previousPreset != null) GameBalance.SetActive(previousPreset);
+            else GameBalance.Load(GameBalance.DefaultPresetName);
+            RaceData.AiBotsSelected = previousAiBots;
+            RaceData.LapsSelected = previousLaps;
+        }
 
         private void OnDuel() => finalDuelStarted = true;
 
@@ -53,10 +88,8 @@ namespace GMTK
             if (events == null) { Debug.LogError(Tag + " FAIL | no GameEvents"); LastResult = "FAIL | no GameEvents"; yield break; }
 
             // deterministic, fast run: FastTest preset (short elimination interval) + no random events.
-            // The editor keeps play-mode domain reloads off, so the active preset is a static that
-            // survives into the next session: leaving FastTest behind would execute a car every three
-            // seconds in someone's ordinary playtest. Put the original back when this run ends.
-            GameBalanceSettings previousPreset = GameBalance.Active;
+            // See OnDestroy for why the previous state is captured before anything is overwritten.
+            CaptureEditorState();
             var preset = GameBalance.Load("FastTest");
             Check("FastTest preset loaded", preset != null);
             var eventMgr = Object.FindAnyObjectByType<RandomEventManager>();
@@ -66,8 +99,6 @@ namespace GMTK
             EliminationManager.FinalDuelStarted += OnDuel;
 
             // same static-leak problem as the preset: the menu only writes these when someone opens it
-            int previousAiBots = RaceData.AiBotsSelected;
-            int previousLaps = RaceData.LapsSelected;
             RaceData.AiBotsSelected = aiCount;
             RaceData.LapsSelected = laps;
 
@@ -171,12 +202,8 @@ namespace GMTK
             EliminationManager.FinalDuelStarted -= OnDuel;
             events.RaceFinishedEvent.RemoveListener(OnFinished);
 
-            // hand the editor back the balance it had: see the note at the FastTest load above
-            GameBalance.EndRace();
-            if (previousPreset != null) GameBalance.SetActive(previousPreset);
-            else GameBalance.Load(GameBalance.DefaultPresetName);
-            RaceData.AiBotsSelected = previousAiBots;
-            RaceData.LapsSelected = previousLaps;
+            // hand the editor back the balance it had; OnDestroy repeats this if a run never gets here
+            RestoreEditorState();
 
             LastResult = (pass ? "PASS" : "FAIL") + " | " + sb;
             Debug.Log(Tag + " " + LastResult);
