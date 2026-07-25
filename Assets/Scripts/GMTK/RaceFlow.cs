@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
+using Gmtk2026.GameBalance;
 using Gmtk2026.Quiz;
 using SpinMotion;
 
@@ -37,6 +38,7 @@ namespace GMTK
         private QuizSessionController quiz;
         private StartMenuCanvas sceneMenu;
         private GameEvents gameEvents;
+        private Coroutine gameEventsFlow;
         private bool started;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -99,28 +101,61 @@ namespace GMTK
         private void SubscribeToGameEvents()
         {
             if (gameEvents == null) return;
+
+            UnsubscribeFromGameEvents();
             gameEvents.OnClickPlayRaceEvent.AddListener(OnGameEventsPlayRace);
+            gameEvents.PlayPreRaceCountdownEvent.AddListener(OnGameEventsRestartCountdown);
             gameEvents.RaceStartedEvent.AddListener(OnGameEventsRaceStarted);
+            gameEvents.RaceFinishedEvent.AddListener(OnGameEventsRaceFinished);
+            gameEvents.RestartRaceEvent.AddListener(OnGameEventsRestart);
         }
 
         private void UnsubscribeFromGameEvents()
         {
             if (gameEvents == null) return;
             gameEvents.OnClickPlayRaceEvent.RemoveListener(OnGameEventsPlayRace);
+            gameEvents.PlayPreRaceCountdownEvent.RemoveListener(OnGameEventsRestartCountdown);
             gameEvents.RaceStartedEvent.RemoveListener(OnGameEventsRaceStarted);
+            gameEvents.RaceFinishedEvent.RemoveListener(OnGameEventsRaceFinished);
+            gameEvents.RestartRaceEvent.RemoveListener(OnGameEventsRestart);
         }
 
         private void OnGameEventsPlayRace()
         {
             if (started) return;
             started = true;
-            StartCoroutine(RunGameEventsPreRace());
+            gameEventsFlow = StartCoroutine(RunGameEventsPreRace());
         }
 
         private void OnGameEventsRaceStarted()
         {
             if (!OwnsGameEventsStart || CurrentPhase == Phase.Racing) return;
             SetPhase(Phase.Racing);
+        }
+
+        private void OnGameEventsRaceFinished(RaceFinishType _)
+        {
+            SetPhase(Phase.Finished);
+            if (quiz != null) quiz.enabled = false;
+        }
+
+        private void OnGameEventsRestart()
+        {
+            Time.timeScale = 1f;
+            if (gameEventsFlow != null)
+            {
+                StopCoroutine(gameEventsFlow);
+                gameEventsFlow = null;
+            }
+
+            if (quiz != null) quiz.enabled = false;
+        }
+
+        private void OnGameEventsRestartCountdown()
+        {
+            if (!OwnsGameEventsStart) return;
+            if (gameEventsFlow != null) StopCoroutine(gameEventsFlow);
+            gameEventsFlow = StartCoroutine(RunGameEventsCountdown(true));
         }
 
         private IEnumerator RunGameEventsPreRace()
@@ -130,14 +165,34 @@ namespace GMTK
                 statusText.text = "THE GATES OF HELL ARE OPEN...\n\nTHE LAST CAR IS EXECUTED EVERY 30 SECONDS.\nSOLVE QUIZZES WHILE DRIVING AND CAST CURSES.";
             yield return new WaitForSecondsRealtime(prologueSeconds);
 
+            yield return RunGameEventsCountdown(false);
+        }
+
+        private IEnumerator RunGameEventsCountdown(bool isRestart)
+        {
+            float duration = countdownSeconds;
+            if (isRestart)
+            {
+                // The setting is a maximum from result screen to restored control. A shorter
+                // authored countdown is preserved; a longer one is capped by the preset.
+                duration = Mathf.Min(duration, GameBalance.Current.result.restartToControlMaxSeconds);
+            }
+
             SetPhase(Phase.Countdown);
             gameEvents.ToggleCarFreezeEvent.Invoke(true);
-            int seconds = Mathf.Max(1, Mathf.RoundToInt(countdownSeconds));
-            GameAudioManager.Instance?.PlayCountdownTick();
-            for (int remaining = seconds; remaining > 0; remaining--)
+            float countdownEnd = Time.realtimeSinceStartup + duration;
+            int displayedSecond = -1;
+            while (Time.realtimeSinceStartup < countdownEnd)
             {
-                if (countdownText != null) countdownText.text = remaining.ToString();
-                yield return new WaitForSecondsRealtime(1f);
+                int remaining = Mathf.Max(1, Mathf.CeilToInt(countdownEnd - Time.realtimeSinceStartup));
+                if (remaining != displayedSecond)
+                {
+                    displayedSecond = remaining;
+                    if (countdownText != null) countdownText.text = remaining.ToString();
+                    GameAudioManager.Instance?.PlayCountdownTick();
+                }
+
+                yield return null;
             }
 
             if (countdownText != null) countdownText.text = "GO!";
@@ -165,6 +220,7 @@ namespace GMTK
             }
             yield return new WaitForSecondsRealtime(0.45f);
             if (countdownPanel != null) countdownPanel.SetActive(false);
+            gameEventsFlow = null;
         }
 
         private void HideSceneUi()

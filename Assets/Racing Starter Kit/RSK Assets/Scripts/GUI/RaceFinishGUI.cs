@@ -19,9 +19,24 @@ namespace SpinMotion
 
         private void Awake()
         {
+            // GameEvents is a ScriptableObject and may retain runtime listeners when the
+            // editor enters Play Mode without a domain reload. Keep exactly one UI callback.
+            gameEvents.RaceFinishedEvent.RemoveListener(OnRaceFinished);
+            raceFinishRestartButton.onClick.RemoveListener(OnClickRestart);
+            raceFinishContinueButton.onClick.RemoveListener(OnClickContinue);
             gameEvents.RaceFinishedEvent.AddListener(OnRaceFinished);
             raceFinishRestartButton.onClick.AddListener(OnClickRestart);
             raceFinishContinueButton.onClick.AddListener(OnClickContinue);
+        }
+
+        private void OnDestroy()
+        {
+            if (gameEvents != null)
+                gameEvents.RaceFinishedEvent.RemoveListener(OnRaceFinished);
+            if (raceFinishRestartButton != null)
+                raceFinishRestartButton.onClick.RemoveListener(OnClickRestart);
+            if (raceFinishContinueButton != null)
+                raceFinishContinueButton.onClick.RemoveListener(OnClickContinue);
         }
 
         private void OnRaceFinished(RaceFinishType raceFinishType)

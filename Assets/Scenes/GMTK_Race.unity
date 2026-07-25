@@ -94464,7 +94464,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1036091274}
-  - component: {fileID: 1036091277}
   - component: {fileID: 1036091276}
   - component: {fileID: 1036091275}
   m_Layer: 0
@@ -94546,27 +94545,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1036091273}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!114 &1036091277
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1036091273}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f022510bdfeeea443ad82d744fecbf69, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gameEvents: {fileID: 11400000, guid: 53a3a1c43dafc4df88b337434e1a6d28, type: 2}
-  realTimeRacePositions: {fileID: 11400000, guid: ac4d5670576bd4412bc6b20e952b7af9,
-    type: 2}
-  normalCheckpointRenderer: {fileID: 1726806406}
-  normalCheckpointVisuals:
-  - {fileID: 696492662}
-  finishCheckpointVisuals:
-  - {fileID: 1134100782}
-  - {fileID: 1302749204}
 --- !u!1 &1036349595
 GameObject:
   m_ObjectHideFlags: 0

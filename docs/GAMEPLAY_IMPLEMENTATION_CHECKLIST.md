@@ -125,7 +125,7 @@ GDD의 네 유형과 1:1로 대응하되 명칭과 행동 정의는 프로젝트
 - [ ] MonoBehaviour와 프리팹에 동일 수치를 중복 직렬화하지 않음 — **미완.** 중복·독립 직렬화 확인: `EliminationManager.explosionForce/upwardForce/explosionRadius`(public 필드), `CarExplosion` 12개 필드, `RandomEventManager` 전체, `FinalGate.gateDurationSeconds`, `ExecutionCctvDirector.followOffset/targetOffset/fieldOfView`, `AIPersonality`의 성격별 speedMultiplier 4개, `RaceFlow.prologueSeconds/countdownSeconds`, `QuizSessionController.feedbackDurationSeconds`, `GmtkRccpVehicle.boostAcceleration`
 - [ ] 정적 상수, 메서드 내부 리터럴, 코루틴 대기시간에 밸런스 숫자를 직접 작성하지 않음 — **미완.** `ProceduralQuizQuestionSource`의 문제 제한시간 리터럴(`3f`/`4f`/`5f`), `CurseManager.HidePenaltyFeedbackAfterDelay`의 `WaitForSecondsRealtime(2.5f)`, `RaceFlow`의 `WaitForSecondsRealtime(0.45f)`·`ConfigureFeedbackDuration(1.8f)`, `StartMenuCanvas`의 게이지 상수 4개, `ExecutionCctvDirector.HideBeforeWreckVanishes = 0.1f`
 - [x] 테스트도 숫자를 다시 하드코딩하지 않고 테스트 프리셋 또는 설정 스냅샷을 사용 — 상태 클래스 테스트가 설정 객체를 생성해 주입
-- [ ] 설정값 변경이 재시작 후 새 레이스에 반영되고 코드 재컴파일은 요구하지 않음 — 스냅샷 구조상 성립하지만 **Play Mode 미검증**. 재시작 경로에 별건 결함 있음(아래 `RaceFinish.finishTrigger` 항목)
+- [ ] 설정값 변경이 재시작 후 새 레이스에 반영되고 코드 재컴파일은 요구하지 않음 — 재시작 시 기존 스냅샷을 해제하고 새 `RaceStartedEvent`에서 다시 생성하도록 연결. **Play Mode 미검증**
 - [x] 빌드에서도 Resources 또는 명시적 프리셋 참조를 통해 설정을 로드 — `GameBalance.Load()`가 `Resources.Load<GameBalanceSettings>("GameBalance/" + name)` 사용. 프리셋이 `Assets/GameBalance/Resources/GameBalance/` 아래에 있어 빌드에 포함됨
 - [x] 설정 누락 시 조용히 임의 기본값을 만들지 않고 명확한 검증 오류 출력 — `Load()`가 프리셋 부재 시 `LogError`, 검증 실패 시 필드명이 담긴 `LogError`, `OnValidate()`가 `LogWarning`
 
@@ -154,8 +154,8 @@ GDD의 네 유형과 1:1로 대응하되 명칭과 행동 정의는 프로젝트
 | Elimination | `intenseWarningSeconds` | 5 | 5 | 사용 |
 | Elimination | `executionCameraLeadSeconds` | 3 | 3 | 사용 |
 | Elimination | `executeAtRemainingSeconds` | 0 | 0 | **선언만** (0초 판정이 `Update` 타이머에 내장) |
-| Result | `playerDeathCinematicMaxSeconds` | 3 | 3 | **선언만** |
-| Result | `restartToControlMaxSeconds` | 5 | 5 | **선언만** |
+| Result | `playerDeathCinematicMaxSeconds` | 3 | 3 | 플레이어 처형 직후 중앙 결과 이벤트를 즉시 발행하므로 0초로 상한 이내. **Play Mode 미검증** |
+| Result | `restartToControlMaxSeconds` | 5 | 5 | `RaceFlow.RunGameEventsCountdown(true)`가 재시작 카운트다운을 이 값 이하로 제한 |
 | Quiz | `answerTimeSeconds` | 4 | 4 | **선언만** (실제 제한시간은 `ProceduralQuizQuestionSource` 리터럴 3/4/5초) — 방어형 흐름에서는 이 값이 곧 **방어 제한시간**이다 |
 | Quiz | `minimumAnswerCount` | 2 | 2 | **선언만** |
 | Quiz | `maximumAnswerCount` | 3 | 3 | **선언만** (실제 보기 수 4~5개) |
@@ -278,7 +278,7 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 | 설정 시스템 (`GameBalanceSettings` 14그룹 + 프리셋 2종 + 스냅샷 공급) | 구현 | `Assets/GameBalance/Runtime/GameBalanceSettings.cs`(396줄), `GameBalance.cs`, `Assets/GameBalance/Resources/GameBalance/{GameJamDefault,FastTest}.asset` | 정적 |
 | 설정 소비 커버리지 | **부분** | 위 카탈로그 표의 "선언만" 항목 다수 (퀴즈·랩 수·AI 성격 프로필·관문·특수 이벤트·오디오·추월 속박) | 정적 |
 | 레이스 상태 흐름 (`Boot→PreRace→Countdown→Racing→FinalDuel→Finished`) | 구현 | `GMTKRaceState.cs`(`RacePhase` 6단계), `RaceFlow.cs`(`Phase` 5단계 → 매핑), `RaceBootstrap.cs`, `GMTKGameMode.cs` | 정적 |
-| 승패 판정 단일화 | **미완** | 킷 `RaceFinish`가 `GMTK_Race`에 그대로 배치되어 랩 완주 시 독립적으로 `RaceFinishedEvent(Win/Lose)`를 던진다 | 정적 |
+| 승패 판정 단일화 | 코드 구현·플레이 미검증 | `GMTKRaceState.ReportResult`가 첫 결과만 확정하고 이벤트 버스로 전달. `EliminationManager`·`FinalGate`·타임아웃이 이 경로를 사용하며 씬의 킷 `RaceFinish`는 제거됨 | 정적 |
 | 체크포인트·순위·랩 | 구현 (킷 인프라 유지) | 킷 `Checkpoints`/`CheckpointTracker`/`RealTimeRacePositions` + `Race.cs` 어댑터. 씬에 `Checkpoint` 컴포넌트 **467개** | 정적 |
 | 주행 진행도 측정 (경로 arc-length) | 1단계 — 측정·비교만, 순위 공급은 아직 체크포인트 | `TrackProgress.cs`, `GmtkRaceProgress.cs` | 테스트 |
 | 탈락 (설정 간격 최하위 처형, 경고 3단, 0초 재판정, 두 대에서 중단) | 구현 | `EliminationManager.cs`(263줄), `CarExplosion.cs`, `EliminationSettings` | 정적 |
@@ -333,10 +333,9 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
    컴포넌트 2개, 그중 1개는 참조 미배선)를 `RaceTrackAuthoring.BuildCheckpoints`에서 고쳤으나, 이미
    베이크된 씬은 고쳐지지 않는다. 현재 씬은 게이트 467개에 컴포넌트 934개·미배선 467개로, **매 프레임
    NRE가 나고 랩 판정용 게이트 수가 2배로 집계된다.** 씬 소유자가 **Bake Track**을 한 번 눌러야 해소된다.
-2. **킷 `RaceFinish`가 `GMTK_Race`에 남아 있다.** 랩 완주 시 중앙 관리자를 우회해 승패를 확정한다.
-   추가로 `RaceFinish.finishTrigger`는 **어디에서도 대입되지 않는데** `OnRestartRace()`에서
-   `finishTrigger.enabled = false`를 호출하므로 **재시작 시 NullReferenceException이 난다.**
-   서드파티 폴더라 직접 수정 금지 대상 — 컴포넌트를 씬에서 제거하거나 GMTK 어댑터로 대체해야 한다.
+2. ~~킷 `RaceFinish`의 독립 승패와 재시작 NRE~~ — **코드 해결·Play Mode 미검증.**
+   `GMTK_Race`에서 컴포넌트를 제거하고 `GMTKRaceState.ReportResult`로 결과를 단일화했다.
+   서드파티 `RaceFinish.cs`는 수정하지 않고 씬 배치만 제거했다.
 3. **`RaceHud`가 어디에도 배치되지 않았다.** 처형 카운트다운·최하위 경고·부스트·저주·추월·관문
    상태가 화면에 전혀 표시되지 않는다.
 4. **`GameJamDefault.maximumDurability = 1000000`** — 대파를 미루기 위한 임시값. 최종 밸런스 값은
@@ -433,7 +432,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 ### 2.1 레이스 설정
 
 실제 차량 수·랩 수는 `GameBalanceSettings`가 아니라 **킷 선택 UI**에서 온다.
-`GmtkRccpPlayersSpawner`는 `RaceData.AiBotsSelected`를, 킷 `RaceFinish`는 `RaceData.LapsSelected`를 읽고,
+`GmtkRccpPlayersSpawner`는 `RaceData.AiBotsSelected`를 읽고, 랩 선택값은 여전히 킷 체크포인트 인프라가 사용하며,
 그 값은 `Main UI.prefab`의 `BotSelectorGUI.defaultQuantity = 5` / `LapSelectorGUI.defaultQuantity = 1`이 정한다.
 
 - [x] 플레이어 1대와 AI 5대로 변경 — `BotSelectorGUI.defaultQuantity: 5` (프리팹 실물 확인). 그리드 스폰 포인트 8개로 수용 가능
@@ -442,7 +441,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [ ] 스폰·랩 수가 `RaceSettings`를 실제로 참조하도록 연결 — **미완.** 현재 `race.aiCount` / `race.lapCount`는 선언만 되어 있어, 프리셋만 바꿔서는 차량 수·랩 수가 변하지 않는다
 - [ ] 문서에 등장하는 모든 런타임·밸런스·연출 수치를 `GameBalanceSettings`로 이전 — 위 카탈로그 표의 "선언만"/"미구현" 항목 잔존
 - [ ] 게임 잼 빌드에서 레이스 설정 선택 UI 숨김 — `Bot Selector GUI` / `Lap Selector GUI`가 `Main UI.prefab`에 그대로 노출
-- [ ] 재시작 후에도 같은 설정 유지 — 스냅샷 구조상 성립하지만 재시작 경로에 `RaceFinish.finishTrigger` NRE 결함이 있어 미검증
+- [ ] 재시작 후에도 같은 설정 유지 — `GMTKRaceState.OnRestart`가 스냅샷을 해제하고 다음 출발에서 재생성. **Play Mode 미검증**
 
 ### 2.2 조작감과 드리프트
 
@@ -473,7 +472,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [x] 0초에 최신 순위 재검증 후 최하위 처형 — `EliminateLastPlace()`가 `FindLastPlace()`를 다시 호출한 뒤 `LockedEliminationIndex`를 확정
 - [x] 두 대가 남으면 탈락 중단 — `ActiveCarCount <= FinalDuelCount`에서 `EnterFinalDuel()`, `armed = false`
 - [x] 두 대가 남으면 최종 관문 단계로 전환 — `FinalDuelStarted` → `GMTKRaceState`가 `RacePhase.FinalDuel`, `FinalGate.OnFinalDuel`
-- [x] 한 대만 남았을 때 자동 승리하는 기존 규칙 제거 — `EliminationManager`에 자동 승리 경로 없음. 단 킷 `RaceFinish`의 랩 완주 승리 경로는 아직 살아 있음(2.7 참조)
+- [x] 한 대만 남았을 때 자동 승리하는 기존 규칙 제거 — `EliminationManager`에 자동 승리 경로가 없고 씬의 킷 `RaceFinish`도 제거됨
 
 ### 2.4 순위와 진행도
 
@@ -534,12 +533,12 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 ### 2.7 승패·재시작·특수 이벤트
 
-- [ ] 기본 랩 완주 승리를 관문 통과 승리로 변경 — **미완.** 킷 `RaceFinish`가 `GMTK_Race`에 배치된 채 `OnLapCompleted`에서 `RaceFinishedEvent(Win/Lose)`를 던진다
-- [ ] 중앙 레이스 관리자만 승패 판정 — **미완.** 승패를 던지는 지점이 3곳(`EliminationManager.FinishRace`, `FinalGate.ResolveWinner`, 킷 `RaceFinish`)
-- [ ] 플레이어 폭발 후 3초 이내 패배 화면 — `result.playerDeathCinematicMaxSeconds` 미참조, 지연 연출 없음
-- [ ] 패배부터 재조작까지 5초 이내 유지 — `result.restartToControlMaxSeconds` 미참조
-- [ ] 재시작 시 차량·AI·타이머·퀴즈·저주·도전·관문 초기화 — `RestartRaceEvent` 구독자는 `EliminationManager.ReviveAllCars` / `BoostManager` / `DurabilityManager` / `CurseManager.EnsureControllers` / `OvertakeManager.OnRaceStarted` / `FinalGate.ResetGate` / `RandomEventManager.ClearAll` / `GmtkRccpPlayersSpawner.OnRestartRace` / `ExecutionCctvDirector.HideImmediately`로 **모두 존재**하지만, 아래 결함 때문에 흐름이 끊길 수 있어 미검증
-- [ ] `RaceFinish`의 Finish Trigger 참조 안전성 검증 — **결함 확인.** `RaceFinish.finishTrigger`는 `private Collider`로 선언만 되고 **어디에서도 대입되지 않는데** `OnRestartRace()`가 `finishTrigger.enabled = false`를 호출한다 → 재시작 시 NullReferenceException. 서드파티 폴더이므로 직접 수정 금지, 씬에서 컴포넌트를 제거하거나 GMTK 어댑터로 대체할 것
+- [ ] 기본 랩 완주 승리를 관문 통과 승리로 변경 — 씬의 킷 `RaceFinish`를 제거해 랩 완주 결과 경로 차단. **Play Mode 미검증**
+- [ ] 중앙 레이스 관리자만 승패 판정 — `EliminationManager`와 `FinalGate`가 `GMTKRaceState.ReportResult`를 호출하고 타임아웃도 중앙에서 변환. 첫 결과만 확정한다. **Play Mode 미검증**
+- [ ] 플레이어 폭발 후 3초 이내 패배 화면 — 처형 직후 중앙 `RaceFinishedEvent`를 즉시 발행해 기존 `RaceFinishGUI`를 표시. 코드상 0초로 상한 이내, **Play Mode 미검증**
+- [ ] 패배부터 재조작까지 5초 이내 유지 — `RaceFlow`가 재시작 카운트다운을 `restartToControlMaxSeconds` 이하로 제한. **Play Mode 미검증**
+- [ ] 재시작 시 차량·AI·타이머·퀴즈·저주·도전·관문 초기화 — 기존 `RestartRaceEvent` 구독자에 더해 `RaceFlow`가 전용 재시작 카운트다운과 퀴즈 재활성화를 담당. **Play Mode 미검증**
+- [ ] `RaceFinish`의 Finish Trigger 참조 안전성 검증 — 결함 컴포넌트를 `GMTK_Race`에서 제거해 `finishTrigger.enabled` NRE 경로 자체를 없앰. **Play Mode 미검증**
 - [ ] 현재 `RandomEventManager`를 설정 기반 `SpecialEventDirector`로 리팩터링 — 미착수
 - [ ] 기존 지진과 운석 로직은 재사용 가능한 부분만 유지 — 현재 지진은 **위 방향** `VelocityChange`(4~7) + 랜덤 2로 차를 띄우고, 운석은 물리 상자를 위에서 떨어뜨린다. GDD의 횡방향 흔들림·경고 반경 피해와 형태가 다르다
 - [ ] 덤프트럭 습격 이벤트 추가 — 미착수
@@ -561,7 +560,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [x] 저주 쿨다운 12초를 `GameJamDefault`에 저장 — `sharedCooldownSeconds: 12`, `CurseCooldownState`가 소비
 - [x] 부스트 2칸·1.25초 지속·6초 재충전을 `GameJamDefault`에 저장 — 세 값 모두 저장·소비 확인
 - [x] 부팅 → 메뉴 → 인트로 → 출발 → 탈락 → 최종 결투 → 승패 → 결과 상태 흐름 — `RacePhase` 6단계 (`GMTKRaceState`), `RaceFlow.Phase` 5단계를 매핑
-- [ ] 상태 전환 권한을 중앙 레이스 관리자에 집중 — 상태 전환 자체는 `GMTKRaceState`가 단독으로 하지만, **승패 확정 지점이 3곳**이라 결과 판정 권한은 집중되지 않았다 (2.7 참조)
+- [ ] 상태 전환 권한을 중앙 레이스 관리자에 집중 — `GMTKRaceState.ReportResult`가 최초 결과만 확정하고 `RaceFinishedEvent`를 발행하도록 코드 단일화. **Play Mode 미검증**
 
 ### 3.2 부스트
 
@@ -588,7 +587,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [x] 처형 CCTV를 약 1/3 크기로 표시 — `w .34 / h .34`
 - [x] 메인 플레이어 화면에서 계속 조작 가능 — 입력·차량 제어를 건드리는 코드가 없다 (Play Mode 확인 필요)
 - [x] 처형 종료 후 CCTV가 닫히고 플레이어 화면 유지 — `CarEliminated` → `wreckLingerSeconds - 0.1s` 후 축소 애니메이션 → `CompleteHide`에서 원본 rect/depth 복원
-- [ ] 플레이어 자신이 대상일 때 패배 연출로 전환 — `EliminationManager`가 `index 0` 처형 시 `RaceFinishType.Lose`를 즉시 던지지만, 3초 이내 패배 화면 등 **연출 규정(`result` 설정)은 미구현**
+- [ ] 플레이어 자신이 대상일 때 패배 연출로 전환 — 처형 직후 `GMTKRaceState.ReportResult(Lose)`가 기존 결과 UI를 즉시 표시해 3초 상한을 만족하도록 연결. **Play Mode 미검증**
 - [ ] 복수 카메라 렌더링의 WebGL 성능 확인 — 미검증
 
 ### 3.4 최종 관문
@@ -1041,14 +1040,14 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [ ] 체크포인트 구간 진행 거리를 포함한 공용 진행도 구현 — 킷 `RacePositionTotalScores`를 `Race.ScoreOf()`로 공유하는 형태. 구간 내 보간 정밀화는 미확인
 - [ ] 동률 안정화와 탈락 차량 제외 — 탈락 제외는 구현, **동률 안정화는 없음**
 - [x] 레이스 최상위 상태 흐름 구현 — `GMTKRaceState` + `RacePhase` 6단계
-- [ ] 기존 `RaceFinish`의 독립 승패 판정 제거 또는 어댑터화 — **미착수.** 씬에 그대로 있고 `finishTrigger` NRE 결함도 남아 있다
-- [ ] 개별 차량이 승리·패배·탈락을 결정하지 못하게 제한 — 차량 컴포넌트는 결정하지 않는다. 다만 승패 확정 지점이 3곳
+- [ ] 기존 `RaceFinish`의 독립 승패 판정 제거 또는 어댑터화 — 씬 컴포넌트 제거 및 중앙 결과 게이트 구현. **Play Mode 미검증**
+- [ ] 개별 차량이 승리·패배·탈락을 결정하지 못하게 제한 — 결과 확정은 `GMTKRaceState.ReportResult` 한 곳이며 첫 결과만 수락. **Play Mode 미검증**
 
 **완료 조건:**
 
 - [x] 순위표와 모든 규칙 시스템이 같은 진행도 사용 — `Race.ScoreOf()` 단일 경로 확인
 - [ ] 순위가 근접 상황에서 빠르게 깜빡이지 않음 — 타이브레이크 없음
-- [ ] 승패 판정 진입점이 중앙 레이스 관리자 하나로 제한됨 — 3곳
+- [ ] 승패 판정 진입점이 중앙 레이스 관리자 하나로 제한됨 — 코드상 `GMTKRaceState.ReportResult`로 단일화, **Play Mode 미검증**
 
 **필수 검증:**
 
@@ -1087,15 +1086,15 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 **목표:** 두 대가 남은 뒤 실제 목표 지점에서 승자를 결정하는 P0 레이스를 완성한다.
 
-**진행률: 관문 실물·트리거·폐쇄 연출이 코드로 구현되어 승리 조건이 성립한다(Play Mode 미검증).
-남은 공백은 킷 `RaceFinish`의 랩 완주 승리 우회와 결과 화면 규정이다.**
+**진행률: 관문 실물·트리거·폐쇄 연출과 중앙 결과·재시작 경로가 코드로 구현되었다.
+기존 결과 UI 연결도 유지되며 전체 흐름은 Play Mode 미검증이다.**
 
 - [x] 두 대가 남으면 최종 결투 상태로 전환 — `EliminationManager.EnterFinalDuel` → `GMTKRaceState`/`FinalGate`
-- [ ] 최종 결투 전에는 일반 결승선이 승패를 발생시키지 않도록 보호 — **미착수.** 킷 `RaceFinish`가 페이즈를 확인하지 않는다. 단 관문 자체는 결투 시작 시에만 생성되므로 조기 통과로 관문 승패가 발생하지는 않는다
+- [ ] 최종 결투 전에는 일반 결승선이 승패를 발생시키지 않도록 보호 — 씬의 킷 `RaceFinish` 제거로 일반 랩 완주 결과 경로 차단. **Play Mode 미검증**
 - [x] 첫 관문 통과 차량 승리 — `FinalGateCrossingTrigger` → `FinalGate.ReportGateCrossing`. 타임아웃 폴백도 실제 선두 판정으로 교체
 - [ ] 승자 뒤 관문 폐쇄와 패자 처형 — 폐쇄 애니메이션(0.75초) → 0.25초 후 처형까지 구현. **연출 체감 Play Mode 확인 필요**
-- [ ] 승리·패배 결과 화면 — 킷 `RaceFinishGUI`(`RaceUI/RaceFinishUI`)에 의존. GDD의 3초·5초 규정 미구현
-- [ ] 모든 런타임 상태를 초기화하는 빠른 재시작 — 각 매니저의 `RestartRaceEvent` 구독은 모두 존재하지만 킷 `RaceFinish.OnRestartRace`의 NRE로 흐름이 끊길 수 있다
+- [ ] 승리·패배 결과 화면 — 중앙 결과 이벤트가 `RaceFinishGUI`(`RaceUI/RaceFinishUI`)를 구동하며 플레이어 처형 결과는 즉시 표시. **Play Mode 미검증**
+- [ ] 모든 런타임 상태를 초기화하는 빠른 재시작 — `RaceFinish` NRE 경로 제거, 상태 스냅샷 해제, 전용 재시작 카운트다운과 기존 매니저 초기화 연결. **Play Mode 미검증**
 
 **1랩 구조 안전 규칙:**
 
@@ -1103,7 +1102,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
   `GameJamDefault.elimination.intervalSeconds`는 GDD 값 30초로 정상화되어 이 전제가 성립한다
   (이전에는 10초로 드리프트해 40초면 결투에 도달했다).
 - [ ] 트랙 최종 진입 예상 시점을 네 번째 처형 이후로 튜닝
-- [ ] 차량이 너무 일찍 도착해도 최종 결투 전에는 관문 승패가 발생하지 않게 처리 — `FinalGate.ReportGateCrossing`은 `IsOpen` 가드로 막지만, 킷 `RaceFinish`의 랩 완주 승리는 막히지 않는다
+- [ ] 차량이 너무 일찍 도착해도 최종 결투 전에는 관문 승패가 발생하지 않게 처리 — `FinalGate.ReportGateCrossing`의 `IsOpen` 가드 + 씬의 킷 `RaceFinish` 제거. **Play Mode 미검증**
 
 **완료 조건:**
 
@@ -1308,8 +1307,8 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 구현 상태는 오른쪽에 병기했다.
 
 - [x] 1랩, 플레이어 1대와 AI 5대의 총 6대 구성 — 구현 (킷 선택 UI 기본값 경로)
-- [x] 30초마다 최하위 처형, 두 대에서 탈락 중단 — 규칙 구현. 프리셋 값이 10초
-- [x] 최종 두 대의 닫히는 관문 결투 — **규칙만.** 관문 오브젝트·트리거 없음
+- [x] 30초마다 최하위 처형, 두 대에서 탈락 중단 — 규칙 구현. `GameJamDefault` 프리셋 30초
+- [x] 최종 두 대의 닫히는 관문 결투 — `FinalGateDoors`가 런타임 관문·트리거·폐쇄 연출을 생성. **Play Mode 미검증**
 - [x] 기본 드리프트와 부스트를 포함한 아케이드 조작 — 부스트만 구현, 드리프트 미착수
 - [x] 내구도 0은 직접 탈락이 아닌 대파 — 구현. 프리셋 값 때문에 발동하지 않음
 - [x] 파열·엔진 봉인·영혼 교환 3종 — 구현 (영혼 교환 안전 조건 미완)
@@ -1388,8 +1387,8 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 ## 9. MVP 완료 조건
 
-- [ ] 메뉴부터 결과 화면까지 개발자 개입 없이 진행 — 관문 승리가 발생하지 않아 결과까지 도달 경로가 불완전
-- [ ] 레이스가 안정적으로 3~5분 진행 — 현재 프리셋 기준 40초면 결투 도달
+- [ ] 메뉴부터 결과 화면까지 개발자 개입 없이 진행 — 관문 → 중앙 결과 → 기존 결과 UI 코드 경로 연결 완료. **Play Mode 미검증**
+- [ ] 레이스가 안정적으로 3~5분 진행 — 현재 프리셋 기준 네 번의 처형으로 최소 120초에 결투 도달, 목표 하한 180초까지 튜닝 필요
 - [ ] 플레이어 1대와 AI 5대가 정상 레이스 — 구성은 맞음, Play Mode 미검증
 - [ ] 30초마다 현재 최하위 차량 처형 — 규칙 구현, 프리셋 값 10초
 - [ ] 충돌·리셋·영혼 교환 중에도 순위와 탈락 판정 신뢰 가능 — 영혼 교환이 월드 좌표를 맞바꿔 트랙 진행도 기준 교환이 아니다
@@ -1399,10 +1398,10 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [ ] 추월 도전 성공과 실패 모두 정상 처리 — 실패 감속 미연결
 - [ ] 덤프트럭·지진·운석 특수 이벤트가 사전 경고와 함께 정상 발생 — 미착수
 - [ ] 특수 이벤트가 처형·퀴즈·추월 도전·최종 결투 가독성을 방해하지 않음 — 차단 규칙 없음
-- [ ] 두 대가 남으면 닫히는 관문 질주로 전환 — 상태 전환은 되지만 관문 오브젝트가 없다
-- [ ] 관문을 먼저 통과한 차량만 승리 — **트리거 없음 + 킷 `RaceFinish` 랩 완주 승리 잔존**
-- [ ] 승리와 패배가 시각적·기계적으로 명확 — 킷 결과 UI 의존, 규정 시간 미구현
-- [ ] 재시작이 빠르고 이전 상태가 남지 않음 — `RaceFinish.finishTrigger` NRE 위험
+- [ ] 두 대가 남으면 닫히는 관문 질주로 전환 — 상태·런타임 관문·트리거 구현, **Play Mode 미검증**
+- [ ] 관문을 먼저 통과한 차량만 승리 — 관문 트리거와 중앙 결과 경로 구현, 킷 랩 완주 결과 제거. **Play Mode 미검증**
+- [ ] 승리와 패배가 시각적·기계적으로 명확 — 중앙 결과 이벤트와 킷 결과 UI 연결, 3초·5초 상한 코드 반영. **Play Mode 미검증**
+- [ ] 재시작이 빠르고 이전 상태가 남지 않음 — NRE 경로 제거와 설정 상한 카운트다운 구현. **Play Mode 미검증**
 - [ ] 폭발·차량 6대·UI·복수 카메라·특수 이벤트가 겹쳐도 성능 안정 — 미측정
 - [ ] 외부 플레이테스터 3명이 핵심 규칙 설명 가능 — 미진행. 규칙 HUD가 없어 현 상태로는 어렵다
 
@@ -1435,8 +1434,8 @@ P0 레이스가 성립하지 않게 만드는 것부터 정렬했다. 위쪽 4�
 2. `GameJamDefault`: `elimination.intervalSeconds` 10 → 30, `damage.maximumDurability` 1000000 → 100.
    현재는 프리셋이 `Validate()` 오류를 내는 상태다.
 3. `GMTK_Race.unity`의 `RandomEventManager.enableEvents`를 `0`으로 내려 레거시 이벤트를 끈다.
-4. `GMTK_Race.unity`에서 킷 `RaceFinish` 컴포넌트를 제거하거나 비활성화한다.
-   랩 완주 승리 우회 + 재시작 시 NullReferenceException을 동시에 없앤다.
+4. ~~`GMTK_Race.unity`에서 킷 `RaceFinish` 컴포넌트 제거~~ → **코드 완료 (2026-07-26).**
+   랩 완주 승리 우회와 `finishTrigger` 재시작 NRE 경로를 제거하고 결과는 `GMTKRaceState.ReportResult`로 단일화했다.
 
 **P0 차단 요소 (코드 작업)**
 

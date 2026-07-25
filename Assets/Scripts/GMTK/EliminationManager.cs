@@ -45,6 +45,7 @@ namespace GMTK
         private bool finished;
         private EliminationWarningLevel lastFiredLevel = EliminationWarningLevel.None;
         private int lastExecutionTargetIndex = -1;
+        private GameEvents subscribedEvents;
 
         private EliminationSettings E => GameBalance.Current.elimination;
         private int FinalDuelCount => GameBalance.Current.race.finalDuelRacerCount;
@@ -59,11 +60,24 @@ namespace GMTK
 
         private void Start()
         {
-            var events = Race.Events;
-            if (events == null) return;
-            events.RaceStartedEvent.AddListener(OnRaceStarted);
-            events.RestartRaceEvent.AddListener(OnRestartRace);
-            events.RaceFinishedEvent.AddListener(OnRaceFinished);
+            subscribedEvents = Race.Events;
+            if (subscribedEvents == null) return;
+            Unsubscribe(subscribedEvents);
+            subscribedEvents.RaceStartedEvent.AddListener(OnRaceStarted);
+            subscribedEvents.RestartRaceEvent.AddListener(OnRestartRace);
+            subscribedEvents.RaceFinishedEvent.AddListener(OnRaceFinished);
+        }
+
+        private void OnDestroy()
+        {
+            if (subscribedEvents != null) Unsubscribe(subscribedEvents);
+        }
+
+        private void Unsubscribe(GameEvents events)
+        {
+            events.RaceStartedEvent.RemoveListener(OnRaceStarted);
+            events.RestartRaceEvent.RemoveListener(OnRestartRace);
+            events.RaceFinishedEvent.RemoveListener(OnRaceFinished);
         }
 
         private void OnRaceStarted()
@@ -256,8 +270,7 @@ namespace GMTK
             if (finished) return;
             finished = true;
             armed = false;
-            var events = Race.Events;
-            if (events != null) events.RaceFinishedEvent.Invoke(type);
+            GMTKRaceState.ReportResult(type);
         }
     }
 }

@@ -32,6 +32,7 @@ namespace GMTK
         private readonly List<int> duelCars = new();
         private bool resolved;
         private Coroutine sequence;
+        private GameEvents subscribedEvents;
 
         private PresentationSettings Presentation => GameBalance.Current.presentation;
 
@@ -47,12 +48,18 @@ namespace GMTK
         private void Start()
         {
             EliminationManager.FinalDuelStarted += OnFinalDuel;
-            var e = Race.Events;
-            if (e != null) e.RestartRaceEvent.AddListener(ResetGate);
+            subscribedEvents = Race.Events;
+            if (subscribedEvents != null)
+            {
+                subscribedEvents.RestartRaceEvent.RemoveListener(ResetGate);
+                subscribedEvents.RestartRaceEvent.AddListener(ResetGate);
+            }
         }
 
         private void OnDestroy()
         {
+            if (subscribedEvents != null)
+                subscribedEvents.RestartRaceEvent.RemoveListener(ResetGate);
             EliminationManager.FinalDuelStarted -= OnFinalDuel;
             if (Instance == this) Instance = null;
         }
@@ -135,9 +142,7 @@ namespace GMTK
                 ex.Explode();
             }
 
-            var e = Race.Events;
-            if (e != null)
-                e.RaceFinishedEvent.Invoke(winner == 0 ? RaceFinishType.Win : RaceFinishType.Lose);
+            GMTKRaceState.ReportResult(winner == 0 ? RaceFinishType.Win : RaceFinishType.Lose);
 
             sequence = null;
         }
