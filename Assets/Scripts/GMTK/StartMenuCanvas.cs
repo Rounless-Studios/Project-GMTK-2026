@@ -33,7 +33,9 @@ namespace GMTK
 
         private TMP_Text speedText;
         private RectTransform rpmNeedle;
+        private Image boosterFillImage;
         private Rigidbody playerRigidbody;
+        private BoostController playerBoost;
         private float displayedNeedleAngle = GaugeMinimumNeedleAngle;
         private float needleAngularVelocity;
 
@@ -90,32 +92,38 @@ namespace GMTK
             if (speedText == null)
                 speedText = gauge.Find("Speed")?.GetComponent<TMP_Text>();
 
-            if (rpmNeedle != null)
-                return;
+            if (boosterFillImage == null)
+                boosterFillImage = gauge.Find("BOOSTER")?.GetComponent<Image>();
 
-            foreach (Transform child in gauge)
+            if (rpmNeedle == null)
             {
-                // Gauge contains two children named RPM. The TMP child is the numeric
-                // RPM label; the Image-only child is the rotating needle.
-                if (child.name == "RPM" && child.GetComponent<TMP_Text>() == null)
+                foreach (Transform child in gauge)
                 {
-                    rpmNeedle = child as RectTransform;
-                    break;
+                    // Gauge contains two children named RPM. The TMP child is the numeric
+                    // RPM label; the Image-only child is the rotating needle.
+                    if (child.name == "RPM" && child.GetComponent<TMP_Text>() == null)
+                    {
+                        rpmNeedle = child as RectTransform;
+                        break;
+                    }
                 }
             }
         }
 
         private void UpdateGauge()
         {
-            if (speedText == null || rpmNeedle == null)
+            if (speedText == null || rpmNeedle == null || boosterFillImage == null)
                 CacheGauge();
 
-            if (playerRigidbody == null)
+            if (playerRigidbody == null || playerBoost == null)
             {
                 GameObject player = Race.CarByIndex(0);
 
                 if (player != null)
+                {
                     playerRigidbody = player.GetComponent<Rigidbody>();
+                    playerBoost = player.GetComponent<BoostController>();
+                }
             }
 
             float speedKph = playerRigidbody != null
@@ -124,6 +132,9 @@ namespace GMTK
 
             if (speedText != null)
                 speedText.SetText("{0:0}", speedKph);
+
+            if (boosterFillImage != null && playerBoost?.State != null)
+                boosterFillImage.fillAmount = playerBoost.State.ChargeFill01;
 
             if (rpmNeedle == null)
                 return;
