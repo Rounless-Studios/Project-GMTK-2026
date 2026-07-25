@@ -2,6 +2,9 @@ using UnityEngine;
 
 namespace Gmtk2026.Quiz
 {
+    // BxB's third-person camera also moves during LateUpdate. Run after ordinary
+    // camera scripts so the phone never follows the previous frame's camera pose.
+    [DefaultExecutionOrder(10000)]
     [DisallowMultipleComponent]
     public sealed class WorldSpaceQuizCanvasFollower : MonoBehaviour
     {
@@ -9,9 +12,11 @@ namespace Gmtk2026.Quiz
         private const float HiddenHorizontalOffset = 2.7f;
         private const float HiddenVerticalOffset = -2.8f;
 
-        [SerializeField, Min(0.5f)] private float distance = 3.2f;
-        [SerializeField] private float horizontalOffset = 0.62f;
-        [SerializeField] private float verticalOffset = 0.02f;
+        // Keep the phone in the camera's right-side safe area. The former position
+        // (3.2m forward, 0.62m right) sat directly over a third-person vehicle.
+        [SerializeField, Min(0.5f)] private float distance = 2.4f;
+        [SerializeField] private float horizontalOffset = 1.45f;
+        [SerializeField] private float verticalOffset = 0.32f;
         [SerializeField, Min(0.05f)] private float showDuration = 0.28f;
         [SerializeField, Min(0.05f)] private float hideDuration = 0.20f;
 
@@ -52,8 +57,14 @@ namespace Gmtk2026.Quiz
 
         private void OnEnable()
         {
+            Application.onBeforeRender += ApplyPoseBeforeRender;
             RefreshCamera();
             SnapToCamera();
+        }
+
+        private void OnDisable()
+        {
+            Application.onBeforeRender -= ApplyPoseBeforeRender;
         }
 
         private void LateUpdate()
@@ -68,7 +79,6 @@ namespace Gmtk2026.Quiz
                 return;
             }
 
-            Transform cameraTransform = targetCamera.transform;
             float deltaTime = Time.unscaledDeltaTime;
             presentation = AdvancePresentation(
                 presentation,
@@ -82,8 +92,31 @@ namespace Gmtk2026.Quiz
                 SetVisualsEnabled(false);
             }
 
-            float easedPresentation = Mathf.SmoothStep(0f, 1f, presentation);
+            ApplyPose();
+        }
 
+        private void ApplyPoseBeforeRender()
+        {
+            // Camera packages can finalize damping after another LateUpdate callback.
+            // Applying the same camera-relative pose immediately before rendering
+            // removes the one-frame discrepancy without adding follow smoothing.
+            if (isActiveAndEnabled)
+            {
+                ApplyPose();
+            }
+        }
+
+        private void ApplyPose()
+        {
+            if (targetCamera == null || !targetCamera.isActiveAndEnabled)
+            {
+                RefreshCamera();
+            }
+
+            if (targetCamera == null) return;
+
+            float easedPresentation = Mathf.SmoothStep(0f, 1f, presentation);
+            Transform cameraTransform = targetCamera.transform;
             Vector3 shownPosition = GetTargetPosition(
                 cameraTransform,
                 distance,
