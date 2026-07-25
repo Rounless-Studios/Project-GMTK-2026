@@ -1525,7 +1525,7 @@ PrefabInstance:
     - target: {fileID: 7210794939807448447, guid: 36466e2c53ff74d03a7d1e5259108fc1,
         type: 3}
       propertyPath: useMvcAi
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7210794939807448447, guid: 36466e2c53ff74d03a7d1e5259108fc1,
         type: 3}
