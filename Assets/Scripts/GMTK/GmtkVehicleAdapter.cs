@@ -1,3 +1,4 @@
+using Gmtk2026.GameBalance;
 using UnityEngine;
 
 namespace GMTK
@@ -20,11 +21,15 @@ namespace GMTK
         {
         }
 
+        /// <summary>
+        /// <paramref name="lateralStrength"/> is the personality's own sideways pull
+        /// (<c>AiPersonalityProfile.lateralStrengthMetres</c>); how it is applied depends on
+        /// <paramref name="type"/>.
+        /// </summary>
         public virtual void ApplyAiTargeting(
             AIPersonalityType type,
             Transform player,
-            float ramStrength,
-            float blockStrength,
+            float lateralStrength,
             float aggroRange)
         {
         }
