@@ -46,6 +46,12 @@ namespace SpinMotion
         private void OnPlayRace()
         {
             gameEvents.SpawnPlayersEvent.Invoke();
+
+            // RaceFlow shows its prologue before the countdown. Freeze immediately after
+            // spawning so newly initialized RCCP vehicles cannot move behind that UI.
+            if (GMTK.RaceFlow.OwnsGameEventsStart)
+                gameEvents.ToggleCarFreezeEvent.Invoke(true);
+
             gameEvents.PreRaceUpdateGuiEvent.Invoke();
 
             // GMTK.RaceFlow owns the custom UI countdown in GMTK_Race, while this

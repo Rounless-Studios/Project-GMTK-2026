@@ -131,7 +131,6 @@ namespace GMTK
             yield return new WaitForSecondsRealtime(prologueSeconds);
 
             SetPhase(Phase.Countdown);
-            gameEvents.ToggleCarFreezeEvent.Invoke(true);
             int seconds = Mathf.Max(1, Mathf.RoundToInt(countdownSeconds));
             GameAudioManager.Instance?.PlayCountdownTick();
             for (int remaining = seconds; remaining > 0; remaining--)
