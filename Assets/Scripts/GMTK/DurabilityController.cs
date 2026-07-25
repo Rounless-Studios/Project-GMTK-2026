@@ -34,9 +34,29 @@ namespace GMTK
         private Rigidbody[] suspendedBodies;
         private bool[] originalKinematicStates;
 
+        [Header("Collision Sparks")]
+        [SerializeField, Min(0f)] private float minimumSparkCollisionSpeed = 3f;
+        [SerializeField, Min(0f)] private float sparkCooldownSeconds = 0.15f;
+
+        [Header("Drift Sparks")]
+        [SerializeField, Min(0f)] private float minimumDriftSpeed = 8f;
+        [SerializeField, Min(0f)] private float minimumDriftSidewaysSlip = 0.2f;
+        [SerializeField, Min(0f)] private float driftSparkCooldownSeconds = 0.18f;
+        [SerializeField, Range(0.1f, 1f)] private float driftSparkScale = 0.45f;
+
+        private const string CollisionSparkResourcePath = "VFX/Spark";
+        private static GameObject collisionSparkPrefab;
+        private static bool collisionSparkLoadFailed;
+        private float nextSparkTime;
+        private float nextDriftSparkTime;
+        private Rigidbody vehicleBody;
+        private WheelCollider[] rearWheelColliders;
+
         private void Awake()
         {
             vehicleAdapter = GetComponent<GmtkVehicleAdapter>();
+            vehicleBody = GetComponent<Rigidbody>();
+            CacheRearWheelColliders();
             Build();
         }
 
@@ -58,14 +78,171 @@ namespace GMTK
         /// <summary>Damage entry point for strong collisions, rupture curses and hazards.</summary>
         public void ApplyDamage(float amount) => State?.ApplyDamage(amount);
 
-        private void Update() => State?.Tick(Time.deltaTime);
+        private void Update()
+        {
+            State?.Tick(Time.deltaTime);
+            TryPlayDriftSpark();
+        }
 
         private void OnCollisionEnter(Collision collision)
         {
             if (State == null) return;
+
+            TryPlayCollisionSpark(collision);
+
             // light bumps are free; only a strong impulse hurts
             if (collision.impulse.magnitude >= D.strongCollisionImpulse)
                 State.ApplyDamage(D.strongCollisionDamage);
+        }
+
+        private void TryPlayCollisionSpark(Collision collision)
+        {
+            if (collision == null ||
+                collision.contactCount == 0 ||
+                collision.relativeVelocity.magnitude < minimumSparkCollisionSpeed ||
+                Time.time < nextSparkTime)
+            {
+                return;
+            }
+
+            // A car-to-car impact invokes OnCollisionEnter on both cars. Let only one side
+            // spawn the shared contact effect so the same hit does not create two bursts.
+            DurabilityController otherCar =
+                collision.collider.GetComponentInParent<DurabilityController>();
+
+            if (otherCar != null && GetInstanceID() > otherCar.GetInstanceID())
+                return;
+
+            if (!EnsureCollisionSparkPrefab())
+                return;
+
+            ContactPoint contact = collision.GetContact(0);
+            SpawnSpark(contact.point, contact.normal, 1f);
+            nextSparkTime = Time.time + sparkCooldownSeconds;
+        }
+
+        private void TryPlayDriftSpark()
+        {
+            if (vehicleAdapter == null ||
+                !vehicleAdapter.IsPlayer ||
+                vehicleBody == null ||
+                rearWheelColliders == null ||
+                rearWheelColliders.Length == 0 ||
+                !Input.GetKey(KeyCode.Space) ||
+                vehicleBody.linearVelocity.magnitude < minimumDriftSpeed ||
+                Time.time < nextDriftSparkTime)
+            {
+                return;
+            }
+
+            bool foundSlidingRearWheel = false;
+            WheelHit strongestHit = default;
+            float strongestSlip = minimumDriftSidewaysSlip;
+
+            foreach (WheelCollider wheel in rearWheelColliders)
+            {
+                if (wheel == null)
+                    continue;
+
+                if (!wheel.GetGroundHit(out WheelHit hit))
+                    continue;
+
+                float slip = Mathf.Abs(hit.sidewaysSlip);
+
+                if (slip < strongestSlip)
+                    continue;
+
+                strongestSlip = slip;
+                strongestHit = hit;
+                foundSlidingRearWheel = true;
+            }
+
+            if (!foundSlidingRearWheel || !EnsureCollisionSparkPrefab())
+                return;
+
+            SpawnSpark(
+                strongestHit.point,
+                strongestHit.normal,
+                driftSparkScale);
+            nextDriftSparkTime = Time.time + driftSparkCooldownSeconds;
+        }
+
+        private void CacheRearWheelColliders()
+        {
+            WheelCollider[] wheels = GetComponentsInChildren<WheelCollider>(true);
+
+            if (wheels.Length <= 2)
+            {
+                rearWheelColliders = wheels;
+                return;
+            }
+
+            float minimumZ = float.PositiveInfinity;
+            float maximumZ = float.NegativeInfinity;
+
+            foreach (WheelCollider wheel in wheels)
+            {
+                float localZ =
+                    transform.InverseTransformPoint(wheel.transform.position).z;
+                minimumZ = Mathf.Min(minimumZ, localZ);
+                maximumZ = Mathf.Max(maximumZ, localZ);
+            }
+
+            float axleMidpoint = (minimumZ + maximumZ) * 0.5f;
+            var rearWheels = new List<WheelCollider>();
+
+            foreach (WheelCollider wheel in wheels)
+            {
+                float localZ =
+                    transform.InverseTransformPoint(wheel.transform.position).z;
+
+                if (localZ <= axleMidpoint)
+                    rearWheels.Add(wheel);
+            }
+
+            rearWheelColliders = rearWheels.ToArray();
+        }
+
+        private bool EnsureCollisionSparkPrefab()
+        {
+            if (collisionSparkPrefab == null && !collisionSparkLoadFailed)
+            {
+                collisionSparkPrefab =
+                    Resources.Load<GameObject>(CollisionSparkResourcePath);
+                collisionSparkLoadFailed = collisionSparkPrefab == null;
+
+                if (collisionSparkLoadFailed)
+                {
+                    Debug.LogError(
+                        $"Collision spark prefab was not found at Resources/{CollisionSparkResourcePath}.",
+                        this);
+                }
+            }
+
+            return collisionSparkPrefab != null;
+        }
+
+        private void SpawnSpark(Vector3 point, Vector3 normal, float scale)
+        {
+            Quaternion rotation =
+                Quaternion.FromToRotation(Vector3.forward, normal);
+            GameObject effect = Instantiate(
+                collisionSparkPrefab,
+                point + normal * 0.02f,
+                rotation);
+            effect.transform.localScale *= scale;
+            ParticleSystem particles = effect.GetComponentInChildren<ParticleSystem>();
+            float destroyDelay = 2f;
+
+            if (particles != null)
+            {
+                ParticleSystem.MainModule main = particles.main;
+                destroyDelay = Mathf.Max(
+                    1f,
+                    main.startDelay.constantMax + main.startLifetime.constantMax + 0.5f);
+            }
+
+            Destroy(effect, destroyDelay);
         }
 
         private void OnWrecked()
