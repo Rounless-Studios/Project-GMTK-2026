@@ -6,6 +6,7 @@ Shader "Custom/ParticleAlphaBlend"
         [MainColor] _BaseColor("Tint", Color) = (1, 1, 1, 1)
         _FadeDistance("Soft Particle Fade Distance", Range(0.01, 10.0)) = 1.0
         _CameraOffset("Camera Offset", Range(-5.0, 5.0)) = 0.0
+        [HDR] _EmissionColor("Emission Color", Color) = (0, 0, 0, 1)
     }
 
     SubShader
@@ -50,6 +51,7 @@ Shader "Custom/ParticleAlphaBlend"
                 half4 _BaseColor;
                 float _FadeDistance;
                 float _CameraOffset;
+                half4 _EmissionColor;
             CBUFFER_END
 
             Varyings vert(Attributes IN)
@@ -82,6 +84,11 @@ Shader "Custom/ParticleAlphaBlend"
                 float sceneEyeDepth = LinearEyeDepth(rawDepth, _ZBufferParams);
                 float fade = saturate((sceneEyeDepth - IN.eyeDepth) / max(_FadeDistance, 0.0001));
                 col.a *= fade;
+
+                // --- Emission: additive glow, masked by the texture, fades with the
+                // --- particle's own alpha and the soft-particle fade so it doesn't
+                // --- poke through once the particle itself has faded out ---
+                col.rgb += texColor.rgb * _EmissionColor.rgb * IN.color.a * fade;
 
                 return col;
             }
