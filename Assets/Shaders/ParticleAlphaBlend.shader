@@ -5,6 +5,7 @@ Shader "Custom/ParticleAlphaBlend"
         [MainTexture] _BaseMap("Base Map (RGB=Color, A=Alpha)", 2D) = "white" {}
         [MainColor] _BaseColor("Tint", Color) = (1, 1, 1, 1)
         _FadeDistance("Soft Particle Fade Distance", Range(0.01, 10.0)) = 1.0
+        _CameraOffset("Camera Offset", Range(-5.0, 5.0)) = 0.0
     }
 
     SubShader
@@ -48,15 +49,23 @@ Shader "Custom/ParticleAlphaBlend"
                 float4 _BaseMap_ST;
                 half4 _BaseColor;
                 float _FadeDistance;
+                float _CameraOffset;
             CBUFFER_END
 
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
                 VertexPositionInputs posInputs = GetVertexPositionInputs(IN.positionOS.xyz);
-                OUT.positionHCS = posInputs.positionCS;
+
+                // View space: camera looks down -Z, so pushing Z up moves the vertex
+                // toward the camera. Re-project after offsetting so the particle
+                // actually renders nearer (not just a fade-math bias).
+                float3 positionVS = posInputs.positionVS;
+                positionVS.z += _CameraOffset;
+
+                OUT.positionHCS = TransformWViewToHClip(positionVS);
                 OUT.screenPos = ComputeScreenPos(OUT.positionHCS);
-                OUT.eyeDepth = -posInputs.positionVS.z;
+                OUT.eyeDepth = -positionVS.z;
                 OUT.uv = TRANSFORM_TEX(IN.uv, _BaseMap);
                 OUT.color = IN.color;
                 return OUT;
