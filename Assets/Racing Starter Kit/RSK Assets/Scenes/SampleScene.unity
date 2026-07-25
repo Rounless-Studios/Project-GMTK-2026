@@ -462,113 +462,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1290021428
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1290021430}
-  - component: {fileID: 1290021429}
-  m_Layer: 0
-  m_Name: GMTK_AIPath
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1290021429
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1290021428}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 1316760407, guid: 7c0bac27308dcf24eb0bf21c68fb9c41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: MVC.dll::MVC.AI.VehicleAIPath
-  zonesCount: 0
-  curveType: 0
-  startOffset: 0
-  groundLayerMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  groundDetectionRayHeight: 0.5
-  groundAlignmentSearchHeight: 8
-  groundAlignmentFirstDeckPolicy: 0
-  groundAlignmentMaxContinuityDelta: 2
-  groundAlignmentContinuityBias: 4
-  visualizerSpeedMultiplier: 1
-  visualizerShowHidePointDuration: 0.002
-  showVisualizerAtStart: 1
-  snapZones: 1
-  bezier:
-    disabledSegments: 
-    groundLayerMask:
-      serializedVersion: 2
-      m_Bits: 0
-    points: []
-    pointsNormals: []
-    loopedPath: 0
-    autoCalculateControls: 0
-  useCardinal: 0
-  cardinalScale: 0.5
-  loopedPath: 0
-  useVisualizerColorOverride: 0
-  visualizerColorOverride:
-    serializedVersion: 2
-    key0: {r: 1, g: 1, b: 1, a: 1}
-    key1: {r: 1, g: 1, b: 1, a: 1}
-    key2: {r: 0, g: 0, b: 0, a: 0}
-    key3: {r: 0, g: 0, b: 0, a: 0}
-    key4: {r: 0, g: 0, b: 0, a: 0}
-    key5: {r: 0, g: 0, b: 0, a: 0}
-    key6: {r: 0, g: 0, b: 0, a: 0}
-    key7: {r: 0, g: 0, b: 0, a: 0}
-    ctime0: 0
-    ctime1: 65535
-    ctime2: 0
-    ctime3: 0
-    ctime4: 0
-    ctime5: 0
-    ctime6: 0
-    ctime7: 0
-    atime0: 0
-    atime1: 65535
-    atime2: 0
-    atime3: 0
-    atime4: 0
-    atime5: 0
-    atime6: 0
-    atime7: 0
-    m_Mode: 0
-    m_ColorSpace: -1
-    m_NumColorKeys: 2
-    m_NumAlphaKeys: 2
-  bezierCurves: []
-  hermiteCurves: []
-  curvesLength: []
-  drawWidth: 5
-  firstPointHasValue: 0
---- !u!4 &1290021430
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1290021428}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!850595691 &1391784268
 LightingSettings:
   m_ObjectHideFlags: 0
@@ -1537,7 +1430,7 @@ PrefabInstance:
         type: 3}
       propertyPath: aiPathObject
       value: 
-      objectReference: {fileID: 1290021428}
+      objectReference: {fileID: 0}
     - target: {fileID: 7210794939807448447, guid: 36466e2c53ff74d03a7d1e5259108fc1,
         type: 3}
       propertyPath: useMvcPlayer
@@ -1555,11 +1448,139 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 7103289378677114143, guid: 6f08b7ced6b1347eaafaaf2b4a20ee0c,
         type: 3}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 7210794939807448447, guid: 36466e2c53ff74d03a7d1e5259108fc1, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8049541708541438190, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5445764367970430745}
   m_SourcePrefab: {fileID: 100100000, guid: 36466e2c53ff74d03a7d1e5259108fc1, type: 3}
+--- !u!4 &5445764367970430730 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5854484498357373661, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430731 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7181231647199379872, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430732 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2522919426182673714, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430733 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6308499077679409666, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430734 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2572639345097947911, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430735 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5031854735311682339, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430736 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1123857058311286017, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430737 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 9002402808083561469, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430738 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5873212054393670492, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430739 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 800521649964335853, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430740 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3564768979971767007, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430741 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 3013156996569701470, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430742 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6221573245237800912, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &5445764367970430743 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5811659985131724630, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5445764367970430744 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8049541708541438190, guid: 36466e2c53ff74d03a7d1e5259108fc1,
+    type: 3}
+  m_PrefabInstance: {fileID: 5445764367970430729}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5445764367970430745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5445764367970430744}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19abd838d76631d46bab9e97659e5a25, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GMTK.Rccp.GmtkRccpPlayersSpawner
+  gameEvents: {fileID: 11400000, guid: 53a3a1c43dafc4df88b337434e1a6d28, type: 2}
+  vehiclePrefab: {fileID: 0}
+  checkpointTrackerPrefab: {fileID: 1137976453459328559, guid: 67f7e9c2d00e44d1a8bae5a09d2bc4ab,
+    type: 3}
+  spawnPoints:
+  - {fileID: 5445764367970430743}
+  - {fileID: 5445764367970430742}
+  - {fileID: 5445764367970430741}
+  - {fileID: 5445764367970430740}
+  - {fileID: 5445764367970430739}
+  - {fileID: 5445764367970430738}
+  - {fileID: 5445764367970430737}
+  - {fileID: 5445764367970430736}
+  - {fileID: 5445764367970430735}
+  - {fileID: 5445764367970430734}
+  - {fileID: 5445764367970430733}
+  - {fileID: 5445764367970430732}
+  - {fileID: 5445764367970430731}
+  - {fileID: 5445764367970430730}
+  playerSpawnIndex: 1
+  customPlayerSpawnIndex: 0
 --- !u!1001 &6261796798113045638
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2227,4 +2248,3 @@ SceneRoots:
   - {fileID: 8590953794560446347}
   - {fileID: 544692233}
   - {fileID: 1429120535}
-  - {fileID: 1290021430}
