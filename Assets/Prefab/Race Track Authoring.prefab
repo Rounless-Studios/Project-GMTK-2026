@@ -1,36 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &27568168571760783
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 5859500145776555988}
-  m_Layer: 0
-  m_Name: Grid_05
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &5859500145776555988
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 27568168571760783}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0.0013988867, y: 0.9920745, z: -0.00042763885, w: -0.12564258}
-  m_LocalPosition: {x: 2080.6611, y: 38.357555, z: 214.54723}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 629319081817980649}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &95400443924479155
 GameObject:
   m_ObjectHideFlags: 0
@@ -539,37 +508,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 48
---- !u!1 &551995934858506038
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 3428351030730936062}
-  m_Layer: 0
-  m_Name: Grid_02
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &3428351030730936062
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 551995934858506038}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0.000008475734, y: 0.9918561, z: -0.0042415285, w: -0.12729311}
-  m_LocalPosition: {x: 2070.891, y: 38.327988, z: 206.74712}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 629319081817980649}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &748313698909774964
 GameObject:
   m_ObjectHideFlags: 0
@@ -601,7 +539,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5633984314542132388}
-  - {fileID: 1727894130127207765}
+  - {fileID: 208433985738418842}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6227585867254016548
@@ -869,37 +807,6 @@ MonoBehaviour:
   aiWaypoints: {fileID: 0}
   checkpoints: {fileID: 0}
   playersSpawner: {fileID: 0}
---- !u!1 &793608911660771738
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 6926584869933941542}
-  m_Layer: 0
-  m_Name: Grid_01
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &6926584869933941542
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 793608911660771738}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0.000008475734, y: 0.9918561, z: -0.0042415285, w: -0.12729311}
-  m_LocalPosition: {x: 2078.148, y: 38.320015, z: 204.85326}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 629319081817980649}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &841011047588520138
 GameObject:
   m_ObjectHideFlags: 0
@@ -3222,6 +3129,37 @@ LineRenderer:
   m_UseWorldSpace: 0
   m_Loop: 1
   m_ApplyActiveColorSpace: 1
+--- !u!1 &1111502107648820406
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2846278355752280147}
+  m_Layer: 0
+  m_Name: Grid_07
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2846278355752280147
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1111502107648820406}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.0021219754, y: 0.9921892, z: 0.0015815482, w: -0.12471386}
+  m_LocalPosition: {x: 2081.9055, y: 38.34626, z: 219.39864}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4244425686404002003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1132809902400155077
 GameObject:
   m_ObjectHideFlags: 0
@@ -3349,6 +3287,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 49
+--- !u!1 &1139026035471459718
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 529322243347402660}
+  m_Layer: 0
+  m_Name: Grid_02
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &529322243347402660
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1139026035471459718}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.000008475734, y: 0.9918561, z: -0.0042415285, w: -0.12729311}
+  m_LocalPosition: {x: 2070.891, y: 38.327988, z: 206.74712}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4244425686404002003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1179067151044378496
 GameObject:
   m_ObjectHideFlags: 0
@@ -3984,6 +3953,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 26
+--- !u!1 &1772318874508082760
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8489520305734241782}
+  m_Layer: 0
+  m_Name: Grid_04
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8489520305734241782
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1772318874508082760}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.0006886718, y: 0.9919685, z: -0.0023681445, w: -0.12646121}
+  m_LocalPosition: {x: 2072.1482, y: 38.36337, z: 211.58003}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4244425686404002003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1955844608422749671
 GameObject:
   m_ObjectHideFlags: 0
@@ -4198,119 +4198,6 @@ Transform:
   - {fileID: 6490720209426198712}
   m_Father: {fileID: 1502808862670634579}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &2229199624371412228
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2493614643324060701}
-  - component: {fileID: 985728316156498338}
-  - component: {fileID: 3145311015008969009}
-  - component: {fileID: 6988860234727306918}
-  m_Layer: 0
-  m_Name: Road
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2493614643324060701
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2229199624371412228}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1727894130127207765}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &985728316156498338
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2229199624371412228}
-  m_Mesh: {fileID: 4300000, guid: 76c5f020e5fd4a14bafbcdd59c422a3e, type: 2}
---- !u!23 &3145311015008969009
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2229199624371412228}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 8f2c3285fefa50a46a18e24d0fd7b84d, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_MaskInteraction: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &6988860234727306918
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2229199624371412228}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 4300000, guid: 76c5f020e5fd4a14bafbcdd59c422a3e, type: 2}
 --- !u!1 &2249661383694416004
 GameObject:
   m_ObjectHideFlags: 0
@@ -4438,6 +4325,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 41
+--- !u!1 &2302159692368683911
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2180753852079718671}
+  m_Layer: 0
+  m_Name: Grid_06
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2180753852079718671
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2302159692368683911}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.0013988867, y: 0.9920745, z: -0.00042763885, w: -0.12564258}
+  m_LocalPosition: {x: 2073.398, y: 38.379177, z: 216.41692}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4244425686404002003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2475670386909960666
 GameObject:
   m_ObjectHideFlags: 0
@@ -4692,37 +4610,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 22
---- !u!1 &2710909627565010388
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 5511975362114639815}
-  m_Layer: 0
-  m_Name: Grid_04
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &5511975362114639815
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2710909627565010388}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0.0006886718, y: 0.9919685, z: -0.0023681445, w: -0.12646121}
-  m_LocalPosition: {x: 2072.1482, y: 38.36337, z: 211.58003}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 629319081817980649}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2856621512096471809
 GameObject:
   m_ObjectHideFlags: 0
@@ -5612,37 +5499,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 17
---- !u!1 &4196969794925131211
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 7658205297962224990}
-  m_Layer: 0
-  m_Name: Grid_08
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &7658205297962224990
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4196969794925131211}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0.0021219754, y: 0.9921892, z: 0.0015815482, w: -0.12471386}
-  m_LocalPosition: {x: 2074.639, y: 38.374886, z: 221.25478}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 629319081817980649}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4216560489553132741
 GameObject:
   m_ObjectHideFlags: 0
@@ -5897,6 +5753,39 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 32
+--- !u!1 &4344106298103323109
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 208433985738418842}
+  m_Layer: 0
+  m_Name: __GeneratedTrack
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &208433985738418842
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4344106298103323109}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 4701751706954748547}
+  - {fileID: 4244425686404002003}
+  m_Father: {fileID: 1502808862670634579}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4373173301535295038
 GameObject:
   m_ObjectHideFlags: 0
@@ -6278,45 +6167,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 1
---- !u!1 &4856381957578675933
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 629319081817980649}
-  m_Layer: 0
-  m_Name: Starting Grid
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &629319081817980649
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4856381957578675933}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 6926584869933941542}
-  - {fileID: 3428351030730936062}
-  - {fileID: 173093859969508734}
-  - {fileID: 5511975362114639815}
-  - {fileID: 5859500145776555988}
-  - {fileID: 5194815108055342288}
-  - {fileID: 8639134479459009337}
-  - {fileID: 7658205297962224990}
-  m_Father: {fileID: 1727894130127207765}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4857711343587165350
 GameObject:
   m_ObjectHideFlags: 0
@@ -6571,6 +6421,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 10
+--- !u!1 &4958473930283834216
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5301876662297183874}
+  m_Layer: 0
+  m_Name: Grid_05
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5301876662297183874
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4958473930283834216}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.0013988867, y: 0.9920745, z: -0.00042763885, w: -0.12564258}
+  m_LocalPosition: {x: 2080.6611, y: 38.357555, z: 214.54723}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4244425686404002003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5045722562421706268
 GameObject:
   m_ObjectHideFlags: 0
@@ -7206,6 +7087,45 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 21
+--- !u!1 &5950441200900756159
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4244425686404002003}
+  m_Layer: 0
+  m_Name: Starting Grid
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4244425686404002003
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5950441200900756159}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7764991548988137199}
+  - {fileID: 529322243347402660}
+  - {fileID: 5196685868695822987}
+  - {fileID: 8489520305734241782}
+  - {fileID: 5301876662297183874}
+  - {fileID: 2180753852079718671}
+  - {fileID: 2846278355752280147}
+  - {fileID: 8143232941142710460}
+  m_Father: {fileID: 208433985738418842}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6256745415595615054
 GameObject:
   m_ObjectHideFlags: 0
@@ -7714,7 +7634,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 20
---- !u!1 &7006108038295482628
+--- !u!1 &7262619340002530885
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -7722,28 +7642,28 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 5194815108055342288}
+  - component: {fileID: 5196685868695822987}
   m_Layer: 0
-  m_Name: Grid_06
+  m_Name: Grid_03
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &5194815108055342288
+--- !u!4 &5196685868695822987
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7006108038295482628}
+  m_GameObject: {fileID: 7262619340002530885}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.0013988867, y: 0.9920745, z: -0.00042763885, w: -0.12564258}
-  m_LocalPosition: {x: 2073.398, y: 38.379177, z: 216.41692}
+  m_LocalRotation: {x: 0.0006886718, y: 0.9919685, z: -0.0023681445, w: -0.12646121}
+  m_LocalPosition: {x: 2079.4084, y: 38.34863, z: 209.69838}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 629319081817980649}
+  m_Father: {fileID: 4244425686404002003}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7419951255032478796
 GameObject:
@@ -7999,37 +7919,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 51
---- !u!1 &7476780819644536219
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 173093859969508734}
-  m_Layer: 0
-  m_Name: Grid_03
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &173093859969508734
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7476780819644536219}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0.0006886718, y: 0.9919685, z: -0.0023681445, w: -0.12646121}
-  m_LocalPosition: {x: 2079.4084, y: 38.34863, z: 209.69838}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 629319081817980649}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7499390279626835361
 GameObject:
   m_ObjectHideFlags: 0
@@ -8919,37 +8808,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 40
---- !u!1 &8207719926887147168
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8639134479459009337}
-  m_Layer: 0
-  m_Name: Grid_07
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &8639134479459009337
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8207719926887147168}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0.0021219754, y: 0.9921892, z: 0.0015815482, w: -0.12471386}
-  m_LocalPosition: {x: 2081.9055, y: 38.34626, z: 219.39864}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 629319081817980649}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8231550544594334804
 GameObject:
   m_ObjectHideFlags: 0
@@ -9077,6 +8935,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 11
+--- !u!1 &8283676208339857236
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7764991548988137199}
+  m_Layer: 0
+  m_Name: Grid_01
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7764991548988137199
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8283676208339857236}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.000008475734, y: 0.9918561, z: -0.0042415285, w: -0.12729311}
+  m_LocalPosition: {x: 2078.148, y: 38.320015, z: 204.85326}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4244425686404002003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8316703569809899617
 GameObject:
   m_ObjectHideFlags: 0
@@ -9712,6 +9601,119 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 31
+--- !u!1 &8744894020191340408
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4701751706954748547}
+  - component: {fileID: 2489502157941453995}
+  - component: {fileID: 8212343335477990838}
+  - component: {fileID: 8472241151037607429}
+  m_Layer: 0
+  m_Name: Road
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4701751706954748547
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8744894020191340408}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 208433985738418842}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!33 &2489502157941453995
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8744894020191340408}
+  m_Mesh: {fileID: 4300000, guid: 76c5f020e5fd4a14bafbcdd59c422a3e, type: 2}
+--- !u!23 &8212343335477990838
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8744894020191340408}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 8f2c3285fefa50a46a18e24d0fd7b84d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_MaskInteraction: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &8472241151037607429
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8744894020191340408}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4300000, guid: 76c5f020e5fd4a14bafbcdd59c422a3e, type: 2}
 --- !u!1 &8883323676380253266
 GameObject:
   m_ObjectHideFlags: 0
@@ -9839,39 +9841,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 35
---- !u!1 &8909179887880299995
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1727894130127207765}
-  m_Layer: 0
-  m_Name: __GeneratedTrack
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1727894130127207765
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8909179887880299995}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 2493614643324060701}
-  - {fileID: 629319081817980649}
-  m_Father: {fileID: 1502808862670634579}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &9131517347261433259
 GameObject:
   m_ObjectHideFlags: 0
@@ -9999,3 +9968,34 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.TrackAuthoring.RaceTrackControlPointHandle
   owner: {fileID: 6227585867254016548}
   pointIndex: 23
+--- !u!1 &9200912565536668238
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8143232941142710460}
+  m_Layer: 0
+  m_Name: Grid_08
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8143232941142710460
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9200912565536668238}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.0021219754, y: 0.9921892, z: 0.0015815482, w: -0.12471386}
+  m_LocalPosition: {x: 2074.639, y: 38.374886, z: 221.25478}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4244425686404002003}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
