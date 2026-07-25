@@ -6,18 +6,28 @@ using UnityEngine.Rendering;
 
 namespace GMTK.TrackAuthoring
 {
+    public enum TrackSegmentMode
+    {
+        Smooth = 0,
+        Straight = 1
+    }
+
     [Serializable]
     public struct TrackControlPoint
     {
         public Vector3 position;
         [Min(2f)] public float width;
         [Range(-35f, 35f)] public float bank;
+        [Tooltip("Controls the curve from this point to the next point.")]
+        public TrackSegmentMode segmentToNext;
 
-        public TrackControlPoint(Vector3 position, float width = 10f, float bank = 0f)
+        public TrackControlPoint(Vector3 position, float width = 10f, float bank = 0f,
+            TrackSegmentMode segmentToNext = TrackSegmentMode.Smooth)
         {
             this.position = position;
             this.width = width;
             this.bank = bank;
+            this.segmentToNext = segmentToNext;
         }
     }
 
@@ -34,6 +44,17 @@ namespace GMTK.TrackAuthoring
         [SerializeField] private bool closed = true;
         [SerializeField, Min(0.5f)] private float sampleSpacing = 2f;
         [SerializeField] private List<TrackControlPoint> controlPoints = new();
+
+        [Header("Global Width Override")]
+        [SerializeField] private bool useGlobalWidth;
+        [SerializeField, Min(2f)] private float globalWidth = 10f;
+
+        [Header("Rolling Elevation Generator")]
+        [SerializeField] private int elevationSeed = 2026;
+        [SerializeField] private float elevationBaseHeight;
+        [SerializeField, Min(0f)] private float elevationAmplitude = 8f;
+        [SerializeField, Min(10f)] private float elevationWavelength = 150f;
+        [SerializeField, Range(1, 5)] private int elevationOctaves = 3;
 
         [Header("Road")]
         [SerializeField] private Material roadMaterial;
@@ -66,6 +87,8 @@ namespace GMTK.TrackAuthoring
 
         public IReadOnlyList<TrackControlPoint> ControlPoints => controlPoints;
         public bool Closed => closed;
+        public bool UsesGlobalWidth => useGlobalWidth;
+        public float GlobalWidth => globalWidth;
         public float ApproximateLength => BuildSamples().length;
 
         public void ResetToStarterLoop()
@@ -81,7 +104,7 @@ namespace GMTK.TrackAuthoring
             };
         }
 
-        public void AddControlPointAfter(int index)
+        public void AddControlPointAtEnd()
         {
             if (controlPoints.Count < 2)
             {
@@ -89,13 +112,17 @@ namespace GMTK.TrackAuthoring
                 return;
             }
 
-            int next = (index + 1) % controlPoints.Count;
-            TrackControlPoint a = controlPoints[Mathf.Clamp(index, 0, controlPoints.Count - 1)];
-            TrackControlPoint b = controlPoints[next];
-            controlPoints.Insert(index + 1, new TrackControlPoint(
-                Vector3.Lerp(a.position, b.position, 0.5f),
-                Mathf.Lerp(a.width, b.width, 0.5f),
-                Mathf.Lerp(a.bank, b.bank, 0.5f)));
+            TrackControlPoint previous = controlPoints[^2];
+            TrackControlPoint last = controlPoints[^1];
+            Vector3 continuation = last.position - previous.position;
+            if (continuation.sqrMagnitude < 1f)
+                continuation = Vector3.forward * 10f;
+
+            controlPoints.Add(new TrackControlPoint(
+                last.position + continuation,
+                last.width,
+                last.bank,
+                last.segmentToNext));
         }
 
         public void RemoveControlPoint(int index)
@@ -105,6 +132,82 @@ namespace GMTK.TrackAuthoring
         }
 
         public void SetControlPoint(int index, TrackControlPoint point) => controlPoints[index] = point;
+
+        public void GenerateRollingHeights()
+        {
+            if (controlPoints.Count < 2) return;
+
+            float[] distances = new float[controlPoints.Count];
+            float totalLength = 0f;
+            for (int i = 1; i < controlPoints.Count; i++)
+            {
+                Vector2 previous = new(controlPoints[i - 1].position.x, controlPoints[i - 1].position.z);
+                Vector2 current = new(controlPoints[i].position.x, controlPoints[i].position.z);
+                totalLength += Vector2.Distance(previous, current);
+                distances[i] = totalLength;
+            }
+            if (closed)
+            {
+                Vector2 last = new(controlPoints[^1].position.x, controlPoints[^1].position.z);
+                Vector2 first = new(controlPoints[0].position.x, controlPoints[0].position.z);
+                totalLength += Vector2.Distance(last, first);
+            }
+            if (totalLength < 1f) return;
+
+            var random = new System.Random(elevationSeed);
+            float offsetX = (float)random.NextDouble() * 1000f;
+            float offsetY = (float)random.NextDouble() * 1000f;
+            float baseRadius = Mathf.Max(0.2f,
+                totalLength / (Mathf.PI * 2f * elevationWavelength));
+
+            for (int i = 0; i < controlPoints.Count; i++)
+            {
+                float angle = distances[i] / totalLength * Mathf.PI * 2f;
+                float noise = 0f;
+                float weight = 1f;
+                float weightTotal = 0f;
+                for (int octave = 0; octave < elevationOctaves; octave++)
+                {
+                    float radius = baseRadius * (1 << octave);
+                    float x = offsetX + Mathf.Cos(angle) * radius;
+                    float y = offsetY + Mathf.Sin(angle) * radius;
+                    noise += (Mathf.PerlinNoise(x, y) * 2f - 1f) * weight;
+                    weightTotal += weight;
+                    weight *= 0.5f;
+                }
+
+                TrackControlPoint point = controlPoints[i];
+                point.position.y = elevationBaseHeight
+                    + noise / Mathf.Max(0.001f, weightTotal) * elevationAmplitude;
+                controlPoints[i] = point;
+            }
+
+            RefreshPreviewLine();
+        }
+
+        public void RefreshPreviewLine()
+        {
+            LineRenderer line = transform.Find("__TrackControlPoints/Track Preview Line")
+                ?.GetComponent<LineRenderer>();
+            if (line == null) return;
+
+            SampleCollection samples = BuildSamples();
+            if (samples.items.Count == 0)
+            {
+                line.positionCount = 0;
+                return;
+            }
+            const int maxPreviewPoints = 2048;
+            int stride = Mathf.Max(1,
+                Mathf.CeilToInt(samples.items.Count / (float)maxPreviewPoints));
+            int previewCount = Mathf.CeilToInt(samples.items.Count / (float)stride);
+            line.useWorldSpace = false;
+            line.loop = closed;
+            line.positionCount = previewCount;
+            for (int i = 0; i < previewCount; i++)
+                line.SetPosition(i, samples.items[Mathf.Min(i * stride,
+                    samples.items.Count - 1)].position);
+        }
 
         public void AutoFindSceneSystems()
         {
@@ -155,7 +258,7 @@ namespace GMTK.TrackAuthoring
         public void ClearGenerated()
         {
             Transform old = transform.Find(GeneratedRootName);
-            if (old != null) DestroyObject(old.gameObject);
+            if (old != null) DestroySafely(old.gameObject);
 
             if (aiWaypoints != null)
                 ClearChildren(aiWaypoints.transform);
@@ -274,7 +377,7 @@ namespace GMTK.TrackAuthoring
                     transform.TransformPoint(position + rotation * Vector3.up * 0.5f),
                     transform.rotation * rotation);
                 point.transform.localScale = Vector3.one;
-                if (point.TryGetComponent(out Collider collider)) DestroyObject(collider);
+                if (point.TryGetComponent(out Collider collider)) DestroySafely(collider);
             }
         }
 
@@ -406,14 +509,28 @@ namespace GMTK.TrackAuthoring
             int i2 = closed ? (i1 + 1) % count : Mathf.Min(i1 + 1, count - 1);
             int i0 = closed ? (i1 - 1 + count) % count : Mathf.Max(i1 - 1, 0);
             int i3 = closed ? (i2 + 1) % count : Mathf.Min(i2 + 1, count - 1);
-            width = Mathf.Lerp(controlPoints[i1].width, controlPoints[i2].width, t);
+            width = useGlobalWidth
+                ? globalWidth
+                : Mathf.Lerp(controlPoints[i1].width, controlPoints[i2].width, t);
             bank = Mathf.Lerp(controlPoints[i1].bank, controlPoints[i2].bank, t);
+            if (controlPoints[i1].segmentToNext == TrackSegmentMode.Straight)
+                return Vector3.Lerp(controlPoints[i1].position, controlPoints[i2].position, t);
             return CatmullRom(controlPoints[i0].position, controlPoints[i1].position,
                 controlPoints[i2].position, controlPoints[i3].position, t);
         }
 
         private Vector3 EvaluateTangent(int segment, float t)
         {
+            int start = Mathf.Clamp(segment, 0, controlPoints.Count - 1);
+            if (controlPoints[start].segmentToNext == TrackSegmentMode.Straight)
+            {
+                int end = closed
+                    ? (start + 1) % controlPoints.Count
+                    : Mathf.Min(start + 1, controlPoints.Count - 1);
+                Vector3 linear = controlPoints[end].position - controlPoints[start].position;
+                return linear.sqrMagnitude > 0.0001f ? linear.normalized : Vector3.forward;
+            }
+
             const float epsilon = 0.005f;
             Vector3 before = EvaluateSegment(segment, Mathf.Max(0f, t - epsilon), out _, out _);
             Vector3 after = EvaluateSegment(segment, Mathf.Min(1f, t + epsilon), out _, out _);
@@ -482,10 +599,10 @@ namespace GMTK.TrackAuthoring
         private static void ClearChildren(Transform root)
         {
             for (int i = root.childCount - 1; i >= 0; i--)
-                DestroyObject(root.GetChild(i).gameObject);
+                DestroySafely(root.GetChild(i).gameObject);
         }
 
-        private static void DestroyObject(UnityEngine.Object target)
+        private static void DestroySafely(UnityEngine.Object target)
         {
             if (target == null) return;
             if (Application.isPlaying) Destroy(target);
@@ -496,6 +613,13 @@ namespace GMTK.TrackAuthoring
         {
             ResetToStarterLoop();
             AutoFindSceneSystems();
+        }
+
+        private void Update()
+        {
+            Transform preview = transform.Find("__TrackControlPoints");
+            if (preview != null && preview.gameObject.activeSelf == Application.isPlaying)
+                preview.gameObject.SetActive(!Application.isPlaying);
         }
 
         private void OnDrawGizmos()

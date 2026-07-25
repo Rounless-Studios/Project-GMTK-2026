@@ -8,6 +8,58 @@ using UnityEngine.Rendering;
 
 namespace GMTK.Editor.TrackAuthoring
 {
+    [CustomEditor(typeof(RaceTrackControlPointHandle))]
+    public sealed class RaceTrackControlPointHandleEditor : UnityEditor.Editor
+    {
+        public override void OnInspectorGUI()
+        {
+            RaceTrackControlPointHandle handle = (RaceTrackControlPointHandle)target;
+            RaceTrackAuthoring owner = handle.Owner;
+            if (owner == null || handle.PointIndex < 0 ||
+                handle.PointIndex >= owner.ControlPoints.Count)
+            {
+                EditorGUILayout.HelpBox("This visual handle is not linked to track data.",
+                    MessageType.Warning);
+                return;
+            }
+
+            int index = handle.PointIndex;
+            TrackControlPoint point = owner.ControlPoints[index];
+            EditorGUILayout.LabelField($"Track Control Point {index}", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Outgoing Segment controls the cyan line from this point to the next point.",
+                MessageType.Info);
+
+            EditorGUI.BeginChangeCheck();
+            TrackSegmentMode mode = (TrackSegmentMode)EditorGUILayout.EnumPopup(
+                "Outgoing Segment", point.segmentToNext);
+            float width = point.width;
+            using (new EditorGUI.DisabledScope(owner.UsesGlobalWidth))
+                width = EditorGUILayout.FloatField("Road Width", point.width);
+            float bank = EditorGUILayout.Slider("Bank", point.bank, -35f, 35f);
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(owner, "Edit Track Segment");
+                point.segmentToNext = mode;
+                point.width = Mathf.Max(2f, width);
+                point.bank = bank;
+                owner.SetControlPoint(index, point);
+                owner.RefreshPreviewLine();
+                EditorUtility.SetDirty(owner);
+                if (owner.gameObject.scene.IsValid())
+                    EditorSceneManager.MarkSceneDirty(owner.gameObject.scene);
+            }
+
+            if (owner.UsesGlobalWidth)
+                EditorGUILayout.HelpBox(
+                    $"Global width override is active: {owner.GlobalWidth:0.##} m",
+                    MessageType.Info);
+
+            if (GUILayout.Button("Select Track Authoring"))
+                Selection.activeGameObject = owner.gameObject;
+        }
+    }
+
     [CustomEditor(typeof(RaceTrackAuthoring))]
     public sealed class RaceTrackAuthoringEditor : UnityEditor.Editor
     {
@@ -57,11 +109,11 @@ namespace GMTK.Editor.TrackAuthoring
                 if (GUILayout.Button("Frame Whole Track"))
                     FrameTrack(track);
 
-                if (GUILayout.Button("Add Point After Selected"))
+                if (GUILayout.Button("Add Point At End"))
                 {
-                    Undo.RecordObject(track, "Add Track Point");
-                    track.AddControlPointAfter(Mathf.Clamp(selectedPoint, 0, track.ControlPoints.Count - 1));
-                    selectedPoint++;
+                    Undo.RecordObject(track, "Append Track Point");
+                    track.AddControlPointAtEnd();
+                    selectedPoint = track.ControlPoints.Count - 1;
                     RebuildVisualHandles(track);
                     EditorUtility.SetDirty(track);
                 }
@@ -85,6 +137,15 @@ namespace GMTK.Editor.TrackAuthoring
 
             if (GUILayout.Button("Rebuild Visible Control Points"))
                 RebuildVisualHandles(track);
+
+            if (GUILayout.Button("Generate Rolling Heights"))
+            {
+                Undo.RecordObject(track, "Generate Track Heights");
+                track.GenerateRollingHeights();
+                SnapVisualHandlesToAuthoring(track);
+                EditorUtility.SetDirty(track);
+                MarkSceneDirty(track);
+            }
 
             EditorGUILayout.Space();
             GUI.backgroundColor = new Color(0.35f, 0.9f, 0.45f);
@@ -231,6 +292,8 @@ namespace GMTK.Editor.TrackAuthoring
                 if (existing[i].transform.parent != root)
                     existing[i].transform.SetParent(root, false);
             }
+            EnsurePreviewLine(track, root);
+            track.RefreshPreviewLine();
         }
 
         private static void RebuildVisualHandles(RaceTrackAuthoring track)
@@ -255,9 +318,42 @@ namespace GMTK.Editor.TrackAuthoring
                 handle.SnapToAuthoringData();
             }
 
+            EnsurePreviewLine(track, rootObject.transform);
+            track.RefreshPreviewLine();
             EditorUtility.SetDirty(track);
             MarkSceneDirty(track);
             SceneView.RepaintAll();
+        }
+
+        private static void EnsurePreviewLine(RaceTrackAuthoring track, Transform root)
+        {
+            Transform lineTransform = root.Find("Track Preview Line");
+            GameObject lineObject;
+            if (lineTransform == null)
+            {
+                lineObject = new GameObject("Track Preview Line") { tag = "EditorOnly" };
+                lineObject.transform.SetParent(root, false);
+                Undo.RegisterCreatedObjectUndo(lineObject, "Create Track Preview Line");
+            }
+            else
+            {
+                lineObject = lineTransform.gameObject;
+            }
+
+            LineRenderer line = lineObject.GetComponent<LineRenderer>();
+            if (line == null) line = lineObject.AddComponent<LineRenderer>();
+
+            line.sharedMaterial = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Line.mat");
+            line.startColor = PointColor;
+            line.endColor = PointColor;
+            line.startWidth = 0.8f;
+            line.endWidth = 0.8f;
+            line.numCornerVertices = 4;
+            line.numCapVertices = 4;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            line.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            line.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
         }
 
         private static void SetupProjectIntegration(RaceTrackAuthoring track, bool createMissing)
@@ -343,6 +439,16 @@ namespace GMTK.Editor.TrackAuthoring
                 handle.transform.hasChanged = false;
             }
             EditorUtility.SetDirty(track);
+        }
+
+        private static void SnapVisualHandlesToAuthoring(RaceTrackAuthoring track)
+        {
+            RaceTrackControlPointHandle[] handles =
+                track.GetComponentsInChildren<RaceTrackControlPointHandle>(true);
+            foreach (RaceTrackControlPointHandle handle in handles)
+                handle.SnapToAuthoringData();
+            track.RefreshPreviewLine();
+            SceneView.RepaintAll();
         }
 
         private static void PersistGeneratedMesh(RaceTrackAuthoring track)

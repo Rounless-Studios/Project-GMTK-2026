@@ -46,6 +46,7 @@ namespace GMTK.TrackAuthoring
             point.position = transform.localPosition;
             owner.SetControlPoint(pointIndex, point);
             transform.hasChanged = false;
+            owner.RefreshPreviewLine();
             ApplyColor();
         }
 
