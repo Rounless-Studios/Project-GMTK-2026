@@ -1,12 +1,12 @@
 # GMTK Quiz System
 
 게임 실행 시 `QuizGameBootstrap`이 `QuizSystem`, 반응형 Canvas, 새 Input System용
-EventSystem을 자동 생성한다. 별도 프리팹이나 Scene 설정은 필요 없다.
+EventSystem을 자동 생성한다. 별도 프리팹이나 Scene 설정은 필요 없다. 퀴즈는 저주를
+받은 인간 플레이어에게만 나타나며 일정 시간마다 자동으로 시작되지 않는다.
 
 ## 기본 동작
 
-- 첫 퀴즈: 게임 시작 약 2초 후
-- 이후 퀴즈: 18~32초 사이의 랜덤 간격
+- 시작 조건: 저주 시스템이 `QuizSessionController.TriggerNow()`를 호출했을 때
 - 형식: 산수, 수도 상식, 수열 퍼즐, 다른 모양 찾기
 - 제한 시간: 문제별 6~10초
 - 피드백: 정답/오답/시간 초과와 해설 표시

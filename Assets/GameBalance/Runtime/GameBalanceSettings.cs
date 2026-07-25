@@ -69,6 +69,18 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float soulSwapMinimumDistanceMeters = 15f;
         [Min(0)] public float soulSwapMaximumDistanceMeters = 40f;
         [Min(0)] public float soulSwapCollisionIgnoreSeconds = 0.3f;
+
+        [Header("AI Quiz Ability")]
+        [Range(0f, 1f)] public float defaultAiQuizSuccessChance = 0.5f;
+        [Range(0f, 1f)] public float cleanRacerQuizSuccessChance = 0.8f;
+        [Range(0f, 1f)] public float rammerQuizSuccessChance = 0.35f;
+        [Range(0f, 1f)] public float blockerQuizSuccessChance = 0.65f;
+        [Range(0f, 1f)] public float recklessQuizSuccessChance = 0.3f;
+
+        [Header("AI Casting")]
+        [Min(0f)] public float aiInitialCastDelayMinimumSeconds = 2f;
+        [Min(0f)] public float aiInitialCastDelayMaximumSeconds = 5f;
+        [Min(0.1f)] public float aiFailedCastRetrySeconds = 1f;
     }
 
     [System.Serializable]
@@ -346,6 +358,10 @@ namespace Gmtk2026.GameBalance
 
             if (curse.soulSwapMinimumDistanceMeters > curse.soulSwapMaximumDistanceMeters)
                 errors.Add("curse.soulSwapMinimumDistanceMeters must be <= soulSwapMaximumDistanceMeters");
+            if (curse.aiInitialCastDelayMinimumSeconds > curse.aiInitialCastDelayMaximumSeconds)
+                errors.Add("curse.aiInitialCastDelayMinimumSeconds must be <= aiInitialCastDelayMaximumSeconds");
+            if (curse.aiFailedCastRetrySeconds < 0.1f)
+                errors.Add("curse.aiFailedCastRetrySeconds must be >= 0.1");
 
             if (boost.overtakeRewardCharges > boost.maximumCharges)
                 errors.Add("boost.overtakeRewardCharges must be <= boost.maximumCharges");

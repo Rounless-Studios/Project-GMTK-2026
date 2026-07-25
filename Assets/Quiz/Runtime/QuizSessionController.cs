@@ -18,18 +18,13 @@ namespace Gmtk2026.Quiz
         [Header("Question Sources")]
         [SerializeField] private QuizPool authoredPool;
 
-        [Header("Schedule")]
-        [SerializeField] private bool autoStart = true;
-        [SerializeField, Min(0f)] private float initialDelaySeconds = 2f;
-        [SerializeField, Min(1f)] private float minimumIntervalSeconds = 2f;
-        [SerializeField, Min(1f)] private float maximumIntervalSeconds = 2f;
+        [Header("Presentation")]
         [SerializeField, Min(0.1f)] private float feedbackDurationSeconds = 1.8f;
 
         [Header("Gameplay")]
         [SerializeField] private bool pauseGameplayDuringQuiz;
 
         private QuizQuestionSelector selector;
-        private float nextQuizAt;
         private float feedbackEndsAt;
         private float previousTimeScale = 1f;
         private bool initialized;
@@ -50,14 +45,6 @@ namespace Gmtk2026.Quiz
         private void Awake()
         {
             Initialize();
-        }
-
-        private void OnEnable()
-        {
-            if (initialized)
-            {
-                ScheduleNext(initialDelaySeconds);
-            }
         }
 
         private void OnDisable()
@@ -85,7 +72,6 @@ namespace Gmtk2026.Quiz
             previousPresentedKind = null;
             initialized = true;
             State = QuizSessionState.Waiting;
-            ScheduleNext(initialDelaySeconds);
         }
 
         public void Tick(float unscaledDeltaTime, float unscaledTime)
@@ -98,10 +84,6 @@ namespace Gmtk2026.Quiz
             switch (State)
             {
                 case QuizSessionState.Waiting:
-                    if (autoStart && unscaledTime >= nextQuizAt)
-                    {
-                        BeginNextQuestion();
-                    }
                     break;
 
                 case QuizSessionState.Question:
@@ -123,7 +105,7 @@ namespace Gmtk2026.Quiz
             }
         }
 
-        public void TriggerNow()
+        public bool TriggerNow()
         {
             if (!initialized)
             {
@@ -133,7 +115,10 @@ namespace Gmtk2026.Quiz
             if (State == QuizSessionState.Waiting)
             {
                 BeginNextQuestion();
+                return true;
             }
+
+            return false;
         }
 
         public bool SubmitAnswer(int selectedChoiceIndex)
@@ -167,21 +152,9 @@ namespace Gmtk2026.Quiz
             return true;
         }
 
-        public void ConfigureSchedule(
-            float initialDelay,
-            float minimumInterval,
-            float maximumInterval,
-            float feedbackDuration)
+        public void ConfigureFeedbackDuration(float feedbackDuration)
         {
-            initialDelaySeconds = Mathf.Max(0f, initialDelay);
-            minimumIntervalSeconds = Mathf.Max(1f, minimumInterval);
-            maximumIntervalSeconds = Mathf.Max(minimumIntervalSeconds, maximumInterval);
             feedbackDurationSeconds = Mathf.Max(0.1f, feedbackDuration);
-
-            if (State == QuizSessionState.Waiting)
-            {
-                ScheduleNext(initialDelaySeconds);
-            }
         }
 
         private void BeginNextQuestion()
@@ -257,12 +230,6 @@ namespace Gmtk2026.Quiz
             State = QuizSessionState.Waiting;
             CurrentQuestion = null;
             QuizClosed?.Invoke();
-            ScheduleNext(UnityEngine.Random.Range(minimumIntervalSeconds, maximumIntervalSeconds));
-        }
-
-        private void ScheduleNext(float delay)
-        {
-            nextQuizAt = Time.unscaledTime + Mathf.Max(0f, delay);
         }
 
         private void RestoreGameplayTime()

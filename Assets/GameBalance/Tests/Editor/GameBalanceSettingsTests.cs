@@ -96,6 +96,16 @@ namespace Gmtk2026.GameBalance.Tests
         }
 
         [Test]
+        public void AiCastDelay_MinGreaterThanMax_IsInvalid()
+        {
+            var s = NewDefault();
+            s.curse.aiInitialCastDelayMinimumSeconds = 5f;
+            s.curse.aiInitialCastDelayMaximumSeconds = 2f;
+            CollectionAssert.IsNotEmpty(s.Validate());
+            Object.DestroyImmediate(s);
+        }
+
+        [Test]
         public void BeginRace_Snapshot_IsIndependentOfActive()
         {
             var src = NewDefault();
