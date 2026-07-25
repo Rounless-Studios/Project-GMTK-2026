@@ -54,47 +54,31 @@ Shader "Custom/CRTPostProcess"
                 // return half4(1, 0, 0, 1);
 
                 float2 uv = input.texcoord;
+                half3 sourceColor = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_BlitTexture, uv).rgb;
+                half3 col = sourceColor;
 
                 // --- PS1-style low internal resolution ---
                 float2 texSize = _BlitTexture_TexelSize.zw;
                 float2 pixelStep = _PixelSize / texSize;
                 uv = (floor(uv / pixelStep) + 0.5) * pixelStep;
 
-                if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
-                    return half4(0, 0, 0, 1);
-
-                // --- Chromatic aberration (RGB split toward edges) ---
-                float2 dir = uv - 0.5;
-                half3 sourceColor = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_BlitTexture, uv).rgb;
-                float edgeAmount = saturate(length(dir) * 2.0);
-                half3 redShift = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_BlitTexture, uv - dir * _Aberration * edgeAmount).rgb;
-                half3 blueShift = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_BlitTexture, uv + dir * _Aberration * edgeAmount).rgb;
-                half3 col = sourceColor;
-                col.r = lerp(sourceColor.r, redShift.r, edgeAmount);
-                col.b = lerp(sourceColor.b, blueShift.b, edgeAmount);
-                col = saturate(col);
-
                 // --- Color depth reduction (PS1's limited color precision) ---
                 float levels = exp2(_ColorDepth) - 1.0;
                 col = floor(col * levels + 0.5) / levels;
 
+                // --- Chromatic aberration (RGB split toward edges) ---
+                float2 dir = uv - 0.5;
+                float edgeAmount = saturate(length(dir) * 2.0);
+                half3 redShift = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_BlitTexture, uv - dir * _Aberration * edgeAmount).rgb;
+                half3 blueShift = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_BlitTexture, uv + dir * _Aberration * edgeAmount).rgb;
+                
+                col.r = lerp(sourceColor.r, redShift.r, edgeAmount);
+                col.b = lerp(sourceColor.b, blueShift.b, edgeAmount);
+                col = saturate(col);
+
+
                 // --- Scanlines ---
                 float scan = sin(uv.y * _ScanlineCount * PI * 2.0) * 0.5 + 0.5;
-                col *= lerp(1.0, scan, _ScanlineIntensity);
-
-                // --- Vignette ---
-                float vig = 1.0 - dot(dir, dir) * _Vignette;
-                col *= saturate(vig);
-
-                col *= _Brightness;
-
-                return half4(col, 1.0);
-            }
-            ENDHLSL
-        }
-    }
-}
-                float scan = sin(curvedUV.y * _ScanlineCount * PI * 2.0) * 0.5 + 0.5;
                 col *= lerp(1.0, scan, _ScanlineIntensity);
 
                 // --- Vignette ---
