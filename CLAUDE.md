@@ -82,6 +82,19 @@ GMTK 2026 잼 출품용 레이싱 게임. 이 파일은 이 저장소에서 작�
 ## Git / 통합 (`COLLABORATION.md`)
 
 - 브랜치: `feat/<slug>`, `fix/<slug>`, `polish/<slug>`, `chore/<slug>`. 짧게 유지, squash merge
+- **다른 브랜치가 이미 체크아웃돼 있으면 `git worktree`로 작업 공간을 분리해서 올린다.** 여러 사람·에이전트가
+  한 워킹트리를 공유하면 미커밋 변경이 상시 섞여 브랜치 전환이 막히고, `git commit -a` 한 번이 남의 작업을
+  쓸어담는다
+  - `git worktree add D:\Project-GMTK-2026-<용도> -b feat/<slug> origin/develop` — `.git`과 LFS 저장소를
+    공유하므로 클론보다 훨씬 가볍고, 같은 브랜치 중복 체크아웃은 git이 막아준다
+  - 내가 만들거나 고친 파일만 새 워크트리로 복사해 커밋한다. 옮기기 전에
+    `git diff origin/develop -- <파일>`로 남의 변경이 섞이지 않았는지 확인한다
+  - `origin/develop`에서 브랜치를 파면 upstream이 `develop`으로 잡히므로, 푸시는
+    `git push -u origin feat/<slug>`처럼 대상을 반드시 명시한다
+  - 머지는 `git checkout develop && git merge --ff-only feat/<slug>` 후 푸시. 끝나면 워크트리를 피처
+    브랜치로 되돌려 `develop`을 비워둔다 (다른 워크트리가 잡을 수 있게)
+  - 새 워크트리에는 `Library/`가 없어 첫 Unity 실행에서 전체 임포트가 한 번 돈다. 코드·테스트만 확인할
+    때는 배치 모드(`unity test --mode EditMode`)로 충분하다
 - 씬·프리팹은 한 사람이 소유. 충돌 큰 파일은 프리팹/컴포넌트 경계로 나눠 작업
 - 커밋 범위는 작업 단위로 자른다. 자동 생성된 `.mat`/`ProjectSettings` 잡음 diff를 함께 커밋하지 않는다
 - 외부 아트/오디오는 임포트 시점에 출처·라이선스·저작자 기록 (필수)
