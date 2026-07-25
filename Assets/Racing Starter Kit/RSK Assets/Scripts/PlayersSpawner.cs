@@ -26,6 +26,14 @@ namespace SpinMotion
         public GameObject aiWaypointTrackerPrefab;
         public List<Transform> spawnPoints = new();
 
+        [Header("MVC Hybrid Player")]
+        [Tooltip("Spawn the player as an MVC vehicle (AI stay kit cars).")]
+        public bool useMvcPlayer = false;
+        [Tooltip("MVC car prefab used for the player when useMvcPlayer is on.")]
+        public GameObject mvcPlayerPrefab;
+        [Tooltip("Kit CheckpointTracker prefab, attached to the MVC player so scoring tracks it.")]
+        public GameObject checkpointTrackerPrefab;
+
         [Header("Player Spawn Settings")]
         public PlayerSpawnIndex playerSpawnIndex = PlayerSpawnIndex.First;
         public int customPlayerSpawnIndex = 0; // only used if playerSpawnIndex is Custom
@@ -72,13 +80,21 @@ namespace SpinMotion
             {
                 if (i == 0)
                 {
-                    // spawn player at the determined index
-                    var player = Instantiate(playerPrefab, spawnPoints[playerSpawnIndex].position, spawnPoints[playerSpawnIndex].rotation);
+                    // spawn player at the determined index — MVC vehicle in hybrid mode, else kit car
+                    var prefab = (useMvcPlayer && mvcPlayerPrefab != null) ? mvcPlayerPrefab : playerPrefab;
+                    var player = Instantiate(prefab, spawnPoints[playerSpawnIndex].position, spawnPoints[playerSpawnIndex].rotation);
                     spawnedPlayers.Add((player, player.transform.position, player.transform.rotation));
 
+                    // the kit player prefab nests a CheckpointTracker; the MVC prefab does not, so
+                    // attach one from the tracker prefab. Either way scoring keys off race index 0.
                     var checkpointTracker = player.GetComponentInChildren<CheckpointTracker>();
+                    if (checkpointTracker == null && checkpointTrackerPrefab != null)
+                        checkpointTracker = Instantiate(checkpointTrackerPrefab, player.transform).GetComponent<CheckpointTracker>();
                     checkpointTracker.SetCarRacePositionIndex(0);
                     playersCheckpointTrackers.Add(checkpointTracker);
+
+                    if (useMvcPlayer && mvcPlayerPrefab != null)
+                        GMTK.Mvc.GmtkMvcBridge.SetPlayerVehicle(player);
                 }
                 else
                 {
