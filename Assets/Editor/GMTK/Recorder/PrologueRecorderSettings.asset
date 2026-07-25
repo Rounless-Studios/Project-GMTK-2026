@@ -19,7 +19,7 @@ MonoBehaviour:
   m_StartFrame: 0
   m_EndFrame: 0
   m_StartTime: 0
-  m_EndTime: 5
+  m_EndTime: 7.5
   m_CapFrameRate: 1
   m_ExitPlayMode: 1
   m_RecorderSettings:
