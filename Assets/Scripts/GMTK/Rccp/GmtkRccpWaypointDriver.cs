@@ -1,49 +1,19 @@
+using Gmtk2026.GameBalance;
 using UnityEngine;
 
 namespace GMTK.Rccp
 {
     /// <summary>
-    /// Drives an RCCP vehicle over the existing track waypoints without depending on the
-    /// retired RSK car controller or a separately baked NavMesh.
+    /// Drives an RCCP vehicle over the track waypoints. The component only reads the world (waypoint
+    /// path, road edges) and writes RCCP inputs; every number and every decision curve lives in
+    /// <see cref="AiDrivingSettings"/> / <see cref="AiDriving"/> so the balance asset stays the single
+    /// place to tune the AI and the maths stays unit-tested.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(RCCP_CarController))]
     public sealed class GmtkRccpWaypointDriver : MonoBehaviour
     {
-        [SerializeField] private float waypointReachDistance = 9f;
-        [Tooltip("Aim distance at a standstill; speed adds to it so corners are seen early.")]
-        [SerializeField] private float minLookAhead = 14f;
-        [SerializeField] private float lookAheadPerKph = 0.32f;
-        [Tooltip("Path length whose heading change decides the corner speed.")]
-        [SerializeField] private float cornerScanDistance = 50f;
-        [SerializeField] private float straightSpeedKph = 135f;
-        [SerializeField] private float tightCornerSpeedKph = 42f;
-        [Tooltip("Heading change over the scan window that counts as a full-tightness corner.")]
-        [SerializeField] private float tightCornerDegrees = 75f;
-        [Tooltip("Metres the aim point moves toward the inside of a corner at the apex.")]
-        [SerializeField] private float apexOffset = 4.5f;
-        [Tooltip("Metres the aim point moves to the outside while a sharp corner is still ahead.")]
-        [SerializeField] private float entryOffset = 3.5f;
-        [Tooltip("Turn angle treated as a full-tightness corner when placing the racing line.")]
-        [SerializeField] private float racingLineReferenceDegrees = 30f;
-        [Tooltip("Metres driven while merging from the grid lane onto the racing line. Distance, not " +
-                 "time, because the countdown would otherwise burn the merge while the car is frozen.")]
-        [SerializeField] private float laneMergeDistance = 140f;
-        [Tooltip("Largest grid lane offset kept from the spawn position.")]
-        [SerializeField] private float maxLaneOffset = 6f;
-        [Tooltip("Small per-car offset kept for the whole race so the pack does not share one line.")]
-        [SerializeField] private float laneJitter = 1.2f;
-        [Tooltip("Widest half-width probed when turning a waypoint into a track cross-section line.")]
-        [SerializeField] private float maxRoadHalfWidth = 13f;
-        [Tooltip("Metres kept clear of the measured road edge.")]
-        [SerializeField] private float roadEdgeMargin = 2.2f;
-        [SerializeField] private float steerGainLowSpeed = 1.5f;
-        [SerializeField] private float steerGainHighSpeed = 0.55f;
-        [Tooltip("Damps the steering rate so the car stops sawing at the wheel.")]
-        [SerializeField] private float steerDamping = 0.06f;
-        [SerializeField] private float stuckSpeed = 1.5f;
-        [SerializeField] private float stuckDelay = 2.5f;
-        [SerializeField] private float reverseDuration = 1.25f;
+        private static AiDrivingSettings S => GameBalance.Current.ai.driving;
 
         private RCCP_CarController carController;
         private Rigidbody carRigidbody;
@@ -51,11 +21,14 @@ namespace GMTK.Rccp
         private RCCP_Inputs inputs;
         private GmtkRccpWaypointPath path;
         private int waypointIndex;
+        private int raceIndex;
         private float throttleScale = 0.9f;
         private float previousSteerAngle;
+        private float lastTargetSpeed;
+        private float lastTelemetryTime;
         private float gridLaneOffset;
         private float mergeTravelled;
-        private float personalLaneOffset;
+        private float laneSpread;
         private int measuredEdgeIndex = -1;
         private float edgeLimitLeft;
         private float edgeLimitRight;
@@ -83,26 +56,28 @@ namespace GMTK.Rccp
                 inputReceiver.DisableOverrideInputs();
         }
 
-        public void Initialize(GmtkRccpWaypointPath waypointPath)
+        /// <summary>
+        /// <paramref name="carRaceIndex"/> is the grid position, which keeps the per-car lane spread
+        /// reproducible across runs.
+        /// </summary>
+        public void Initialize(GmtkRccpWaypointPath waypointPath, int carRaceIndex)
         {
             path = waypointPath;
+            raceIndex = carRaceIndex;
 
             if (path == null || path.Count == 0)
                 return;
 
             waypointIndex = path.FindClosestIndex(transform.position);
 
-            // Every car shares one waypoint ring, so without this they all aim at the same centre
-            // line point and dive into the middle of the track the moment the race starts. Keep the
-            // grid lane and merge onto the racing line over the first seconds instead.
+            // Every car shares one waypoint ring, so without a lane of its own each car aims at the
+            // same centre line point and the field dives into the middle of the track at the start.
             gridLaneOffset = Mathf.Clamp(
                 path.SignedLateralOffset(waypointIndex, transform.position),
-                -maxLaneOffset,
-                maxLaneOffset);
+                -S.maxLaneOffsetMetres,
+                S.maxLaneOffsetMetres);
             mergeTravelled = 0f;
-
-            // deterministic per-car spread so the pack does not stack on one line afterwards
-            personalLaneOffset = ((GetInstanceID() % 5) - 2) * 0.5f * laneJitter;
+            laneSpread = AiDriving.LaneSpreadMetres(raceIndex, gridLaneOffset, S);
         }
 
         public void ConfigurePersonality(AIPersonalityType type)
@@ -141,16 +116,11 @@ namespace GMTK.Rccp
 
             AdvanceWaypoint();
 
-            // aim further ahead the faster we go, so corners are entered on a line instead of
-            // being noticed once the marker is already alongside the car
-            float lookAhead = minLookAhead + speedKph * lookAheadPerKph;
-            Vector3 aimPoint = GetRacingLinePoint(lookAhead);
-            aimPoint += GetPersonalityOffset(aimPoint);
-
+            Vector3 aimPoint = GetRacingLinePoint(AiDriving.LookAheadMetres(speedKph, S));
             Vector3 localTarget = transform.InverseTransformPoint(aimPoint);
             float targetAngle = Mathf.Atan2(localTarget.x, Mathf.Max(1f, localTarget.z)) * Mathf.Rad2Deg;
 
-            UpdateRecovery();
+            UpdateRecovery(speedKph);
 
             if (reverseTimer > 0f)
             {
@@ -161,24 +131,26 @@ namespace GMTK.Rccp
             }
             else
             {
-                // corner speed comes from the path shape ahead, not from the current error, so the
-                // car brakes before the corner
-                float headingChange = path.HeadingChangeAhead(waypointIndex, cornerScanDistance);
-                float tightness = Mathf.Clamp01(headingChange / Mathf.Max(1f, tightCornerDegrees));
-                float targetSpeed = Mathf.Lerp(straightSpeedKph, tightCornerSpeedKph, tightness) * throttleScale;
-                float speedError = targetSpeed - speedKph;
+                // corner speed comes from the path shape over the braking distance, so the car is
+                // already slowing when it reaches the corner
+                float scan = AiDriving.CornerScanMetres(speedKph, S);
+                float headingChange = path.HeadingChangeAhead(waypointIndex, scan, out float arc);
+                float targetSpeed = AiDriving.SmoothTargetSpeedKph(
+                    lastTargetSpeed,
+                    AiDriving.CornerSpeedKph(headingChange, arc, throttleScale, S),
+                    Time.fixedDeltaTime,
+                    S);
+                lastTargetSpeed = targetSpeed;
 
-                inputs.throttleInput = Mathf.Clamp01(speedError / 12f);
-                inputs.brakeInput = speedError < -4f ? Mathf.Clamp01(-speedError / 22f) : 0f;
+                AiDriving.SpeedInputs(targetSpeed, speedKph, out float throttle, out float brake);
+                inputs.throttleInput = throttle;
+                inputs.brakeInput = brake;
 
-                // steering authority falls off with speed, and the steering rate is damped
-                float steerGain = Mathf.Lerp(
-                    steerGainLowSpeed,
-                    steerGainHighSpeed,
-                    Mathf.Clamp01(speedKph / straightSpeedKph));
+                LogTelemetry(speedKph, targetSpeed, arc, headingChange);
+
                 float angleRate = (targetAngle - previousSteerAngle) / Time.fixedDeltaTime;
                 inputs.steerInput = Mathf.Clamp(
-                    (targetAngle * steerGain - angleRate * steerDamping) / 35f,
+                    (targetAngle * AiDriving.SteerGain(speedKph, S) - angleRate * S.steerDamping) / 35f,
                     -1f,
                     1f);
             }
@@ -192,10 +164,28 @@ namespace GMTK.Rccp
         }
 
         /// <summary>
+        /// One AI car's telemetry once a second: what the driver asked for against what the car did,
+        /// so a slow lap can be attributed to the target, to the inputs, or to the drivetrain.
+        /// </summary>
+        private void LogTelemetry(float speedKph, float targetSpeed, float scan, float headingChange)
+        {
+            if (!S.logDriveTelemetry || raceIndex != 1 || Time.time - lastTelemetryTime < 1f)
+                return;
+
+            lastTelemetryTime = Time.time;
+
+            Debug.Log($"AI drive {name}: spd={speedKph:F0} target={targetSpeed:F0} " +
+                      $"thr={inputs.throttleInput:F2} brk={inputs.brakeInput:F2} steer={inputs.steerInput:F2} " +
+                      $"gear={carController.currentGear} rpm={carController.engineRPM:F0} " +
+                      $"engine={carController.engineRunning} scan={scan:F0}m angle={headingChange:F0}deg " +
+                      $"applied(thr={carController.throttleInput_V:F2} brk={carController.brakeInput_V:F2} " +
+                      $"steer={carController.steerInput_V:F2})");
+        }
+
+        /// <summary>
         /// Places the aim point on a racing line rather than on the centre line: pushed toward the
-        /// inside of the corner it is entering, and widened to the outside while a sharper corner is
-        /// still ahead. The offset is dropped when there is no ground under it, which keeps the line
-        /// off the run-off and off the crossover bridge edge.
+        /// inside of the corner being entered, widened to the outside while a sharper corner is still
+        /// ahead, offset by the car's own lane, and finally clamped to the measured road.
         /// </summary>
         private Vector3 GetRacingLinePoint(float lookAhead)
         {
@@ -216,33 +206,37 @@ namespace GMTK.Rccp
                 out float farTurnDegrees);
 
             Vector3 pathRight = Vector3.Cross(Vector3.up, pathDirection);
-            float reference = Mathf.Max(1f, racingLineReferenceDegrees);
+            float reference = Mathf.Max(1f, S.racingLineReferenceDegrees);
 
             // inside of the corner being entered
-            float apexAmount = Mathf.Clamp01(Mathf.Abs(turnDegrees) / reference) * apexOffset;
-            Vector3 offset = pathRight * Mathf.Sign(turnDegrees) * apexAmount;
+            float lateral = Mathf.Sign(turnDegrees)
+                            * Mathf.Clamp01(Mathf.Abs(turnDegrees) / reference)
+                            * S.apexOffsetMetres;
 
             // widen to the outside while the sharp part is still further ahead
             if (Mathf.Abs(farTurnDegrees) > Mathf.Abs(turnDegrees))
             {
-                float entryAmount = Mathf.Clamp01(Mathf.Abs(farTurnDegrees) / reference) * entryOffset;
-                offset -= pathRight * Mathf.Sign(farTurnDegrees) * entryAmount;
+                lateral -= Mathf.Sign(farTurnDegrees)
+                           * Mathf.Clamp01(Mathf.Abs(farTurnDegrees) / reference)
+                           * S.entryOffsetMetres;
             }
 
-            // grid lane fades out over driven distance, the small personal offset stays
-            float mergeBlend = laneMergeDistance > 0f
-                ? 1f - Mathf.Clamp01(mergeTravelled / laneMergeDistance)
-                : 0f;
-            float lateral = Vector3.Dot(offset, pathRight)
-                            + gridLaneOffset * mergeBlend
-                            + personalLaneOffset;
+            float mergeBlend = AiDriving.GridLaneBlend(mergeTravelled, S);
 
-            // the waypoint is used as a track cross-section line: clamp the chosen position to the
-            // measured road, never fall back to the centre line
+            // The ram/block pull is a world-space vector toward the player: only its sideways part
+            // belongs on the racing line, it is capped, and it stays off while the grid is merging.
+            // Otherwise every AI aims at the player's grid slot and the field converges at the start.
+            float personalityLateral = Mathf.Clamp(
+                Vector3.Dot(GetPersonalityOffset(aimPoint), pathRight),
+                -S.maxPersonalityLateralMetres,
+                S.maxPersonalityLateralMetres) * (1f - mergeBlend);
+
+            lateral += gridLaneOffset * mergeBlend + laneSpread + personalityLateral;
+
+            // the waypoint is used as a track cross-section line, never as a point to drive to
             MeasureRoadEdges(aimPoint, pathRight);
-            lateral = Mathf.Clamp(lateral, -edgeLimitLeft, edgeLimitRight);
 
-            return aimPoint + pathRight * lateral;
+            return aimPoint + pathRight * AiDriving.ClampLateral(lateral, edgeLimitLeft, edgeLimitRight);
         }
 
         /// <summary>
@@ -256,19 +250,21 @@ namespace GMTK.Rccp
                 return;
 
             measuredEdgeIndex = waypointIndex;
-            edgeLimitRight = Mathf.Max(0f, ProbeEdge(centre, pathRight) - roadEdgeMargin);
-            edgeLimitLeft = Mathf.Max(0f, ProbeEdge(centre, -pathRight) - roadEdgeMargin);
+            edgeLimitRight = Mathf.Max(0f, ProbeEdge(centre, pathRight) - S.roadEdgeMarginMetres);
+            edgeLimitLeft = Mathf.Max(0f, ProbeEdge(centre, -pathRight) - S.roadEdgeMarginMetres);
         }
 
         private float ProbeEdge(Vector3 centre, Vector3 direction)
         {
+            float limit = S.maxRoadHalfWidthMetres;
+
             // a barrier is the hard limit
-            if (Physics.Raycast(centre + Vector3.up * 1.2f, direction, out RaycastHit hit, maxRoadHalfWidth))
+            if (Physics.Raycast(centre + Vector3.up * 1.2f, direction, out RaycastHit hit, limit))
                 return hit.distance;
 
-            // otherwise the surface edge: the track has no terrain beside it, so the last sample
-            // with ground under it is the edge
-            for (float distance = 2f; distance <= maxRoadHalfWidth; distance += 2f)
+            // otherwise the surface edge: the track has no terrain beside it, so the last sample with
+            // ground under it is the edge
+            for (float distance = 2f; distance <= limit; distance += 2f)
             {
                 Vector3 probe = centre + direction * distance + Vector3.up * 3f;
 
@@ -276,18 +272,18 @@ namespace GMTK.Rccp
                     return distance - 2f;
             }
 
-            return maxRoadHalfWidth;
+            return limit;
         }
 
         /// <summary>
-        /// Consumes waypoints that are reached or already behind the car, so the racing line can cut
-        /// a corner instead of driving to every marker, and a missed marker does not turn the car
-        /// around.
+        /// Consumes waypoints that are reached or already behind the car, so the racing line can cut a
+        /// corner instead of driving to every marker, and a missed marker does not turn the car around.
         /// </summary>
         private void AdvanceWaypoint()
         {
-            float reachSqr = waypointReachDistance * waypointReachDistance;
-            float behindLimitSqr = waypointReachDistance * 3f * (waypointReachDistance * 3f);
+            float reach = S.waypointReachMetres;
+            float reachSqr = reach * reach;
+            float behindLimitSqr = reach * 3f * (reach * 3f);
 
             for (int step = 0; step < path.Count; step++)
             {
@@ -305,18 +301,18 @@ namespace GMTK.Rccp
             }
         }
 
-        private void UpdateRecovery()
+        private void UpdateRecovery(float speedKph)
         {
-            if (carController.absoluteSpeed <= stuckSpeed)
+            if (speedKph <= S.stuckSpeedKph)
                 stuckTimer += Time.fixedDeltaTime;
             else
                 stuckTimer = 0f;
 
-            if (stuckTimer < stuckDelay)
+            if (stuckTimer < S.stuckDelaySeconds)
                 return;
 
             stuckTimer = 0f;
-            reverseTimer = reverseDuration;
+            reverseTimer = S.reverseDurationSeconds;
         }
 
         private Vector3 GetPersonalityOffset(Vector3 waypointPosition)

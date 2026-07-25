@@ -90,9 +90,14 @@ namespace GMTK.Rccp
         /// <summary>
         /// Total heading change in degrees over the next <paramref name="distance"/> metres, used to
         /// pick a corner speed before the corner instead of reacting inside it.
+        /// <paramref name="arcMetres"/> is the path length actually walked: waypoints are ~22m apart,
+        /// so the walk overshoots the request, and reading the angle against the requested distance
+        /// would understate the corner radius and slow the AI down for nothing.
         /// </summary>
-        public float HeadingChangeAhead(int startIndex, float distance)
+        public float HeadingChangeAhead(int startIndex, float distance, out float arcMetres)
         {
+            arcMetres = Mathf.Max(1f, distance);
+
             if (waypoints.Count < 3)
                 return 0f;
 
@@ -118,6 +123,7 @@ namespace GMTK.Rccp
                 index = (index + 1) % waypoints.Count;
             }
 
+            arcMetres = Mathf.Max(1f, travelled);
             return change;
         }
 

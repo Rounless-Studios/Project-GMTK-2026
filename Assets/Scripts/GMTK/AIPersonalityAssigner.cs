@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Text;
+using Gmtk2026.GameBalance;
 using UnityEngine;
 using SpinMotion;
 
@@ -10,8 +12,9 @@ namespace GMTK
     /// </summary>
     public class AIPersonalityAssigner : MonoBehaviour
     {
-        // Order tuned so a small field still gets a rammer and a blocker early.
-        private static readonly AIPersonalityType[] Rotation =
+        // The mix is shuffled per race so the grid slot no longer predicts the personality, while
+        // AiPersonalityRoster keeps the composition even (every type is used before any repeats).
+        private static readonly AIPersonalityType[] Personalities =
         {
             AIPersonalityType.Rammer,
             AIPersonalityType.CleanRacer,
@@ -38,6 +41,15 @@ namespace GMTK
         {
             if (trackers == null) return;
 
+            var settings = GameBalance.Current.ai.personalityAssignment;
+            int aiCount = 0;
+            foreach (var tracker in trackers)
+                if (tracker != null && tracker.GetCarRacePositionIndex() != 0) aiCount++;
+
+            int seed = AiPersonalityRoster.ResolveSeed(settings.shuffleSeed);
+            List<int> order = AiPersonalityRoster.BuildOrder(aiCount, Personalities.Length, seed);
+            var assigned = new StringBuilder();
+
             int aiOrdinal = 0;
             foreach (var tracker in trackers)
             {
@@ -50,10 +62,16 @@ namespace GMTK
 
                 var personality = car.GetComponent<AIPersonality>();
                 if (personality == null) personality = car.AddComponent<AIPersonality>();
-                personality.type = Rotation[aiOrdinal % Rotation.Length];
+                personality.type = Personalities[order[aiOrdinal % order.Count]];
                 personality.ApplyToDriver();
+
+                assigned.Append(' ').Append(raceIndex).Append('=').Append(personality.type);
                 aiOrdinal++;
             }
+
+            // the seed makes an odd race reproducible: put it back into the balance asset to replay it
+            if (settings.logAssignment && aiOrdinal > 0)
+                Debug.Log($"AI personalities: seed={seed}{assigned}");
         }
     }
 }
