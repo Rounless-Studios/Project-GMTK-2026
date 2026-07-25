@@ -170,6 +170,16 @@ namespace GMTK.Editor.TrackAuthoring
                 }
             }
 
+            // A full bake also rebuilds the AI waypoints, which live in a prefab: doing that from a
+            // scene copies every waypoint into the scene as an instance override. Gate-only fixes
+            // (count, width, wiring) go through this button so the waypoint prefab stays the owner.
+            if (GUILayout.Button("Bake Checkpoints Only"))
+            {
+                Undo.RegisterFullObjectHierarchyUndo(track.gameObject, "Bake Checkpoints");
+                track.BakeCheckpointsOnly();
+                MarkSceneDirty(track);
+            }
+
             if (!track.TryValidate(out string problem))
                 EditorGUILayout.HelpBox(problem, MessageType.Error);
         }
@@ -468,6 +478,15 @@ namespace GMTK.Editor.TrackAuthoring
             string path = $"{folder}/{fileName}";
             Mesh source = filter.sharedMesh;
             Mesh replacement = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (ReferenceEquals(source, replacement))
+            {
+                // The road already is the asset, so the copy below would Clear() the very geometry it
+                // is about to read and leave an empty mesh behind. Nothing to copy: just save it.
+                EditorUtility.SetDirty(replacement);
+                AssetDatabase.SaveAssets();
+                return;
+            }
+
             if (replacement == null)
             {
                 replacement = Instantiate(source);

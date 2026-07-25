@@ -38,6 +38,44 @@ namespace Gmtk2026.GameBalance
             return order;
         }
 
+        /// <summary>
+        /// Grid order for an authored composition. <paramref name="assignments"/> is the preset's
+        /// one-entry-per-car list, so which personality is doubled is a design decision stored in
+        /// the asset rather than a side effect of round-robin order. Only the slot mapping is
+        /// shuffled; the composition is preserved exactly.
+        /// <para>
+        /// Falls back to <see cref="BuildOrder(int,int,int)"/> when the list is missing or does not
+        /// cover every car, so a half-filled preset still produces a full grid.
+        /// </para>
+        /// </summary>
+        public static List<int> BuildOrder(
+            IReadOnlyList<int> assignments,
+            int aiCount,
+            int personalityCount,
+            int seed)
+        {
+            if (aiCount <= 0 || personalityCount <= 0)
+                return new List<int>();
+
+            if (assignments == null || assignments.Count < aiCount)
+                return BuildOrder(aiCount, personalityCount, seed);
+
+            var order = new List<int>(aiCount);
+            for (int i = 0; i < aiCount; i++)
+            {
+                int personality = assignments[i];
+
+                // an out-of-range entry would index past the personality table at the call site
+                if (personality < 0 || personality >= personalityCount)
+                    return BuildOrder(aiCount, personalityCount, seed);
+
+                order.Add(personality);
+            }
+
+            Shuffle(order, seed);
+            return order;
+        }
+
         private static int NewSeed()
         {
             int seed = Environment.TickCount & int.MaxValue;

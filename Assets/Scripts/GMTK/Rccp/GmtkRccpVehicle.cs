@@ -1,3 +1,4 @@
+using Gmtk2026.GameBalance;
 using UnityEngine;
 
 namespace GMTK.Rccp
@@ -182,12 +183,11 @@ namespace GMTK.Rccp
         public override void ApplyAiTargeting(
             AIPersonalityType type,
             Transform player,
-            float ramStrength,
-            float blockStrength,
+            float lateralStrength,
             float aggroRange)
         {
             if (aiDriver != null)
-                aiDriver.SetPersonalityTarget(type, player, ramStrength, blockStrength, aggroRange);
+                aiDriver.SetPersonalityTarget(type, player, lateralStrength, aggroRange);
         }
 
         private void OnToggleFreeze(bool frozen)

@@ -63,6 +63,10 @@ namespace GMTK.TrackAuthoring
 
         [Header("Gameplay")]
         [SerializeField, Min(1f)] private float aiWaypointSpacing = 8f;
+        [Tooltip("Ranking and elimination read waypoint progress (GmtkRaceProgress), so the track only " +
+            "needs the finish line: one gate for the lap counter and the finish visual. Turn this off " +
+            "to fall back on a full ring of gates spaced by Checkpoint Spacing.")]
+        [SerializeField] private bool singleFinishGate = true;
         [SerializeField, Min(5f)] private float checkpointSpacing = 45f;
         [SerializeField, Min(1)] private int startingGridCount = 8;
         [SerializeField, Min(2f)] private float gridRowSpacing = 5f;
@@ -254,11 +258,43 @@ namespace GMTK.TrackAuthoring
             Debug.Log($"Baked '{name}': {samples.length:0} m, {samples.items.Count} road samples.", this);
         }
 
+        /// <summary>
+        /// Rebuilds the checkpoint gates and nothing else. The AI waypoints live in a prefab, and a
+        /// full bake would pull all of them into the scene as instance overrides, so gate-only fixes
+        /// must not go through <see cref="Bake"/>.
+        /// </summary>
+        public void BakeCheckpointsOnly()
+        {
+            if (!TryValidate(out string problem))
+            {
+                Debug.LogError($"Cannot bake checkpoints: {problem}", this);
+                return;
+            }
+
+            AutoFindSceneSystems();
+            if (checkpoints == null)
+            {
+                Debug.LogError("Baking checkpoints on their own needs a Checkpoints manager in the scene, " +
+                    "otherwise the gates would be parented under a generated root that no bake clears.", this);
+                return;
+            }
+
+            SampleCollection samples = BuildSamples();
+            BuildCheckpoints(transform, samples);
+            Debug.Log($"Baked checkpoints for '{name}': {samples.length:0} m.", this);
+        }
+
         [ContextMenu("Clear Generated Track")]
         public void ClearGenerated()
         {
-            Transform old = transform.Find(GeneratedRootName);
-            if (old != null) DestroySafely(old.gameObject);
+            // Transform.Find only ever returns the first match, so a scene that somehow holds two
+            // generated roots could never converge: every bake destroyed one and added one back.
+            // Sweep every match instead, or the stale road keeps its collider and the mesh asset.
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                Transform child = transform.GetChild(i);
+                if (child.name == GeneratedRootName) DestroySafely(child.gameObject);
+            }
 
             if (aiWaypoints != null)
                 ClearChildren(aiWaypoints.transform);
@@ -388,7 +424,15 @@ namespace GMTK.TrackAuthoring
                 : NewChild(generated, "Checkpoints");
             if (checkpoints != null) ClearChildren(root);
 
-            int count = Mathf.Max(2, Mathf.CeilToInt(samples.length / checkpointSpacing));
+            // Checkpoints.Start() numbers every Checkpoint it finds under the manager, so a gate must
+            // expose exactly one. The kit prefab already carries a wired one on its trigger child.
+            RaceManager raceManager = FindFirstObjectByType<RaceManager>(FindObjectsInactive.Include);
+            RealTimeRacePositions positions =
+                FindFirstObjectByType<RealTimeRacePositions>(FindObjectsInactive.Include);
+
+            int count = singleFinishGate
+                ? 1
+                : Mathf.Max(2, Mathf.CeilToInt(samples.length / checkpointSpacing));
             for (int i = 0; i < count; i++)
             {
                 float distance = RepeatDistance(startDistance + samples.length * i / count, samples.length);
@@ -403,14 +447,55 @@ namespace GMTK.TrackAuthoring
                     transform.TransformPoint(position + rotation * Vector3.up * (checkpointHeight * 0.5f)),
                     transform.rotation * rotation);
 
-                BoxCollider box = checkpoint.GetComponent<BoxCollider>();
-                if (box == null) box = checkpoint.AddComponent<BoxCollider>();
+                Checkpoint gate = checkpoint.GetComponentInChildren<Checkpoint>(true);
+                if (gate == null) gate = checkpoint.AddComponent<Checkpoint>();
+
+                BoxCollider box = gate.GetComponent<BoxCollider>();
+                if (box == null) box = gate.gameObject.AddComponent<BoxCollider>();
                 box.isTrigger = true;
                 box.center = Vector3.zero;
-                box.size = new Vector3(width, checkpointHeight, 1f);
-                if (checkpoint.GetComponent<Checkpoint>() == null)
-                    checkpoint.AddComponent<Checkpoint>();
+
+                if (gate.transform == checkpoint.transform)
+                {
+                    // no trigger child to stretch: size the gate root's own box instead
+                    box.size = new Vector3(width, checkpointHeight, 1f);
+                }
+                else
+                {
+                    // scaling the trigger child widens its marker mesh with the road as well
+                    box.size = Vector3.one;
+                    gate.transform.localScale = new Vector3(width, checkpointHeight, 0.25f);
+                }
+
+                // an unwired Checkpoint throws in Update() every frame, once per gate
+                if (gate.gameEvents == null && raceManager != null) gate.gameEvents = raceManager.gameEvents;
+                if (gate.raceManager == null && raceManager != null)
+                    gate.raceManager = raceManager.raceManagerRuntimeItem;
+                if (gate.realTimeRacePositions == null && positions != null)
+                    gate.realTimeRacePositions = positions.realTimeRacePositionsRuntimeItem;
             }
+
+            ValidateCheckpoints(root, count);
+        }
+
+        /// <summary>
+        /// The kit derives lap progress from the Checkpoint count under the manager, so a duplicated or
+        /// unwired component silently breaks the race instead of failing here. Report it at bake time.
+        /// </summary>
+        private static void ValidateCheckpoints(Transform root, int expected)
+        {
+            Checkpoint[] gates = root.GetComponentsInChildren<Checkpoint>(true);
+            int unwired = 0;
+            foreach (Checkpoint gate in gates)
+                if (gate.raceManager == null || gate.realTimeRacePositions == null || gate.gameEvents == null)
+                    unwired++;
+
+            if (gates.Length != expected)
+                Debug.LogError($"Baked {expected} checkpoint gates but the manager sees {gates.Length} " +
+                    "Checkpoint components. Lap counting needs exactly one per gate.", root);
+            if (unwired > 0)
+                Debug.LogError($"{unwired} baked checkpoints have unassigned references and will throw " +
+                    "every frame. Add a RaceManager and Real Time Race Positions to the scene.", root);
         }
 
         private void BuildStartingGrid(Transform generated, SampleCollection samples)

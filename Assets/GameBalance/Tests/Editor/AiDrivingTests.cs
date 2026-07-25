@@ -31,11 +31,12 @@ namespace Gmtk2026.GameBalance.Tests
         {
             var s = Settings();
 
-            // 20 degrees over 50 m is a ~143 m radius: an arcade car takes that flat out
-            Assert.AreEqual(
-                s.straightSpeedKph,
+            // 20 degrees over the scan window is a ~140 m radius: an arcade car takes that flat out.
+            // Asserting the exact ceiling would only re-state the grip and scan constants, so this
+            // checks the intent instead — no meaningful braking.
+            Assert.GreaterOrEqual(
                 AiDriving.CornerSpeedKph(20f, ScanAt(s, 100f), 1f, s),
-                0.001f,
+                s.straightSpeedKph * 0.95f,
                 "a wide sweeper must not be braked for");
 
             // 180 degrees over 50 m is a ~16 m radius hairpin

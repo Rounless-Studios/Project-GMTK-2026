@@ -7,17 +7,20 @@ using SpinMotion;
 namespace GMTK
 {
     /// <summary>
-    /// Assigns a varied mix of AIPersonality types to the AI cars right after they spawn.
+    /// Assigns the authored mix of AIPersonality types to the AI cars right after they spawn.
+    /// The composition comes from <c>AISettings.personalityAssignments</c> (confirmed default:
+    /// 폭주광 2 + 난폭자 1 + 봉쇄자 1 + 생존자 1) and only the grid slot mapping is shuffled, so
+    /// the slot no longer predicts the personality while the mix stays what the preset says.
     /// The player (race index 0) is left untouched. Self-attaches to the game-mode host.
     /// </summary>
     public class AIPersonalityAssigner : MonoBehaviour
     {
-        // The mix is shuffled per race so the grid slot no longer predicts the personality, while
-        // AiPersonalityRoster keeps the composition even (every type is used before any repeats).
+        // Index table for the roster, which works in ints to stay engine-agnostic. Order here is
+        // only the int mapping; it does not decide the composition any more.
         private static readonly AIPersonalityType[] Personalities =
         {
-            AIPersonalityType.Rammer,
             AIPersonalityType.CleanRacer,
+            AIPersonalityType.Rammer,
             AIPersonalityType.Blocker,
             AIPersonalityType.Reckless,
         };
@@ -41,13 +44,18 @@ namespace GMTK
         {
             if (trackers == null) return;
 
-            var settings = GameBalance.Current.ai.personalityAssignment;
+            var ai = GameBalance.Current.ai;
+            var settings = ai.personalityAssignment;
             int aiCount = 0;
             foreach (var tracker in trackers)
                 if (tracker != null && tracker.GetCarRacePositionIndex() != 0) aiCount++;
 
             int seed = AiPersonalityRoster.ResolveSeed(settings.shuffleSeed);
-            List<int> order = AiPersonalityRoster.BuildOrder(aiCount, Personalities.Length, seed);
+            List<int> order = AiPersonalityRoster.BuildOrder(
+                ToIndices(ai.personalityAssignments),
+                aiCount,
+                Personalities.Length,
+                seed);
             var assigned = new StringBuilder();
 
             int aiOrdinal = 0;
@@ -72,6 +80,17 @@ namespace GMTK
             // the seed makes an odd race reproducible: put it back into the balance asset to replay it
             if (settings.logAssignment && aiOrdinal > 0)
                 Debug.Log($"AI personalities: seed={seed}{assigned}");
+        }
+
+        // The roster works in personality indices so it stays free of the gameplay enum.
+        private static List<int> ToIndices(List<AIPersonalityType> assignments)
+        {
+            if (assignments == null) return null;
+
+            var indices = new List<int>(assignments.Count);
+            foreach (var personality in assignments)
+                indices.Add(System.Array.IndexOf(Personalities, personality));
+            return indices;
         }
     }
 }
