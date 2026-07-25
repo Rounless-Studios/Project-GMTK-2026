@@ -15,6 +15,8 @@ Shader "Custom/ToonShader"
         _SpecularIntensity("Specular Intensity", Range(0.0, 2.0)) = 0.35
         _SpecularBand("Specular Band", Range(0.0, 1.0)) = 0.70
         _BandBlend("Band Blend", Range(0.0, 0.5)) = 0.05
+
+        _HalftoneCellSize("Halftone Dot Size (px)", Range(2.0, 40.0)) = 10.0
     }
 
     SubShader
@@ -61,7 +63,27 @@ Shader "Custom/ToonShader"
                 float _BandBlend;
                 float _SpecularIntensity;
                 float _SpecularBand;
+                float _HalftoneCellSize;
             CBUFFER_END
+
+            // Screen-space halftone dot: value (0..1) controls how much of the
+            // grid cell the dot covers, so a smooth blend factor reads as a
+            // growing/shrinking dot instead of a soft gradient.
+            float Halftone(float2 screenPos, float value, float cellSize)
+            {
+                // Outside the blend band, value is pinned to exactly 0 or 1 by the
+                // caller - return flat coverage directly instead of letting the dot
+                // grid's own edge math leak a faint always-on dot into solid areas.
+                if (value <= 0.0) return 0.0;
+                if (value >= 1.0) return 1.0;
+
+                float2 grid = screenPos / max(cellSize, 0.001);
+                float2 cell = frac(grid) - 0.5;
+                float dist = length(cell);
+                float radius = value * 0.70710678;
+                float aa = max(fwidth(dist), 0.001) * 1.5;
+                return smoothstep(radius + aa, radius - aa, dist);
+            }
 
             Varyings vert(Attributes IN)
             {
@@ -85,8 +107,11 @@ Shader "Custom/ToonShader"
                 float shadowToMid = saturate((diffuse - (shadowEdge - _BandBlend)) / (2.0 * _BandBlend));
                 float midToLight = saturate((diffuse - (midEdge - _BandBlend)) / (2.0 * _BandBlend));
 
-                toonShade = lerp(_ShadowTint.rgb, _MidTint.rgb, shadowToMid);
-                toonShade = lerp(toonShade, _LightTint.rgb, midToLight);
+                float shadowToMidDot = Halftone(IN.positionHCS.xy, shadowToMid, _HalftoneCellSize);
+                float midToLightDot = Halftone(IN.positionHCS.xy, midToLight, _HalftoneCellSize);
+
+                toonShade = lerp(_ShadowTint.rgb, _MidTint.rgb, shadowToMidDot);
+                toonShade = lerp(toonShade, _LightTint.rgb, midToLightDot);
 
                 float3 viewDirWS = normalize(_WorldSpaceCameraPos - IN.positionWS);
                 float3 halfDir = normalize(mainLight.direction + viewDirWS);
