@@ -26,8 +26,9 @@ namespace GMTK.Rccp
         [SerializeField] private float entryOffset = 3.5f;
         [Tooltip("Turn angle treated as a full-tightness corner when placing the racing line.")]
         [SerializeField] private float racingLineReferenceDegrees = 30f;
-        [Tooltip("Seconds spent merging from the grid lane onto the racing line after the start.")]
-        [SerializeField] private float laneMergeSeconds = 7f;
+        [Tooltip("Metres driven while merging from the grid lane onto the racing line. Distance, not " +
+                 "time, because the countdown would otherwise burn the merge while the car is frozen.")]
+        [SerializeField] private float laneMergeDistance = 140f;
         [Tooltip("Largest grid lane offset kept from the spawn position.")]
         [SerializeField] private float maxLaneOffset = 6f;
         [Tooltip("Small per-car offset kept for the whole race so the pack does not share one line.")]
@@ -49,7 +50,7 @@ namespace GMTK.Rccp
         private float throttleScale = 0.9f;
         private float previousSteerAngle;
         private float gridLaneOffset;
-        private float gridLaneBlend;
+        private float mergeTravelled;
         private float personalLaneOffset;
         private float stuckTimer;
         private float reverseTimer;
@@ -91,7 +92,7 @@ namespace GMTK.Rccp
                 path.SignedLateralOffset(waypointIndex, transform.position),
                 -maxLaneOffset,
                 maxLaneOffset);
-            gridLaneBlend = 1f;
+            mergeTravelled = 0f;
 
             // deterministic per-car spread so the pack does not stack on one line afterwards
             personalLaneOffset = ((GetInstanceID() % 5) - 2) * 0.5f * laneJitter;
@@ -129,6 +130,7 @@ namespace GMTK.Rccp
                 return;
 
             float speedKph = carRigidbody != null ? carRigidbody.linearVelocity.magnitude * 3.6f : 0f;
+            mergeTravelled += speedKph / 3.6f * Time.fixedDeltaTime;
 
             AdvanceWaypoint();
 
@@ -220,11 +222,11 @@ namespace GMTK.Rccp
                 offset -= pathRight * Mathf.Sign(farTurnDegrees) * entryAmount;
             }
 
-            // grid lane fades out after the start, the small personal offset stays
-            gridLaneBlend = laneMergeSeconds > 0f
-                ? Mathf.MoveTowards(gridLaneBlend, 0f, Time.fixedDeltaTime / laneMergeSeconds)
+            // grid lane fades out over driven distance, the small personal offset stays
+            float mergeBlend = laneMergeDistance > 0f
+                ? 1f - Mathf.Clamp01(mergeTravelled / laneMergeDistance)
                 : 0f;
-            offset += pathRight * (gridLaneOffset * gridLaneBlend + personalLaneOffset);
+            offset += pathRight * (gridLaneOffset * mergeBlend + personalLaneOffset);
 
             Vector3 candidate = aimPoint + offset;
             return HasGroundUnder(candidate) ? candidate : aimPoint;
