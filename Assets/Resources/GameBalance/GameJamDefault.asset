@@ -48,7 +48,7 @@ MonoBehaviour:
     overtakeRewardCharges: 1
     boostSpeedMultiplier: 1.5
   damage:
-    maximumDurability: 100
+    maximumDurability: 1000000
     damagedThreshold: 60
     criticalThreshold: 30
     wreckedThreshold: 0
