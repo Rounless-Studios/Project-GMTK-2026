@@ -74,9 +74,14 @@ namespace GMTK
                 if (tracker == null) continue;
                 if (tracker.GetCarRacePositionIndex() == raceIndex)
                 {
-                    // includeInactive so eliminated (SetActive(false)) cars are still resolvable
+                    // includeInactive so eliminated (SetActive(false)) cars are still resolvable.
+                    // Resolve the car root vehicle-agnostically: kit CarController, then MVC
+                    // Vehicle, then the transform root (covers the MVC-transition period).
                     var controller = tracker.GetComponentInParent<CarController>(true);
-                    return controller != null ? controller.gameObject : tracker.transform.root.gameObject;
+                    if (controller != null) return controller.gameObject;
+                    var mvc = tracker.GetComponentInParent<MVC.Core.Vehicle>(true);
+                    if (mvc != null) return mvc.gameObject;
+                    return tracker.transform.root.gameObject;
                 }
             }
             return null;
