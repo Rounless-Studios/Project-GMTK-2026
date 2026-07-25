@@ -11,18 +11,31 @@ namespace GMTK.Rccp
     public sealed class GmtkRccpWaypointDriver : MonoBehaviour
     {
         [SerializeField] private float waypointReachDistance = 9f;
-        [SerializeField] private float steeringSensitivity = 1.4f;
-        [SerializeField] private float cornerBrakeAngle = 55f;
+        [Tooltip("Aim distance at a standstill; speed adds to it so corners are seen early.")]
+        [SerializeField] private float minLookAhead = 14f;
+        [SerializeField] private float lookAheadPerKph = 0.32f;
+        [Tooltip("Path length whose heading change decides the corner speed.")]
+        [SerializeField] private float cornerScanDistance = 50f;
+        [SerializeField] private float straightSpeedKph = 135f;
+        [SerializeField] private float tightCornerSpeedKph = 42f;
+        [Tooltip("Heading change over the scan window that counts as a full-tightness corner.")]
+        [SerializeField] private float tightCornerDegrees = 75f;
+        [SerializeField] private float steerGainLowSpeed = 1.5f;
+        [SerializeField] private float steerGainHighSpeed = 0.55f;
+        [Tooltip("Damps the steering rate so the car stops sawing at the wheel.")]
+        [SerializeField] private float steerDamping = 0.06f;
         [SerializeField] private float stuckSpeed = 1.5f;
         [SerializeField] private float stuckDelay = 2.5f;
         [SerializeField] private float reverseDuration = 1.25f;
 
         private RCCP_CarController carController;
+        private Rigidbody carRigidbody;
         private RCCP_Input inputReceiver;
         private RCCP_Inputs inputs;
         private GmtkRccpWaypointPath path;
         private int waypointIndex;
         private float throttleScale = 0.9f;
+        private float previousSteerAngle;
         private float stuckTimer;
         private float reverseTimer;
         private AIPersonalityType personalityType;
@@ -34,6 +47,7 @@ namespace GMTK.Rccp
         private void Awake()
         {
             carController = GetComponent<RCCP_CarController>();
+            carRigidbody = GetComponent<Rigidbody>();
             inputReceiver = GetComponentInChildren<RCCP_Input>(true);
             inputs = new RCCP_Inputs();
         }
@@ -85,19 +99,18 @@ namespace GMTK.Rccp
             if (path == null || path.Count == 0 || inputReceiver == null)
                 return;
 
-            Vector3 waypointPosition = path[waypointIndex].position;
-            Vector3 toWaypoint = waypointPosition - transform.position;
+            float speedKph = carRigidbody != null ? carRigidbody.linearVelocity.magnitude * 3.6f : 0f;
 
-            if (toWaypoint.sqrMagnitude <= waypointReachDistance * waypointReachDistance)
-            {
-                waypointIndex = (waypointIndex + 1) % path.Count;
-                waypointPosition = path[waypointIndex].position;
-            }
+            AdvanceWaypoint();
 
-            waypointPosition += GetPersonalityOffset(waypointPosition);
-            Vector3 localTarget = transform.InverseTransformPoint(waypointPosition);
+            // aim further ahead the faster we go, so corners are entered on a line instead of
+            // being noticed once the marker is already alongside the car
+            float lookAhead = minLookAhead + speedKph * lookAheadPerKph;
+            Vector3 aimPoint = path.SamplePointAhead(waypointIndex, transform.position, lookAhead);
+            aimPoint += GetPersonalityOffset(aimPoint);
+
+            Vector3 localTarget = transform.InverseTransformPoint(aimPoint);
             float targetAngle = Mathf.Atan2(localTarget.x, Mathf.Max(1f, localTarget.z)) * Mathf.Rad2Deg;
-            float absoluteAngle = Mathf.Abs(targetAngle);
 
             UpdateRecovery();
 
@@ -110,21 +123,60 @@ namespace GMTK.Rccp
             }
             else
             {
-                float cornerFactor = Mathf.InverseLerp(90f, 0f, absoluteAngle);
-                inputs.throttleInput = Mathf.Clamp01(cornerFactor * throttleScale);
-                inputs.brakeInput = absoluteAngle >= cornerBrakeAngle
-                    ? Mathf.InverseLerp(cornerBrakeAngle, 100f, absoluteAngle)
-                    : 0f;
+                // corner speed comes from the path shape ahead, not from the current error, so the
+                // car brakes before the corner
+                float headingChange = path.HeadingChangeAhead(waypointIndex, cornerScanDistance);
+                float tightness = Mathf.Clamp01(headingChange / Mathf.Max(1f, tightCornerDegrees));
+                float targetSpeed = Mathf.Lerp(straightSpeedKph, tightCornerSpeedKph, tightness) * throttleScale;
+                float speedError = targetSpeed - speedKph;
+
+                inputs.throttleInput = Mathf.Clamp01(speedError / 12f);
+                inputs.brakeInput = speedError < -4f ? Mathf.Clamp01(-speedError / 22f) : 0f;
+
+                // steering authority falls off with speed, and the steering rate is damped
+                float steerGain = Mathf.Lerp(
+                    steerGainLowSpeed,
+                    steerGainHighSpeed,
+                    Mathf.Clamp01(speedKph / straightSpeedKph));
+                float angleRate = (targetAngle - previousSteerAngle) / Time.fixedDeltaTime;
                 inputs.steerInput = Mathf.Clamp(
-                    targetAngle / 45f * steeringSensitivity,
+                    (targetAngle * steerGain - angleRate * steerDamping) / 35f,
                     -1f,
                     1f);
             }
+
+            previousSteerAngle = targetAngle;
 
             inputs.handbrakeInput = 0f;
             inputs.clutchInput = 0f;
             inputs.nosInput = personalityType == AIPersonalityType.Reckless ? 0.35f : 0f;
             inputReceiver.OverrideInputs(inputs);
+        }
+
+        /// <summary>
+        /// Consumes waypoints that are reached or already behind the car, so the racing line can cut
+        /// a corner instead of driving to every marker, and a missed marker does not turn the car
+        /// around.
+        /// </summary>
+        private void AdvanceWaypoint()
+        {
+            float reachSqr = waypointReachDistance * waypointReachDistance;
+            float behindLimitSqr = waypointReachDistance * 3f * (waypointReachDistance * 3f);
+
+            for (int step = 0; step < path.Count; step++)
+            {
+                Vector3 toWaypoint = path[waypointIndex].position - transform.position;
+                toWaypoint.y = 0f;
+
+                bool reached = toWaypoint.sqrMagnitude <= reachSqr;
+                bool behind = toWaypoint.sqrMagnitude <= behindLimitSqr
+                              && Vector3.Dot(toWaypoint, transform.forward) < 0f;
+
+                if (!reached && !behind)
+                    return;
+
+                waypointIndex = (waypointIndex + 1) % path.Count;
+            }
         }
 
         private void UpdateRecovery()
