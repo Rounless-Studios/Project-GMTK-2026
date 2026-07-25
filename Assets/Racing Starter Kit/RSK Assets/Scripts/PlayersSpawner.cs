@@ -34,6 +34,14 @@ namespace SpinMotion
         [Tooltip("Kit CheckpointTracker prefab, attached to the MVC player so scoring tracks it.")]
         public GameObject checkpointTrackerPrefab;
 
+        [Header("MVC AI")]
+        [Tooltip("Spawn the AI as MVC vehicles that follow the aiPathObject.")]
+        public bool useMvcAi = false;
+        [Tooltip("MVC '- AI' car prefab used for AI when useMvcAi is on.")]
+        public GameObject mvcAiPrefab;
+        [Tooltip("Scene object holding the VehicleAIPath the AI follow (draw it in the editor).")]
+        public GameObject aiPathObject;
+
         [Header("Player Spawn Settings")]
         public PlayerSpawnIndex playerSpawnIndex = PlayerSpawnIndex.First;
         public int customPlayerSpawnIndex = 0; // only used if playerSpawnIndex is Custom
@@ -102,19 +110,40 @@ namespace SpinMotion
                     int aiSpawnIdx = (i <= playerSpawnIndex) ? i - 1 : i; // adjust AI index if it overlaps with player
                     aiSpawnIdx = Mathf.Clamp(aiSpawnIdx, 0, totalSpawns - 1);
 
-                    var aiCar = Instantiate(aiCarPrefab, spawnPoints[aiSpawnIdx].position, spawnPoints[aiSpawnIdx].rotation);
-                    spawnedPlayers.Add((aiCar, aiCar.transform.position, aiCar.transform.rotation));
+                    if (useMvcAi && mvcAiPrefab != null)
+                    {
+                        // MVC AI car following the shared VehicleAIPath
+                        var aiCar = Instantiate(mvcAiPrefab, spawnPoints[aiSpawnIdx].position, spawnPoints[aiSpawnIdx].rotation);
+                        spawnedPlayers.Add((aiCar, aiCar.transform.position, aiCar.transform.rotation));
+
+                        var mvcTracker = aiCar.GetComponentInChildren<CheckpointTracker>();
+                        if (mvcTracker == null && checkpointTrackerPrefab != null)
+                            mvcTracker = Instantiate(checkpointTrackerPrefab, aiCar.transform).GetComponent<CheckpointTracker>();
+                        mvcTracker.SetCarRacePositionIndex(i);
+                        playersCheckpointTrackers.Add(mvcTracker);
+
+                        GMTK.Mvc.GmtkMvcBridge.SetupAiFollower(aiCar, aiPathObject);
+                        continue;
+                    }
+
+                    var aiCar2 = Instantiate(aiCarPrefab, spawnPoints[aiSpawnIdx].position, spawnPoints[aiSpawnIdx].rotation);
+                    spawnedPlayers.Add((aiCar2, aiCar2.transform.position, aiCar2.transform.rotation));
 
                     var aiTracker = Instantiate(aiWaypointTrackerPrefab).GetComponent<AIWaypointTracker>();
-                    aiTracker.SetupAICarCollider(aiCar.GetComponentInChildren<AICarWaypointTrackerColliderTrigger>().GetColliderTrigger());
+                    aiTracker.SetupAICarCollider(aiCar2.GetComponentInChildren<AICarWaypointTrackerColliderTrigger>().GetColliderTrigger());
 
-                    aiCar.GetComponent<CarAIControl>().SetTarget(aiTracker.transform); // replace with your car controller ai target to aim/follow
+                    aiCar2.GetComponent<CarAIControl>().SetTarget(aiTracker.transform); // replace with your car controller ai target to aim/follow
 
-                    var checkpointTracker = aiCar.GetComponentInChildren<CheckpointTracker>();
+                    var checkpointTracker = aiCar2.GetComponentInChildren<CheckpointTracker>();
                     checkpointTracker.SetCarRacePositionIndex(i);
                     playersCheckpointTrackers.Add(checkpointTracker);
                 }
             }
+
+            // let the MVC manager register runtime-spawned MVC vehicles (player + AI)
+            if (useMvcPlayer || useMvcAi)
+                GMTK.Mvc.GmtkMvcBridge.RefreshVehicles();
+
             gameEvents.PlayersCheckpointTrackersAssignedEvent.Invoke(playersCheckpointTrackers);
         }
 

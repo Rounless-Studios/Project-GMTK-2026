@@ -1,13 +1,14 @@
 using UnityEngine;
 using MVC;
+using MVC.AI;
 using MVC.Core;
 
 namespace GMTK.Mvc
 {
     /// <summary>
-    /// Thin bridge to MVC for the player-only hybrid: the player drives an MVC vehicle (via
-    /// MVC's InputsManager), while the AI stay on kit cars. Keeping every MVC reference here lets
-    /// the rest of GMTK stay vehicle-agnostic. (Checklist stage 2-3, hybrid path.)
+    /// Thin bridge to MVC: the player drives an MVC vehicle via MVC's InputsManager and the AI
+    /// drive MVC vehicles via VehicleAIPathFollower along a scene VehicleAIPath. Keeping every
+    /// MVC reference here lets the rest of GMTK stay vehicle-agnostic. (Checklist stage 2-3.)
     /// </summary>
     public static class GmtkMvcBridge
     {
@@ -40,5 +41,24 @@ namespace GMTK.Mvc
 
         /// <summary>True if a live MVC VehicleManager exists in the scene.</summary>
         public static bool HasManager => ToolkitBehaviour.Manager != null;
+
+        /// <summary>Point an MVC AI car's path follower at the given VehicleAIPath object. Returns true if wired.</summary>
+        public static bool SetupAiFollower(GameObject aiCar, GameObject pathObject)
+        {
+            if (aiCar == null || pathObject == null) return false;
+            var follower = aiCar.GetComponent<VehicleAIPathFollower>();
+            if (follower == null) follower = aiCar.GetComponentInChildren<VehicleAIPathFollower>(true);
+            var path = pathObject.GetComponent<VehicleAIPath>();
+            if (follower == null || path == null) return false;
+            follower.path = path;
+            return true;
+        }
+
+        /// <summary>Re-scan the scene so the manager registers runtime-spawned MVC vehicles.</summary>
+        public static void RefreshVehicles()
+        {
+            var mgr = ToolkitBehaviour.Manager;
+            if (mgr != null) mgr.RefreshVehicles();
+        }
     }
 }

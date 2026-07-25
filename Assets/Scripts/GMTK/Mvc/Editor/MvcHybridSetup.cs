@@ -14,6 +14,7 @@ namespace GMTK.Mvc.Editor
     public static class MvcHybridSetup
     {
         public const string MvcCarPath = "Assets/BxB Studio/MVC Getting Started/Prefabs/Vehicles/Cars/2005 BMW M3 GTR E46.prefab";
+        public const string MvcAiCarPath = "Assets/BxB Studio/MVC Getting Started/Prefabs/Vehicles/Cars/2005 BMW M3 GTR E46 - AI.prefab";
         public const string GameControllerPath = "Assets/BxB Studio/MVC/Prefabs/_GameController.prefab";
         public const string CheckpointTrackerGuid = "6f08b7ced6b1347eaafaaf2b4a20ee0c";
 
@@ -44,9 +45,24 @@ namespace GMTK.Mvc.Editor
             spawner.useMvcPlayer = true;
             spawner.mvcPlayerPrefab = mvcCar;
             spawner.checkpointTrackerPrefab = trackerPrefab;
-            EditorUtility.SetDirty(spawner);
-            log += "spawnerSet ";
+            log += "playerSet ";
 
+            // MVC AI: all cars MVC, following a shared VehicleAIPath the user draws in the editor
+            var aiCar = AssetDatabase.LoadAssetAtPath<GameObject>(MvcAiCarPath);
+            if (aiCar == null) return log + "ERR: no MVC AI car at " + MvcAiCarPath;
+            var pathGo = GameObject.Find("GMTK_AIPath");
+            if (pathGo == null)
+            {
+                pathGo = new GameObject("GMTK_AIPath");
+                pathGo.AddComponent<MVC.AI.VehicleAIPath>();
+                log += "createdAIPath ";
+            }
+            spawner.useMvcAi = true;
+            spawner.mvcAiPrefab = aiCar;
+            spawner.aiPathObject = pathGo;
+            log += "aiSet ";
+
+            EditorUtility.SetDirty(spawner);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             return log + "SAVED";
