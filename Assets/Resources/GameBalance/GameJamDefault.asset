@@ -55,12 +55,16 @@ MonoBehaviour:
     wreckDurationSeconds: 2
     recoveryDurability: 50
     recoveryProtectionSeconds: 2
+    strongCollisionImpulse: 8
+    strongCollisionDamage: 15
   overtake:
     checkIntervalSeconds: 20
     challengeDurationSeconds: 8
     requiredLeadHoldSeconds: 0.5
     cooldownRewardMode: 0
     cooldownReductionSeconds: 6
+    bindDurationSeconds: 5
+    bindSpeedMultiplier: 0.5
   camera:
     sideBySideActivationSeconds: 0.6
     executionPlayerViewportRect:
@@ -71,6 +75,38 @@ MonoBehaviour:
       height: 0.34
   ai:
     archetypeAssignments: 0000000001000000020000000300000001000000
+    driving:
+      minLookAheadMetres: 14
+      lookAheadMetresPerKph: 0.32
+      minCornerScanMetres: 30
+      cornerBrakingDecel: 8
+      targetSpeedRiseKphPerSecond: 50
+      straightSpeedKph: 160
+      minCornerSpeedKph: 55
+      cornerGrip: 14
+      steerGainLowSpeed: 1.5
+      steerGainHighSpeed: 0.55
+      steerDamping: 0.06
+      apexOffsetMetres: 4.5
+      entryOffsetMetres: 3.5
+      racingLineReferenceDegrees: 30
+      laneMergeMetres: 140
+      maxLaneOffsetMetres: 6
+      laneSpreadMetres: 1.2
+      maxRoadHalfWidthMetres: 13
+      roadEdgeMarginMetres: 2.2
+      logDriveTelemetry: 0
+      waypointReachMetres: 9
+      maxPersonalityLateralMetres: 3
+      stuckSpeedKph: 1.5
+      stuckDelaySeconds: 2.5
+      reverseDurationSeconds: 1.25
+    personalityAssignment:
+      shuffleSeed: 0
+      logAssignment: 1
+      ramStrengthMetres: 7
+      blockStrengthMetres: 5
+      aggroRangeMetres: 45
     profiles:
     - archetype: 0
       speedMultiplier: 1

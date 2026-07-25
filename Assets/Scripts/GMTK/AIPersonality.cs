@@ -1,3 +1,4 @@
+using Gmtk2026.GameBalance;
 using UnityEngine;
 using SpinMotion;
 
@@ -19,13 +20,10 @@ namespace GMTK
     {
         public AIPersonalityType type = AIPersonalityType.CleanRacer;
 
-        [Header("Aggression")]
-        [Tooltip("How hard rammers pull toward the player.")]
-        public float ramStrength = 7f;
-        [Tooltip("How hard blockers slide sideways to cut the player off.")]
-        public float blockStrength = 5f;
-        [Tooltip("Only chase/block the player within this distance.")]
-        public float aggroRange = 45f;
+        // Aggression numbers live in the balance asset: this component is added at runtime, so
+        // anything serialized here would reset on every spawn and could never be tuned.
+        private static AiPersonalityAssignmentSettings Aggression =>
+            GameBalance.Current.ai.personalityAssignment;
 
         [Header("Speed Multipliers (x normal desired speed)")]
         public float recklessSpeedMultiplier = 1.15f;
@@ -56,9 +54,9 @@ namespace GMTK
             vehicleAdapter.ApplyAiTargeting(
                 type,
                 Player(),
-                ramStrength,
-                blockStrength,
-                aggroRange);
+                Aggression.ramStrengthMetres,
+                Aggression.blockStrengthMetres,
+                Aggression.aggroRangeMetres);
         }
 
         public void ApplyToDriver()
@@ -92,18 +90,18 @@ namespace GMTK
                     var p = Player();
                     if (p == null) return Vector3.zero;
                     Vector3 toPlayer = p.position - self.position;
-                    if (toPlayer.magnitude > aggroRange) return Vector3.zero;
-                    return toPlayer.normalized * ramStrength;
+                    if (toPlayer.magnitude > Aggression.aggroRangeMetres) return Vector3.zero;
+                    return toPlayer.normalized * Aggression.ramStrengthMetres;
                 }
                 case AIPersonalityType.Blocker:
                 {
                     var p = Player();
                     if (p == null) return Vector3.zero;
                     Vector3 toPlayer = p.position - self.position;
-                    if (toPlayer.magnitude > aggroRange) return Vector3.zero;
+                    if (toPlayer.magnitude > Aggression.aggroRangeMetres) return Vector3.zero;
                     // slide sideways toward the player's lane to block their path
                     Vector3 lateral = Vector3.Project(toPlayer, self.right);
-                    return lateral.normalized * blockStrength;
+                    return lateral.normalized * Aggression.blockStrengthMetres;
                 }
                 default:
                     return Vector3.zero;

@@ -39,7 +39,7 @@ namespace GMTK.Rccp
             }
         }
 
-        public void Initialize(bool player, GmtkRccpWaypointPath waypointPath)
+        public void Initialize(bool player, GmtkRccpWaypointPath waypointPath, int raceIndex)
         {
             isPlayer = player;
 
@@ -58,7 +58,7 @@ namespace GMTK.Rccp
                 if (aiDriver == null)
                     aiDriver = gameObject.AddComponent<GmtkRccpWaypointDriver>();
 
-                aiDriver.Initialize(waypointPath);
+                aiDriver.Initialize(waypointPath, raceIndex);
                 carController.externalControl = true;
                 carController.SetCanControl(true);
                 carController.StartEngine();
