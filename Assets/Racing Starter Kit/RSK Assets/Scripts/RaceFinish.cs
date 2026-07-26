@@ -21,7 +21,6 @@ namespace SpinMotion
         public List<GameObject> normalCheckpointVisuals = new();
         public List<GameObject> finishCheckpointVisuals = new();
         
-        private Collider finishTrigger;
         private bool raceFinished;
         
         private void Awake()
@@ -30,6 +29,15 @@ namespace SpinMotion
             gameEvents.LapCompletedEvent.AddListener(OnLapCompleted);
             gameEvents.RestartRaceEvent.AddListener(OnRestartRace);
             gameEvents.RaceTimeoutEvent.AddListener(OnRaceTimeout);
+        }
+
+        private void OnDestroy()
+        {
+            if (gameEvents == null) return;
+            gameEvents.CheckpointPassedEvent.RemoveListener(OnCheckpointPassed);
+            gameEvents.LapCompletedEvent.RemoveListener(OnLapCompleted);
+            gameEvents.RestartRaceEvent.RemoveListener(OnRestartRace);
+            gameEvents.RaceTimeoutEvent.RemoveListener(OnRaceTimeout);
         }
 
         private void OnCheckpointPassed(int carRacePositionIndex,int checkpointNumber)
@@ -62,7 +70,6 @@ namespace SpinMotion
         private void OnRestartRace()
         {
             ToggleFinishVisuals(false);
-            finishTrigger.enabled = false;
             raceFinished = false;
         }
 
@@ -74,7 +81,8 @@ namespace SpinMotion
 
         private void ToggleFinishVisuals(bool isFinish)
         {
-            normalCheckpointRenderer.enabled = !isFinish;
+            if (normalCheckpointRenderer != null)
+                normalCheckpointRenderer.enabled = !isFinish;
 
             if (normalCheckpointVisuals.Count > 0)
             {

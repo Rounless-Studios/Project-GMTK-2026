@@ -77,6 +77,12 @@ namespace SpinMotion
             
             gameEvents.RestartRaceEvent.Invoke();
             gameEvents.PreRaceUpdateGuiEvent.Invoke();
+
+            // GMTK_Race uses RaceFlow's restart countdown. Its legacy countdown component is
+            // intentionally disabled, so invoking that path cannot restart the race.
+            if (GMTK.RaceFlow.OwnsGameEventsStart)
+                return;
+
             gameEvents.PlayPreRaceCountdownEvent.Invoke();
         }
     }
