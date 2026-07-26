@@ -43,6 +43,33 @@ namespace Gmtk2026.GameBalance.Tests
         }
 
         [Test]
+        public void RosterOrderUsesEveryCarOnceAndStaysReproducible()
+        {
+            var order = AiPersonalityRoster.BuildRosterOrder(5, 5, 777);
+            var again = AiPersonalityRoster.BuildRosterOrder(5, 5, 777);
+
+            Assert.AreEqual(5, order.Count);
+            CollectionAssert.AreEquivalent(new[] { 0, 1, 2, 3, 4 }, order,
+                "every roster car races exactly once, so no personality and body pair is lost");
+            Assert.AreEqual(order, again, "the same seed must replay the same grid");
+            Assert.AreNotEqual(order, AiPersonalityRoster.BuildRosterOrder(5, 5, 778));
+        }
+
+        [Test]
+        public void RosterOrderFitsAFieldOfAnySize()
+        {
+            Assert.AreEqual(3, AiPersonalityRoster.BuildRosterOrder(5, 3, 12).Count,
+                "a smaller field only takes the first cars of the shuffled roster");
+
+            var cycled = AiPersonalityRoster.BuildRosterOrder(2, 5, 12);
+            Assert.AreEqual(5, cycled.Count, "a field larger than the roster keeps cycling it");
+            CollectionAssert.AreEquivalent(new[] { 0, 1 }, new[] { cycled[0], cycled[1] });
+
+            Assert.IsEmpty(AiPersonalityRoster.BuildRosterOrder(0, 5, 12));
+            Assert.IsEmpty(AiPersonalityRoster.BuildRosterOrder(5, 0, 12));
+        }
+
+        [Test]
         public void SameSeedReproducesTheSameGrid()
         {
             var first = AiPersonalityRoster.BuildOrder(5, PersonalityCount, 4321);
