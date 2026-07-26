@@ -26,8 +26,16 @@ namespace Gmtk2026.GameBalance
             }
         }
 
+        /// <summary>
+        /// While set, every system reads the live preset instead of the frozen race snapshot, so values
+        /// edited during a race take effect immediately. Off by default: a race must not change under
+        /// the players. The AI tuner window turns it on, and it is never serialised.
+        /// </summary>
+        public static bool LiveTuning { get; set; }
+
         /// <summary>The immutable snapshot used during a race. Falls back to Active before a race starts.</summary>
-        public static GameBalanceSettings Current => _snapshot != null ? _snapshot : Active;
+        public static GameBalanceSettings Current =>
+            _snapshot != null && !LiveTuning ? _snapshot : Active;
 
         /// <summary>Select a preset by name from Resources. Returns null and logs on failure.</summary>
         public static GameBalanceSettings Load(string presetName)

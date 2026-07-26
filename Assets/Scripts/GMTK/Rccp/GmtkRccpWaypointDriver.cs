@@ -41,6 +41,44 @@ namespace GMTK.Rccp
         private float nextBoostDecisionAt;
         private BoostController boost;
 
+        // racecraft: the rivals are re-read on a slow tick, never per frame
+        private Transform[] rivalTransforms = System.Array.Empty<Transform>();
+        private Rigidbody[] rivalBodies = System.Array.Empty<Rigidbody>();
+        private int rosterCount = -1;
+        private float nextRivalScanAt;
+        private AiPersonalityProfile profile;
+        private float gapAheadMetres;
+        private float aheadLateralMetres;
+        private float aheadSpeedKph;
+        private float gapBehindMetres;
+        private float behindLateralMetres;
+        private float currentSpeedKph;
+
+        /// <summary>Metres to the car ahead inside the scan window, 0 when there is none. Diagnostics.</summary>
+        public float GapAheadMetres => gapAheadMetres;
+
+        /// <summary>Metres to the car behind inside the scan window, 0 when there is none. Diagnostics.</summary>
+        public float GapBehindMetres => gapBehindMetres;
+
+        /// <summary>The speed the driver is currently asking for. Diagnostics.</summary>
+        public float TargetSpeedKph => lastTargetSpeed;
+
+        /// <summary>The personality driving this car. Diagnostics.</summary>
+        public AIPersonalityType Personality => personalityType;
+
+        /// <summary>True once the boost system has handed this car a controller.</summary>
+        public bool HasBoost => boost != null;
+
+        /// <summary>
+        /// The boost system attaches its controllers when the race starts, which is after this driver
+        /// cached its components: without this the AI would hold a null controller for the whole race
+        /// and never spend a charge, while the player's own boost worked fine.
+        /// </summary>
+        public void AttachBoost(BoostController controller)
+        {
+            boost = controller;
+        }
+
         private void Awake()
         {
             carController = GetComponent<RCCP_CarController>();
@@ -86,8 +124,9 @@ namespace GMTK.Rccp
         {
             personalityType = type;
 
-            // pace is the personality's own number in the balance asset, not a switch here
-            var profile = GameBalance.Current.ai.GetProfile(type);
+            // pace is the personality's own number in the balance asset, not a switch here. The rest of
+            // the profile is re-read on every rival scan, so tuning it mid-race takes effect.
+            profile = GameBalance.Current.ai.GetProfile(type);
             throttleScale = profile != null ? profile.paceScale : 0.9f;
         }
 
@@ -123,7 +162,14 @@ namespace GMTK.Rccp
                 return;
 
             float speedKph = carRigidbody != null ? carRigidbody.linearVelocity.magnitude * 3.6f : 0f;
+            currentSpeedKph = speedKph;
             mergeTravelled += speedKph / 3.6f * Time.fixedDeltaTime;
+
+            if (Time.time >= nextRivalScanAt)
+            {
+                nextRivalScanAt = Time.time + S.rivalScanIntervalSeconds;
+                ScanRivals();
+            }
 
             AdvanceWaypoint();
 
@@ -148,10 +194,34 @@ namespace GMTK.Rccp
                 float headingChange = path.HeadingChangeAhead(waypointIndex, scan, out float arc);
                 float targetSpeed = AiDriving.SmoothTargetSpeedKph(
                     lastTargetSpeed,
-                    AiDriving.CornerSpeedKph(headingChange, arc, throttleScale, S),
+                    AiDriving.CornerSpeedKph(
+                        headingChange,
+                        arc,
+                        throttleScale,
+                        S,
+                        profile != null ? profile.brakingConfidence : 1f),
                     Time.fixedDeltaTime,
                     S);
                 targetSpeed *= TacticalPaceScale();
+
+                // settle behind the car ahead instead of driving through it - unless this personality
+                // keeps no gap at all, which is what a rammer does
+                targetSpeed = AiDriving.FollowSpeedKph(
+                    targetSpeed,
+                    gapAheadMetres,
+                    aheadSpeedKph,
+                    profile != null ? profile.contactToleranceMetres : S.followGapMetres,
+                    S);
+
+                // a burning boost raises the target on a straight, so the car stops braking against
+                // its own boost; at a corner the target is left alone and the boost simply runs out
+                if (boost != null && boost.State != null && boost.State.IsBoosting)
+                    targetSpeed = AiDriving.BoostedTargetKph(
+                        targetSpeed,
+                        boost.State.CurrentSpeedMultiplier,
+                        headingChange,
+                        S);
+
                 lastTargetSpeed = targetSpeed;
 
                 AiDriving.SpeedInputs(targetSpeed, speedKph, out float throttle, out float brake);
@@ -176,6 +246,104 @@ namespace GMTK.Rccp
             inputs.clutchInput = 0f;
             inputs.nosInput = personalityType == AIPersonalityType.Reckless ? 0.35f : 0f;
             inputReceiver.OverrideInputs(inputs);
+        }
+
+        /// <summary>
+        /// Finds the closest car ahead and behind, in this car's own frame: how far, how far to the
+        /// side, and how fast the one ahead is going. Runs on the rival tick rather than per frame, and
+        /// re-reads the personality profile at the same time so the balance asset can be tuned while a
+        /// race is running. Cars outside the scan window, eliminated cars and the car itself are skipped.
+        /// </summary>
+        private void ScanRivals()
+        {
+            gapAheadMetres = 0f;
+            gapBehindMetres = 0f;
+            aheadSpeedKph = 0f;
+            aheadLateralMetres = 0f;
+            behindLateralMetres = 0f;
+            profile = GameBalance.Current.ai.GetProfile(personalityType);
+
+            BuildRoster();
+
+            float bestAhead = float.MaxValue;
+            float bestBehind = float.MaxValue;
+
+            for (int i = 0; i < rivalTransforms.Length; i++)
+            {
+                Transform rival = rivalTransforms[i];
+                if (rival == null || rival == transform || !rival.gameObject.activeInHierarchy) continue;
+
+                Vector3 local = transform.InverseTransformPoint(rival.position);
+                float along = local.z;
+                float side = local.x;
+
+                // a car on the other side of the barrier is not racing this one
+                if (Mathf.Abs(side) > S.maxRoadHalfWidthMetres) continue;
+                if (Mathf.Abs(along) > S.rivalScanMetres) continue;
+
+                if (along > 0f && along < bestAhead)
+                {
+                    bestAhead = along;
+                    gapAheadMetres = along;
+                    aheadLateralMetres = side;
+                    aheadSpeedKph = rivalBodies[i] != null
+                        ? rivalBodies[i].linearVelocity.magnitude * 3.6f
+                        : 0f;
+                }
+                else if (along <= 0f && -along < bestBehind)
+                {
+                    bestBehind = -along;
+                    gapBehindMetres = -along;
+                    behindLateralMetres = side;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Caches the other cars' transforms and bodies, rebuilt only when the field size changes, so
+        /// the scan never walks the race roster or calls GetComponent on the driving path.
+        /// </summary>
+        private void BuildRoster()
+        {
+            int count = Race.CarCount;
+            if (count == rosterCount) return;
+
+            rosterCount = count;
+            rivalTransforms = new Transform[count];
+            rivalBodies = new Rigidbody[count];
+
+            for (int i = 0; i < count; i++)
+            {
+                GameObject car = Race.CarByIndex(i);
+                if (car == null) continue;
+                rivalTransforms[i] = car.transform;
+                rivalBodies[i] = car.GetComponent<Rigidbody>();
+            }
+        }
+
+        /// <summary>
+        /// Sideways metres this car wants for racecraft: off the line to pass the car ahead, or across
+        /// the line of the car behind to defend. Both are personality numbers, so a clean racer barely
+        /// moves and a blocker parks itself in the way.
+        /// </summary>
+        private float RacecraftLateralMetres(float speedKph)
+        {
+            float overtake = AiDriving.OvertakeOffsetMetres(
+                gapAheadMetres,
+                speedKph - aheadSpeedKph,
+                aheadLateralMetres,
+                edgeLimitLeft,
+                edgeLimitRight,
+                profile != null ? profile.overtakeAggression : 0.6f,
+                S);
+
+            float block = AiDriving.BlockOffsetMetres(
+                gapBehindMetres,
+                behindLateralMetres,
+                profile != null ? profile.blockStrength : 0f,
+                S);
+
+            return overtake + block;
         }
 
         private float TacticalPaceScale()
@@ -206,11 +374,17 @@ namespace GMTK.Rccp
         {
             if (boost == null || Time.time < nextBoostDecisionAt) return;
             nextBoostDecisionAt = Time.time + S.boostDecisionIntervalSeconds;
-            if (Mathf.Abs(headingChange) > S.boostStraightMaximumDegrees) return;
 
-            AiPersonalityProfile profile = GameBalance.Current.ai.GetProfile(personalityType);
-            float tendency = profile != null ? profile.boostTendency : 0.5f;
-            if (Random.value <= tendency) boost.TryBoost();
+            if (!AiDriving.ShouldBoostOnStraight(
+                    headingChange,
+                    currentSpeedKph,
+                    boost.Charges > 0,
+                    profile != null ? profile.boostTendency : 1f,
+                    Random.value,
+                    S))
+                return;
+
+            boost.TryBoost();
         }
 
         private void ApplyObstacleAvoidance(ref float steer)
@@ -302,7 +476,10 @@ namespace GMTK.Rccp
                 -S.maxPersonalityLateralMetres,
                 S.maxPersonalityLateralMetres) * (1f - mergeBlend);
 
-            lateral += gridLaneOffset * mergeBlend + laneSpread + personalityLateral;
+            // passing and defending also wait for the merge: at the start every car has someone right
+            // in front of it, and reacting to that on the grid throws the whole field off line
+            lateral += gridLaneOffset * mergeBlend + laneSpread + personalityLateral
+                       + RacecraftLateralMetres(currentSpeedKph) * (1f - mergeBlend);
 
             // the waypoint is used as a track cross-section line, never as a point to drive to
             MeasureRoadEdges(aimPoint, pathRight);

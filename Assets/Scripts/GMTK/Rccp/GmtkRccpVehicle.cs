@@ -234,6 +234,12 @@ namespace GMTK.Rccp
                 aiDriver.ConfigurePersonality(type);
         }
 
+        public override void AttachBoostController(BoostController controller)
+        {
+            if (aiDriver != null)
+                aiDriver.AttachBoost(controller);
+        }
+
         public override void ApplyAiTargeting(
             AIPersonalityType type,
             Transform player,

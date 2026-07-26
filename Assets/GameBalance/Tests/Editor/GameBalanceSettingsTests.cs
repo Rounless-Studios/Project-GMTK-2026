@@ -341,6 +341,33 @@ namespace Gmtk2026.GameBalance.Tests
         }
 
         [Test]
+        public void RacecraftAxes_MakeEachPersonalityRecognisable()
+        {
+            var s = NewDefault();
+            var reckless = s.ai.GetProfile(AIPersonalityType.Reckless);
+            var rammer = s.ai.GetProfile(AIPersonalityType.Rammer);
+            var blocker = s.ai.GetProfile(AIPersonalityType.Blocker);
+            var cleanRacer = s.ai.GetProfile(AIPersonalityType.CleanRacer);
+
+            // braking point: the reckless one carries the most speed, the blocker the least
+            Assert.Greater(reckless.brakingConfidence, cleanRacer.brakingConfidence);
+            Assert.Greater(cleanRacer.brakingConfidence, blocker.brakingConfidence);
+
+            // who tries to pass, and who sits in the way instead
+            Assert.Greater(reckless.overtakeAggression, cleanRacer.overtakeAggression);
+            Assert.Greater(cleanRacer.overtakeAggression, blocker.overtakeAggression);
+            Assert.Greater(blocker.blockStrength, cleanRacer.blockStrength);
+            Assert.Greater(blocker.blockStrength, reckless.blockStrength);
+
+            // the rammer is the only one that never lifts off behind another car
+            Assert.AreEqual(0f, rammer.contactToleranceMetres);
+            Assert.Greater(reckless.contactToleranceMetres, 0f);
+            Assert.Greater(cleanRacer.contactToleranceMetres, reckless.contactToleranceMetres,
+                "the clean racer leaves the most room");
+            Object.DestroyImmediate(s);
+        }
+
+        [Test]
         public void PaceRanking_PutsRecklessFastestAndBlockerSlowest()
         {
             var s = NewDefault();

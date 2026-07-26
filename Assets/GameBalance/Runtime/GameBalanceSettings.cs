@@ -176,9 +176,10 @@ namespace Gmtk2026.GameBalance
                  "leave the racing line.")]
         [Min(0)] public float lateralStrengthMetres;
 
-        [Tooltip("How eagerly this personality spends boost charges. Not consumed yet — AI boost " +
-                 "is a separate task.")]
-        [Range(0f, 1f)] public float boostTendency = 0.5f;
+        [Tooltip("Chance the AI spends a charge each decision tick once it is on a straight. 1 means " +
+                 "it boosts every straight it has a charge for, which is the current design; lower it " +
+                 "to make a personality hoard.")]
+        [Range(0f, 1f)] public float boostTendency = 1f;
 
         [Tooltip("Chance this personality answers the defence quiz correctly and shrugs the curse " +
                  "off. Fast and aggressive personalities defend worse.")]
@@ -187,6 +188,23 @@ namespace Gmtk2026.GameBalance
         [Tooltip("Extra acceleration for a personality that has fallen far behind. Not consumed " +
                  "yet — catch-up is a separate task.")]
         [Min(0)] public float catchupAcceleration = 0.1f;
+
+        [Header("Racecraft")]
+        [Tooltip("Scales the sideways grip this personality believes it has, which is its braking " +
+                 "point: above 1 it brakes later and carries more speed through corners, below 1 it " +
+                 "plays safe. This is the axis you see from the outside.")]
+        [Range(0.7f, 1.35f)] public float brakingConfidence = 1f;
+
+        [Tooltip("How far off the racing line this personality will move to pass the car ahead, as a " +
+                 "multiple of Overtake Offset Metres. 0 never attempts a pass.")]
+        [Range(0f, 2f)] public float overtakeAggression = 0.6f;
+
+        [Tooltip("How hard this personality covers the line of the car behind it. 0 never defends.")]
+        [Range(0f, 1f)] public float blockStrength;
+
+        [Tooltip("Metres this personality keeps from the car ahead before lifting off. 0 means it " +
+                 "keeps its foot in and uses the other car as a brake - that is the rammer.")]
+        [Min(0)] public float contactToleranceMetres = 6f;
     }
 
     [System.Serializable]
@@ -219,27 +237,39 @@ namespace Gmtk2026.GameBalance
         {
             new AiPersonalityProfile
             {
+                // fastest and latest on the brakes, throws it up the inside, never defends
                 personality = AIPersonalityType.Reckless,
                 paceScale = 1f, lateralStrengthMetres = 0f,
-                boostTendency = 0.8f, quizAvoidChance = 0.3f,
+                boostTendency = 1f, quizAvoidChance = 0.3f,
+                brakingConfidence = 1.2f, overtakeAggression = 1.4f,
+                blockStrength = 0f, contactToleranceMetres = 2.5f,
             },
             new AiPersonalityProfile
             {
+                // aims at whatever is in front and keeps its foot in: tolerance 0 is the ram
                 personality = AIPersonalityType.Rammer,
                 paceScale = 0.96f, lateralStrengthMetres = 7f,
-                boostTendency = 0.5f, quizAvoidChance = 0.35f,
+                boostTendency = 1f, quizAvoidChance = 0.35f,
+                brakingConfidence = 1.05f, overtakeAggression = 1f,
+                blockStrength = 0.2f, contactToleranceMetres = 0f,
             },
             new AiPersonalityProfile
             {
+                // slowest, but sits in the way: covers the line of whoever is behind
                 personality = AIPersonalityType.Blocker,
                 paceScale = 0.86f, lateralStrengthMetres = 5f,
-                boostTendency = 0.5f, quizAvoidChance = 0.65f,
+                boostTendency = 1f, quizAvoidChance = 0.65f,
+                brakingConfidence = 0.95f, overtakeAggression = 0.3f,
+                blockStrength = 1f, contactToleranceMetres = 5f,
             },
             new AiPersonalityProfile
             {
+                // drives the line, brakes early, passes only when the room is there
                 personality = AIPersonalityType.CleanRacer,
                 paceScale = 0.9f, lateralStrengthMetres = 0f,
-                boostTendency = 0.5f, quizAvoidChance = 0.8f,
+                boostTendency = 1f, quizAvoidChance = 0.8f,
+                brakingConfidence = 1f, overtakeAggression = 0.6f,
+                blockStrength = 0.15f, contactToleranceMetres = 8f,
             },
         };
 
@@ -276,12 +306,12 @@ namespace Gmtk2026.GameBalance
         [Tooltip("How fast the corner speed target may rise again (kph/s). Prevents brake-release " +
                  "hunting as a corner enters and leaves the speed-dependent scan window.")]
         [Min(1)] public float targetSpeedRiseKphPerSecond = 50f;
-        [Min(1)] public float straightSpeedKph = 160f;
+        [Min(1)] public float straightSpeedKph = 200f;
         [Tooltip("Slowest an AI will take any corner.")]
-        [Min(1)] public float minCornerSpeedKph = 55f;
+        [Min(1)] public float minCornerSpeedKph = 60f;
         [Tooltip("Sideways grip the AI assumes (m/s^2). Higher takes corners faster: corner speed is " +
                  "sqrt(grip x radius), so a wide sweeper stays fast while a hairpin still slows.")]
-        [Min(1)] public float cornerGrip = 14f;
+        [Min(1)] public float cornerGrip = 18f;
 
         [Header("Steering")]
         [Min(0)] public float steerGainLowSpeed = 1.5f;
@@ -303,6 +333,29 @@ namespace Gmtk2026.GameBalance
         [Tooltip("Per-car offset kept after merging so the pack does not share one line.")]
         [Min(0)] public float laneSpreadMetres = 1.2f;
 
+        [Header("Rivals")]
+        [Tooltip("How far ahead and behind another car is close enough to race. Beyond this the AI " +
+                 "drives the track as if it were alone.")]
+        [Min(1)] public float rivalScanMetres = 40f;
+        [Tooltip("Metres off the racing line a pass may take, before the personality's aggression " +
+                 "scales it. The measured road edges still clamp the result.")]
+        [Min(0)] public float overtakeOffsetMetres = 3.2f;
+        [Tooltip("The AI only commits to a pass when it is closing this fast, so it does not weave " +
+                 "behind a car it cannot catch.")]
+        [Min(0)] public float overtakeMinClosingKph = 5f;
+        [Tooltip("Metres the AI keeps from the car ahead when it cannot pass. The personality's " +
+                 "contact tolerance shifts this: a rammer keeps nothing.")]
+        [Min(0)] public float followGapMetres = 7f;
+        [Tooltip("Kph the AI gives up below the car ahead when it has closed right up. Small on " +
+                 "purpose: a queue of cars must settle in behind each other, not brake each other to " +
+                 "walking pace.")]
+        [Min(0)] public float followLiftKph = 10f;
+        [Tooltip("Metres a defending car may move toward the line of the car behind it.")]
+        [Min(0)] public float blockOffsetMetres = 2.4f;
+        [Tooltip("Seconds between rival scans. The AI re-reads who is around it - and its own " +
+                 "personality numbers - on this tick instead of every frame.")]
+        [Min(0.02f)] public float rivalScanIntervalSeconds = 0.2f;
+
         [Header("Road probing")]
         [Min(1)] public float maxRoadHalfWidthMetres = 13f;
         [Min(0)] public float roadEdgeMarginMetres = 2.2f;
@@ -321,7 +374,12 @@ namespace Gmtk2026.GameBalance
 
         [Header("Tactics")]
         [Min(0.1f)] public float boostDecisionIntervalSeconds = 1f;
+        [Tooltip("Heading change over the corner scan that still counts as a straight, both for " +
+                 "spending a boost and for letting the boosted speed target stand.")]
         [Min(0)] public float boostStraightMaximumDegrees = 8f;
+        [Tooltip("The AI will not spend a charge below this speed: boost is for a straight it can " +
+                 "already use, not for crawling out of a spin.")]
+        [Min(0)] public float boostMinimumSpeedKph = 45f;
         [Min(1)] public float catchupGapMetres = 35f;
         [Min(0)] public float eliminationUrgencyScale = 1.12f;
         [Min(1)] public float obstacleProbeMetres = 12f;

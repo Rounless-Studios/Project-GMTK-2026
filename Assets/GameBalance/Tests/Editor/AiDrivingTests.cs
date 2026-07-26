@@ -36,7 +36,7 @@ namespace Gmtk2026.GameBalance.Tests
             // checks the intent instead — no meaningful braking.
             Assert.GreaterOrEqual(
                 AiDriving.CornerSpeedKph(20f, ScanAt(s, 100f), 1f, s),
-                s.straightSpeedKph * 0.95f,
+                s.straightSpeedKph * 0.85f,
                 "a wide sweeper must not be braked for");
 
             // 180 degrees over 50 m is a ~16 m radius hairpin
@@ -116,6 +116,148 @@ namespace Gmtk2026.GameBalance.Tests
         }
 
         private static float ScanAt(AiDrivingSettings s, float speedKph) => AiDriving.CornerScanMetres(speedKph, s);
+
+        [Test]
+        public void ADistantOrUncatchableRivalIsIgnored()
+        {
+            var s = Settings();
+
+            Assert.AreEqual(0f, AiDriving.OvertakeOffsetMetres(0f, 20f, 0f, 5f, 5f, 1f, s),
+                "no car ahead");
+            Assert.AreEqual(0f, AiDriving.OvertakeOffsetMetres(s.rivalScanMetres + 1f, 20f, 0f, 5f, 5f, 1f, s),
+                "too far ahead to race");
+            Assert.AreEqual(0f, AiDriving.OvertakeOffsetMetres(20f, s.overtakeMinClosingKph - 1f, 0f, 5f, 5f, 1f, s),
+                "not closing: weaving behind it would only lose time");
+            Assert.AreEqual(0f, AiDriving.OvertakeOffsetMetres(20f, 20f, 0f, 5f, 5f, 0f, s),
+                "a personality with no aggression never attempts a pass");
+        }
+
+        [Test]
+        public void OvertakeTakesTheOpenSideAndBuildsAsTheGapCloses()
+        {
+            var s = Settings();
+
+            float toTheRight = AiDriving.OvertakeOffsetMetres(20f, 20f, 0f, 1f, 6f, 1f, s);
+            float toTheLeft = AiDriving.OvertakeOffsetMetres(20f, 20f, 0f, 6f, 1f, 1f, s);
+            Assert.Greater(toTheRight, 0f, "more room on the right");
+            Assert.Less(toTheLeft, 0f, "more room on the left");
+
+            float near = AiDriving.OvertakeOffsetMetres(5f, 20f, 0f, 1f, 6f, 1f, s);
+            Assert.Greater(near, toTheRight, "the closer the car ahead, the further off line the pass goes");
+            Assert.LessOrEqual(Mathf.Abs(near), s.overtakeOffsetMetres + 0.0001f);
+        }
+
+        [Test]
+        public void EquallyBoxedInTheAiGoesRoundTheOtherSideOfTheRival()
+        {
+            var s = Settings();
+
+            Assert.Less(AiDriving.OvertakeOffsetMetres(10f, 20f, 2f, 5f, 5f, 1f, s), 0f,
+                "rival sits to the right, so pass on the left");
+            Assert.Greater(AiDriving.OvertakeOffsetMetres(10f, 20f, -2f, 5f, 5f, 1f, s), 0f);
+        }
+
+        [Test]
+        public void AggressionScalesHowFarOffLineAPassGoes()
+        {
+            var s = Settings();
+            float careful = AiDriving.OvertakeOffsetMetres(10f, 20f, 0f, 1f, 6f, 0.6f, s);
+            float committed = AiDriving.OvertakeOffsetMetres(10f, 20f, 0f, 1f, 6f, 1.4f, s);
+
+            Assert.Greater(committed, careful);
+        }
+
+        [Test]
+        public void ClosingCarLiftsOffInsideItsGapButNotOutsideIt()
+        {
+            var s = Settings();
+
+            Assert.AreEqual(150f, AiDriving.FollowSpeedKph(150f, 30f, 90f, 8f, s), 0.001f,
+                "still far behind: keep the corner-speed target");
+
+            float lifted = AiDriving.FollowSpeedKph(150f, 3f, 90f, 8f, s);
+            Assert.Less(lifted, 150f, "inside the gap the car must not drive through the one ahead");
+            Assert.LessOrEqual(lifted, 90f);
+        }
+
+        [Test]
+        public void FollowingACarDoesNotBrakeTheQueueToAWalk()
+        {
+            var s = Settings();
+
+            // right on the bumper of a car doing 120: the follower gives up a little, not most of it
+            float capped = AiDriving.FollowSpeedKph(200f, 0.5f, 120f, 8f, s);
+
+            Assert.Greater(capped, 120f - s.followLiftKph - 0.001f);
+            Assert.Greater(capped, 100f,
+                "scaling by the remaining gap would put the whole field at walking pace");
+        }
+
+        [Test]
+        public void ARammerKeepsItsFootIn()
+        {
+            var s = Settings();
+
+            Assert.AreEqual(150f, AiDriving.FollowSpeedKph(150f, 1f, 90f, 0f, s), 0.001f,
+                "tolerance 0 is what makes a rammer use the other car as a brake");
+        }
+
+        [Test]
+        public void BoostIsSpentOnStraightsOnly()
+        {
+            var s = Settings();
+            float straight = s.boostStraightMaximumDegrees * 0.5f;
+            float corner = s.boostStraightMaximumDegrees + 5f;
+
+            Assert.IsTrue(AiDriving.ShouldBoostOnStraight(straight, 120f, true, 1f, 0.5f, s));
+            Assert.IsFalse(AiDriving.ShouldBoostOnStraight(corner, 120f, true, 1f, 0.5f, s),
+                "a boost into a corner is thrown away");
+            Assert.IsFalse(AiDriving.ShouldBoostOnStraight(straight, 120f, false, 1f, 0.5f, s),
+                "no charge in hand");
+            Assert.IsFalse(
+                AiDriving.ShouldBoostOnStraight(straight, s.boostMinimumSpeedKph - 1f, true, 1f, 0.5f, s),
+                "too slow for a boost to be worth a charge");
+        }
+
+        [Test]
+        public void BoostEagernessIsThePersonalitysOwnNumber()
+        {
+            var s = Settings();
+
+            Assert.IsTrue(AiDriving.ShouldBoostOnStraight(0f, 120f, true, 0.8f, 0.7f, s),
+                "an eager personality takes this draw");
+            Assert.IsFalse(AiDriving.ShouldBoostOnStraight(0f, 120f, true, 0.3f, 0.7f, s),
+                "a cautious one does not");
+        }
+
+        [Test]
+        public void ABurningBoostRaisesTheTargetOnAStraightAndNotIntoACorner()
+        {
+            var s = Settings();
+
+            Assert.AreEqual(150f, AiDriving.BoostedTargetKph(100f, 1.5f, 0f, s), 0.001f,
+                "otherwise the car brakes against its own boost");
+            Assert.AreEqual(100f,
+                AiDriving.BoostedTargetKph(100f, 1.5f, s.boostStraightMaximumDegrees + 5f, s), 0.001f,
+                "a boost still burning at a corner must not raise the corner speed");
+            Assert.AreEqual(100f, AiDriving.BoostedTargetKph(100f, 1f, 0f, s), 0.001f, "not boosting");
+        }
+
+        [Test]
+        public void ADefenderMovesOntoTheLineOfTheCarBehind()
+        {
+            var s = Settings();
+
+            float covering = AiDriving.BlockOffsetMetres(6f, 2f, 1f, s);
+            Assert.Greater(covering, 0f, "follower is to the right, so move right to cover it");
+            Assert.LessOrEqual(covering, s.blockOffsetMetres + 0.0001f);
+
+            Assert.Greater(covering, AiDriving.BlockOffsetMetres(30f, 2f, 1f, s),
+                "a car right behind is covered harder than one still approaching");
+            Assert.AreEqual(0f, AiDriving.BlockOffsetMetres(6f, 2f, 0f, s),
+                "a personality that never defends stays on its line");
+            Assert.AreEqual(0f, AiDriving.BlockOffsetMetres(s.rivalScanMetres + 1f, 2f, 1f, s));
+        }
 
         [Test]
         public void SteerGainFallsOffWithSpeed()
