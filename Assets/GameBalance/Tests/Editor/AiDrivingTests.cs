@@ -118,6 +118,26 @@ namespace Gmtk2026.GameBalance.Tests
         private static float ScanAt(AiDrivingSettings s, float speedKph) => AiDriving.CornerScanMetres(speedKph, s);
 
         [Test]
+        public void AimPointIsCappedAndPulledBackIntoCorners()
+        {
+            var s = Settings();
+
+            Assert.AreEqual(s.maximumLookAheadMetres, AiDriving.LookAheadMetres(260f, 0f, s), 0.001f,
+                "speed alone would aim 90 m ahead, which is past most corners on the track");
+
+            float straight = AiDriving.LookAheadMetres(150f, 0f, s);
+            float entering = AiDriving.LookAheadMetres(150f, s.lookAheadTightenDegrees * 0.5f, s);
+            float inside = AiDriving.LookAheadMetres(150f, s.lookAheadTightenDegrees + 10f, s);
+
+            Assert.Less(entering, straight, "a bend has to shorten the aim");
+            Assert.Less(inside, entering);
+            Assert.AreEqual(s.minLookAheadMetres, inside, 0.001f,
+                "in a real corner the car aims at the corner, not through it");
+            Assert.AreEqual(inside, AiDriving.LookAheadMetres(150f, -(s.lookAheadTightenDegrees + 10f), s),
+                0.001f, "left and right corners are the same problem");
+        }
+
+        [Test]
         public void NormalCorneringSlipIsLeftAlone()
         {
             var s = Settings();

@@ -16,6 +16,23 @@ namespace Gmtk2026.GameBalance
         }
 
         /// <summary>
+        /// Aim distance that also accounts for the corner ahead: far down a straight, pulled back into
+        /// a bend. A distance that only grows with speed aims past the corner - the car reads a small
+        /// angle to a point beyond the bend, steers barely at all, and drives straight off the outside.
+        /// </summary>
+        public static float LookAheadMetres(
+            float speedKph,
+            float headingChangeDegrees,
+            AiDrivingSettings s)
+        {
+            float onAStraight = Mathf.Min(LookAheadMetres(speedKph, s), s.maximumLookAheadMetres);
+            float bend = Mathf.Clamp01(
+                Mathf.Abs(headingChangeDegrees) / Mathf.Max(1f, s.lookAheadTightenDegrees));
+
+            return Mathf.Max(s.minLookAheadMetres, Mathf.Lerp(onAStraight, s.minLookAheadMetres, bend));
+        }
+
+        /// <summary>
         /// How far ahead to look for a corner: the distance needed to brake from the current speed, so
         /// a fast car starts slowing early while a slow car is not braked for a corner it cannot reach
         /// yet. A fixed window either brakes too late on the straights or too early in the slow bits.

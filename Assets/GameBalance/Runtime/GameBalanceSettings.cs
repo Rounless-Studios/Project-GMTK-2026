@@ -300,6 +300,12 @@ namespace Gmtk2026.GameBalance
         [Tooltip("Aim distance at a standstill; speed adds to it so corners are seen early.")]
         [Min(1)] public float minLookAheadMetres = 14f;
         [Min(0)] public float lookAheadMetresPerKph = 0.32f;
+        [Tooltip("Longest the aim point may ever be. At 200 kph the speed term alone reaches 78 m, " +
+                 "which aims across a corner instead of through it and the car drives straight on.")]
+        [Min(5)] public float maximumLookAheadMetres = 42f;
+        [Tooltip("Heading change over the corner scan that pulls the aim point all the way back to the " +
+                 "minimum. Looking far ahead is only useful while the road is straight.")]
+        [Min(1)] public float lookAheadTightenDegrees = 22f;
 
         [Header("Corner speed")]
         [Tooltip("Shortest path length scanned for a corner; slow cars do not look further than this.")]

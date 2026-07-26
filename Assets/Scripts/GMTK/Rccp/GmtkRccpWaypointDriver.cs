@@ -189,14 +189,17 @@ namespace GMTK.Rccp
 
             AdvanceWaypoint();
 
-            Vector3 aimPoint = GetRacingLinePoint(AiDriving.LookAheadMetres(speedKph, S));
-            Vector3 localTarget = transform.InverseTransformPoint(aimPoint);
-            float targetAngle = Mathf.Atan2(localTarget.x, Mathf.Max(1f, localTarget.z)) * Mathf.Rad2Deg;
-
             // Corner and traffic speed are resolved before stuck recovery. A car deliberately
             // waiting behind a slow rival must not be mistaken for one lodged against scenery.
             float scan = AiDriving.CornerScanMetres(speedKph, S);
             float headingChange = path.HeadingChangeAhead(waypointIndex, scan, out float arc);
+
+            // The corner is known before the aim point, so the aim can be pulled back into the bend.
+            // Aiming past a corner is what makes a car read a small angle and drive straight through it.
+            Vector3 aimPoint =
+                GetRacingLinePoint(AiDriving.LookAheadMetres(speedKph, headingChange, S));
+            Vector3 localTarget = transform.InverseTransformPoint(aimPoint);
+            float targetAngle = Mathf.Atan2(localTarget.x, Mathf.Max(1f, localTarget.z)) * Mathf.Rad2Deg;
             float targetSpeed = AiDriving.SmoothTargetSpeedKph(
                 lastTargetSpeed,
                 AiDriving.CornerSpeedKph(
