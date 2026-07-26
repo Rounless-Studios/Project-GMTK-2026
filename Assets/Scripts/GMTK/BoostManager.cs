@@ -31,8 +31,12 @@ namespace GMTK
                 var car = Race.CarByIndex(idx);
                 if (car == null) continue;
                 var bc = car.GetComponent<BoostController>();
-                if (bc == null) car.AddComponent<BoostController>();
+                if (bc == null) bc = car.AddComponent<BoostController>();
                 else bc.ResetForRace();
+
+                // AI drivers cache their components at spawn, before these controllers exist, so the
+                // vehicle is told about the controller instead of being left holding a null one
+                car.GetComponent<GmtkVehicleAdapter>()?.AttachBoostController(bc);
             }
         }
     }

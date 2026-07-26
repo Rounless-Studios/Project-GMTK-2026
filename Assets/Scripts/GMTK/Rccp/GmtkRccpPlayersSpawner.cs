@@ -16,6 +16,20 @@ namespace GMTK.Rccp
     {
         [SerializeField] private GameEvents gameEvents;
         [SerializeField] private RCCP_CarController vehiclePrefab;
+
+        [Tooltip("One car per personality, so a glance at the paint tells you who you are racing. " +
+                 "Rows without a prefab, and the player, fall back to Vehicle Prefab.")]
+        [SerializeField] private List<PersonalityVehicle> personalityVehicles = new();
+
+        /// <summary>A personality and the car it drives. Kept here because prefab references belong
+        /// to the RCCP boundary, not to the engine-neutral balance settings.</summary>
+        [System.Serializable]
+        private struct PersonalityVehicle
+        {
+            public AIPersonalityType personality;
+            public RCCP_CarController prefab;
+        }
+
         [SerializeField] private CheckpointTracker checkpointTrackerPrefab;
         [SerializeField] private List<Transform> spawnPoints = new();
         [SerializeField] private PlayerSpawnIndex playerSpawnIndex = PlayerSpawnIndex.First;
@@ -203,6 +217,11 @@ namespace GMTK.Rccp
 
             int aiCount = Mathf.Min(GameBalance.Current.race.aiCount, spawnPoints.Count - 1);
             int playerIndex = ResolvePlayerSpawnIndex(aiCount);
+
+            // drawn here, before anything is instantiated: the personality decides which car body
+            // is spawned, and AIPersonalityAssigner reads the same plan once the grid exists
+            IReadOnlyList<AIPersonalityType> personalityPlan =
+                AIPersonalityAssigner.PlanForRace(aiCount, rebuild: true);
             GmtkRccpWaypointPath waypointPath = GmtkRccpWaypointPath.GetOrCreate();
 
             // RCCP hands the chase camera to the vehicle that registered last, which would be an AI
@@ -226,8 +245,12 @@ namespace GMTK.Rccp
                 Transform spawnPoint = spawnPoints[spawnIndex];
                 Vector3 spawnPosition = spawnPoint.position;
 
+                RCCP_CarController body = isPlayer
+                    ? source
+                    : VehicleFor(personalityPlan, raceIndex, source);
+
                 GameObject vehicle = Instantiate(
-                    source.gameObject,
+                    body.gameObject,
                     spawnPosition,
                     spawnPoint.rotation);
                 vehicle.name = isPlayer
@@ -283,6 +306,26 @@ namespace GMTK.Rccp
                 vehicle.gameObject.SetActive(false);
                 Object.Destroy(vehicle.gameObject);
             }
+        }
+
+        /// <summary>
+        /// The car an AI slot drives: its personality's row, or the shared prefab when the row is
+        /// empty. Race index 1 is the first AI, which is entry 0 of the plan.
+        /// </summary>
+        private RCCP_CarController VehicleFor(
+            IReadOnlyList<AIPersonalityType> plan,
+            int raceIndex,
+            RCCP_CarController fallback)
+        {
+            if (plan == null || plan.Count == 0) return fallback;
+
+            AIPersonalityType personality = plan[(raceIndex - 1) % plan.Count];
+
+            foreach (PersonalityVehicle entry in personalityVehicles)
+                if (entry.personality == personality && entry.prefab != null)
+                    return entry.prefab;
+
+            return fallback;
         }
 
         private RCCP_CarController ResolveVehiclePrefab()

@@ -15,6 +15,43 @@ namespace GMTK
     /// </summary>
     public class AIPersonalityAssigner : MonoBehaviour
     {
+        private static readonly List<AIPersonalityType> plan = new();
+        private static int plannedForCarCount = -1;
+
+        /// <summary>
+        /// The personality each AI car will get, in race-index order (index 0 is race index 1).
+        /// <para>
+        /// The spawner needs this before it instantiates anything, because the car a personality
+        /// drives is chosen at spawn time, while the personality itself is assigned once the grid
+        /// exists. Both callers share this one plan instead of drawing the shuffle twice and
+        /// disagreeing about who is who.
+        /// </para>
+        /// </summary>
+        public static IReadOnlyList<AIPersonalityType> PlanForRace(int aiCount, bool rebuild = false)
+        {
+            if (!rebuild && plannedForCarCount == aiCount && plan.Count == aiCount)
+                return plan;
+
+            var ai = GameBalance.Current.ai;
+            int seed = AiPersonalityRoster.ResolveSeed(ai.personalityAssignment.shuffleSeed);
+            List<int> order = AiPersonalityRoster.BuildOrder(
+                ToIndices(ai.personalityAssignments),
+                aiCount,
+                Personalities.Length,
+                seed);
+
+            plan.Clear();
+            for (int i = 0; i < aiCount; i++)
+                plan.Add(Personalities[order[i % order.Count]]);
+
+            plannedForCarCount = aiCount;
+            plannedSeed = seed;
+            return plan;
+        }
+
+        private static int plannedSeed;
+
+
         // Index table for the roster, which works in ints to stay engine-agnostic. Order here is
         // only the int mapping; it does not decide the composition any more.
         private static readonly AIPersonalityType[] Personalities =
@@ -50,12 +87,10 @@ namespace GMTK
             foreach (var tracker in trackers)
                 if (tracker != null && tracker.GetCarRacePositionIndex() != 0) aiCount++;
 
-            int seed = AiPersonalityRoster.ResolveSeed(settings.shuffleSeed);
-            List<int> order = AiPersonalityRoster.BuildOrder(
-                ToIndices(ai.personalityAssignments),
-                aiCount,
-                Personalities.Length,
-                seed);
+            // the spawner already drew this plan to pick each car's prefab; reuse it so the
+            // paint on the car and the personality driving it can never disagree
+            IReadOnlyList<AIPersonalityType> order = PlanForRace(aiCount);
+            int seed = plannedSeed;
             var assigned = new StringBuilder();
 
             int aiOrdinal = 0;
@@ -70,7 +105,7 @@ namespace GMTK
 
                 var personality = car.GetComponent<AIPersonality>();
                 if (personality == null) personality = car.AddComponent<AIPersonality>();
-                personality.type = Personalities[order[aiOrdinal % order.Count]];
+                personality.type = order[aiOrdinal % order.Count];
                 personality.ApplyToDriver();
 
                 assigned.Append(' ').Append(raceIndex).Append('=').Append(personality.type);
