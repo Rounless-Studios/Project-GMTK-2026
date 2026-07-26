@@ -122,12 +122,15 @@ namespace GMTK.Rccp
                 authority = null;
         }
 
+        /// <summary>
+        /// Takes over the kit spawner's wiring. Event asset, spawn points and the tracker prefab come
+        /// from the kit, but the player's grid slot does not: this component owns that choice, and
+        /// copying the kit's value overwrote it every time a race started.
+        /// </summary>
         public void CopyFromLegacy(PlayersSpawner legacy)
         {
             gameEvents = legacy.gameEvents;
             spawnPoints = new List<Transform>(legacy.spawnPoints);
-            playerSpawnIndex = legacy.playerSpawnIndex;
-            customPlayerSpawnIndex = legacy.customPlayerSpawnIndex;
 
             if (legacy.playerPrefab != null)
                 checkpointTrackerPrefab =

@@ -54,6 +54,15 @@ namespace GMTK.Rccp
         private float behindLateralMetres;
         private float currentSpeedKph;
         private float lateralSlipKph;
+        private float lastLateralRequest;
+        private float lastLateralApplied;
+        private string lastLeftEdgeHit = "-";
+        private string lastRightEdgeHit = "-";
+        private float lastContactLogTime;
+        private float lastScanMetres;
+        private float lastHeadingChange;
+        private int lastLoggedWaypoint = -1;
+        private int waypointStepsThisSecond;
 
         /// <summary>Metres to the car ahead inside the scan window, 0 when there is none. Diagnostics.</summary>
         public float GapAheadMetres => gapAheadMetres;
@@ -193,6 +202,8 @@ namespace GMTK.Rccp
             // waiting behind a slow rival must not be mistaken for one lodged against scenery.
             float scan = AiDriving.CornerScanMetres(speedKph, S);
             float headingChange = path.HeadingChangeAhead(waypointIndex, scan, out float arc);
+            lastScanMetres = scan;
+            lastHeadingChange = headingChange;
 
             // The corner is known before the aim point, so the aim can be pulled back into the bend.
             // Aiming past a corner is what makes a car read a small angle and drive straight through it.
@@ -431,6 +442,50 @@ namespace GMTK.Rccp
         }
 
         /// <summary>
+        /// What the road looked like to the AI at this waypoint: how wide it read the track, what
+        /// stopped each sideways probe, and how far off the centre line it wants to be. A car that hits
+        /// the guardrail either measured the road too wide or asked for more than the measurement.
+        /// </summary>
+        private void LogEdges()
+        {
+            if (!S.logTrackContact || Time.time - lastContactLogTime < 1f) return;
+
+            lastContactLogTime = Time.time;
+
+            int steps = waypointStepsThisSecond;
+            waypointStepsThisSecond = 0;
+            lastLoggedWaypoint = waypointIndex;
+
+            Debug.Log($"AI edges {name}: left={edgeLimitLeft:F1}m ({lastLeftEdgeHit}) " +
+                      $"right={edgeLimitRight:F1}m ({lastRightEdgeHit}) " +
+                      $"want={lastLateralRequest:F1}m used={lastLateralApplied:F1}m " +
+                      $"waypoint={waypointIndex} (+{steps}/s) scan={lastScanMetres:F0}m " +
+                      $"bend={lastHeadingChange:F0}deg target={lastTargetSpeed:F0} " +
+                      $"spd={currentSpeedKph:F0} slip={lateralSlipKph:F0}");
+        }
+
+        /// <summary>
+        /// Logs contact with scenery: the guardrail, a barrier or the terrain. Other cars are skipped —
+        /// racing contact is expected and would drown the interesting lines.
+        /// </summary>
+        private void OnCollisionEnter(Collision collision)
+        {
+            if (!S.logTrackContact || collision.collider == null) return;
+            if (collision.collider.attachedRigidbody != null) return;
+
+            Debug.Log($"AI hit {name} -> '{collision.collider.name}' " +
+                      $"(root '{collision.collider.transform.root.name}') " +
+                      $"impulse={collision.impulse.magnitude:F0} spd={currentSpeedKph:F0} " +
+                      $"slip={lateralSlipKph:F0} steer={inputs.steerInput:F2} " +
+                      $"want={lastLateralRequest:F1}m used={lastLateralApplied:F1}m " +
+                      $"scan={lastScanMetres:F0}m bend={lastHeadingChange:F0}deg " +
+                      $"target={lastTargetSpeed:F0} steps={waypointStepsThisSecond} " +
+                      $"edges L{edgeLimitLeft:F1}/R{edgeLimitRight:F1} " +
+                      $"({lastLeftEdgeHit} / {lastRightEdgeHit}) waypoint={waypointIndex} " +
+                      $"personality={personalityType}");
+        }
+
+        /// <summary>
         /// One AI car's telemetry once a second: what the driver asked for against what the car did,
         /// so a slow lap can be attributed to the target, to the inputs, or to the drivetrain.
         /// </summary>
@@ -506,7 +561,10 @@ namespace GMTK.Rccp
             // the waypoint is used as a track cross-section line, never as a point to drive to
             MeasureRoadEdges(aimPoint, pathRight);
 
-            return aimPoint + pathRight * AiDriving.ClampLateral(lateral, edgeLimitLeft, edgeLimitRight);
+            lastLateralRequest = lateral;
+            lastLateralApplied = AiDriving.ClampLateral(lateral, edgeLimitLeft, edgeLimitRight);
+
+            return aimPoint + pathRight * lastLateralApplied;
         }
 
         /// <summary>
@@ -520,28 +578,53 @@ namespace GMTK.Rccp
                 return;
 
             measuredEdgeIndex = waypointIndex;
-            edgeLimitRight = Mathf.Max(0f, ProbeEdge(centre, pathRight) - S.roadEdgeMarginMetres);
-            edgeLimitLeft = Mathf.Max(0f, ProbeEdge(centre, -pathRight) - S.roadEdgeMarginMetres);
+            edgeLimitRight =
+                Mathf.Max(0f, ProbeEdge(centre, pathRight, out lastRightEdgeHit) - S.roadEdgeMarginMetres);
+            edgeLimitLeft =
+                Mathf.Max(0f, ProbeEdge(centre, -pathRight, out lastLeftEdgeHit) - S.roadEdgeMarginMetres);
+
+            LogEdges();
         }
 
-        private float ProbeEdge(Vector3 centre, Vector3 direction)
+        private float ProbeEdge(Vector3 centre, Vector3 direction, out string stoppedBy)
         {
             float limit = S.maxRoadHalfWidthMetres;
+            stoppedBy = "none";
 
-            // a barrier is the hard limit
-            if (Physics.Raycast(centre + Vector3.up * 1.2f, direction, out RaycastHit hit, limit))
+            // A barrier is the hard limit, and it has to be found with a sphere at wheel height: the
+            // guardrail is 1.2 m tall and starts exactly at the road edge, so a thin ray cast at that
+            // same height slides over the top and reports open road all the way to the probe limit.
+            if (Physics.SphereCast(
+                    centre + Vector3.up * S.barrierProbeHeightMetres,
+                    S.barrierProbeRadiusMetres,
+                    direction,
+                    out RaycastHit hit,
+                    limit,
+                    Physics.DefaultRaycastLayers,
+                    QueryTriggerInteraction.Ignore))
+            {
+                stoppedBy = hit.collider != null ? hit.collider.name : "barrier";
                 return hit.distance;
+            }
 
             // otherwise the surface edge: the track has no terrain beside it, so the last sample with
             // ground under it is the edge
-            for (float distance = 2f; distance <= limit; distance += 2f)
+            // Fallback for a stretch with no barrier. One metre steps and a longer drop: two metre
+            // steps read a 15 m road as anything between 1.8 m and 5.8 m wide, because a banked or
+            // dipping surface falls outside a short downward ray and is mistaken for the edge.
+            for (float distance = 1f; distance <= limit; distance += 1f)
             {
-                Vector3 probe = centre + direction * distance + Vector3.up * 3f;
+                Vector3 probe = centre + direction * distance + Vector3.up * 2f;
 
-                if (!Physics.Raycast(probe, Vector3.down, 8f))
-                    return distance - 2f;
+                if (!Physics.Raycast(probe, Vector3.down, 12f, Physics.DefaultRaycastLayers,
+                        QueryTriggerInteraction.Ignore))
+                {
+                    stoppedBy = "surface edge";
+                    return distance - 1f;
+                }
             }
 
+            stoppedBy = "probe limit";
             return limit;
         }
 
@@ -568,6 +651,7 @@ namespace GMTK.Rccp
                     return;
 
                 waypointIndex = (waypointIndex + 1) % path.Count;
+                waypointStepsThisSecond++;
             }
         }
 

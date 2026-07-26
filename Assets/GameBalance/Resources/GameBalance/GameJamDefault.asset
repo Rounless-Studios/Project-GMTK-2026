@@ -35,7 +35,7 @@ MonoBehaviour:
     sharedCooldownSeconds: 12
     selectionMode: 0
     targetingMode: 0
-    ruptureDurabilityDamage: 35
+    ruptureDurabilityDamage: 60
     ruptureKnockbackForce: 8
     engineSealDurationSeconds: 5
     soulSwapMinimumDistanceMeters: 15
@@ -53,15 +53,21 @@ MonoBehaviour:
     overtakeRewardCharges: 1
     boostSpeedMultiplier: 1.5
   damage:
-    maximumDurability: 100
-    damagedThreshold: 60
-    criticalThreshold: 30
+    maximumDurability: 200
+    damagedThreshold: 120
+    criticalThreshold: 60
     wreckedThreshold: 0
     wreckDurationSeconds: 2
-    recoveryDurability: 50
+    recoveryDurability: 100
     recoveryProtectionSeconds: 2
     strongCollisionImpulse: 8
-    strongCollisionDamage: 15
+    strongCollisionDamage: 25
+    wreckImpactSpeedMultiplier: 1.8
+    wreckMinimumLaunchSpeed: 7
+    wreckMaximumLaunchSpeed: 18
+    wreckUpwardLaunchRatio: 0.4
+    wreckSpinRadiansPerSecond: 4
+    wreckUprightMinimumUpDot: 0.4
   vehicleRecovery:
     fallDistanceBelowTrack: 8
     respawnHeightAboveWaypoint: 2
@@ -100,9 +106,13 @@ MonoBehaviour:
     driving:
       minLookAheadMetres: 14
       lookAheadMetresPerKph: 0.32
+      maximumLookAheadMetres: 42
+      lookAheadTightenDegrees: 22
       minCornerScanMetres: 30
       cornerBrakingDecel: 8
       targetSpeedRiseKphPerSecond: 50
+      slipToleranceKph: 12
+      slipSpeedPenalty: 2.5
       straightSpeedKph: 200
       minCornerSpeedKph: 60
       cornerGrip: 18
@@ -124,15 +134,18 @@ MonoBehaviour:
       rivalScanIntervalSeconds: 0.2
       maxRoadHalfWidthMetres: 13
       roadEdgeMarginMetres: 2.2
+      barrierProbeHeightMetres: 0.5
+      barrierProbeRadiusMetres: 0.35
       logDriveTelemetry: 0
+      logTrackContact: 1
       waypointReachMetres: 9
       maxPersonalityLateralMetres: 3
       stuckSpeedKph: 1.5
       stuckDelaySeconds: 2.5
       reverseDurationSeconds: 1.25
-      boostDecisionIntervalSeconds: 1
+      boostDecisionIntervalSeconds: 0.25
       boostStraightMaximumDegrees: 8
-      boostMinimumSpeedKph: 45
+      boostMinimumSpeedKph: 0
       catchupGapMetres: 35
       eliminationUrgencyScale: 1.12
       obstacleProbeMetres: 12
@@ -218,14 +231,48 @@ MonoBehaviour:
     blockDuringOvertakeChallenge: 1
     blockDuringFinalDuel: 1
     preventImmediateRepeat: 1
+    spawnAheadOfPlayer: 1
+    spawnAheadMinimumMetres: 60
+    spawnAheadMaximumMetres: 140
     dumpTruckSpeed: 22
-    dumpTruckDamage: 20
+    dumpTruckDamage: 35
     dumpTruckKnockback: 6
     dumpTruckLifetimeSeconds: 12
     earthquakeDurationSeconds: 3
     earthquakeLateralVelocityChange: 2
     meteorWarningSeconds: 2
     meteorImpactRadius: 5
-    meteorDamage: 25
+    meteorDamage: 45
     meteorKnockback: 5
     meteorDebrisLifetimeSeconds: 3
+    constructionBarrierCount: 5
+    constructionSpacingMetres: 2.4
+    constructionDamage: 17
+    constructionKnockback: 2
+    constructionLifetimeSeconds: 14
+    cowCount: 3
+    cowSpeed: 7
+    cowStartSideOffsetMetres: 16
+    cowSpacingMetres: 4
+    cowDamage: 20
+    cowKnockback: 4
+    cowLifetimeSeconds: 12
+    ballDiameterMetres: 6
+    ballMass: 3
+    ballBounciness: 0.85
+    ballDropHeightMetres: 14
+    ballDamage: 14
+    ballKnockback: 5
+    ballLifetimeSeconds: 14
+    crateMinimumCount: 5
+    crateMaximumCount: 9
+    crateScatterRadiusMetres: 7
+    crateDropHeightMetres: 18
+    crateMass: 15
+    crateDamage: 10
+    crateKnockback: 2
+    crateLifetimeSeconds: 10
+    boostPadForce: 25
+    boostPadLengthMetres: 8
+    boostPadWidthMetres: 4
+    boostPadLifetimeSeconds: 16

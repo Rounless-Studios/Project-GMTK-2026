@@ -260,9 +260,11 @@ namespace Gmtk2026.GameBalance.Tests
                 "a boost into a corner is thrown away");
             Assert.IsFalse(AiDriving.ShouldBoostOnStraight(straight, 120f, false, 1f, 0.5f, s),
                 "no charge in hand");
-            Assert.IsFalse(
-                AiDriving.ShouldBoostOnStraight(straight, s.boostMinimumSpeedKph - 1f, true, 1f, 0.5f, s),
-                "too slow for a boost to be worth a charge");
+            // the default is 0 so cars boost off the line; the threshold still has to work when set
+            s.boostMinimumSpeedKph = 40f;
+            Assert.IsFalse(AiDriving.ShouldBoostOnStraight(straight, 30f, true, 1f, 0.5f, s),
+                "with a threshold set, a crawling car keeps its charge");
+            Assert.IsTrue(AiDriving.ShouldBoostOnStraight(straight, 50f, true, 1f, 0.5f, s));
         }
 
         [Test]

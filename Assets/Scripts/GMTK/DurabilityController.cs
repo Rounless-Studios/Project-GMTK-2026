@@ -11,6 +11,9 @@ namespace GMTK
     /// <c>wreckDurationSeconds</c> with a short protection window. A wreck never eliminates the
     /// car — elimination stays the EliminationManager / FinalGate's job, so a wrecked last-place
     /// car is still executed on schedule.
+    /// A wreck cuts the driver's input but leaves the car in the world: the impact that emptied
+    /// the durability is handed back scaled up (<see cref="WreckLaunch"/>), so the car is thrown
+    /// out of control and tumbles on instead of stopping dead where it was hit.
     /// </summary>
     [DisallowMultipleComponent]
     public class DurabilityController : MonoBehaviour
@@ -29,8 +32,16 @@ namespace GMTK
         private DamageSettings D => GameBalance.Current.damage;
         private bool controlsSuspended;
         private GmtkVehicleAdapter vehicleAdapter;
-        private Rigidbody[] suspendedBodies;
-        private bool[] originalKinematicStates;
+
+        // the collision being processed right now, so a wreck it causes can throw the car with it
+        private bool hasPendingImpact;
+        private Vector3 pendingImpactPush;
+        private float pendingImpactSpeed;
+
+        [Header("Wreck Recovery")]
+        [Tooltip("Height the car is lifted when a wreck that landed it on its roof is rolled back " +
+                 "over, so it does not recover inside the road surface.")]
+        [SerializeField, Min(0f)] private float uprightLiftMetres = 0.6f;
 
         [Header("Collision Sparks")]
         [SerializeField, Min(0f)] private float minimumSparkCollisionSpeed = 3f;
@@ -89,8 +100,27 @@ namespace GMTK
             TryPlayCollisionSpark(collision);
 
             // light bumps are free; only a strong impulse hurts
-            if (collision.impulse.magnitude >= D.strongCollisionImpulse)
-                State.ApplyDamage(D.strongCollisionDamage);
+            if (collision.impulse.magnitude < D.strongCollisionImpulse)
+                return;
+
+            RememberImpact(collision);
+            State.ApplyDamage(D.strongCollisionDamage);
+            hasPendingImpact = false;
+        }
+
+        /// <summary>
+        /// Records where this hit shoves the car and how hard, for the wreck launch. The contact
+        /// normals point away from whatever was hit, so their sum is the push direction.
+        /// </summary>
+        private void RememberImpact(Collision collision)
+        {
+            pendingImpactPush = Vector3.zero;
+
+            for (int i = 0; i < collision.contactCount; i++)
+                pendingImpactPush += collision.GetContact(i).normal;
+
+            pendingImpactSpeed = collision.relativeVelocity.magnitude;
+            hasPendingImpact = true;
         }
 
         private void TryPlayCollisionSpark(Collision collision)
@@ -246,11 +276,34 @@ namespace GMTK
         private void OnWrecked()
         {
             SuspendControls();
+            ThrowWreckedCar();
             Wrecked?.Invoke(this);
+        }
+
+        /// <summary>
+        /// Hands the wrecking impact back, scaled up, so the car is thrown out of control. A wreck
+        /// with no collision behind it (rupture curse, hazard damage) gets the minimum launch
+        /// straight up instead, which still reads as the car breaking loose.
+        /// </summary>
+        private void ThrowWreckedCar()
+        {
+            if (vehicleBody == null || vehicleBody.isKinematic)
+                return;
+
+            Vector3 launch = WreckLaunch.Compute(
+                D,
+                hasPendingImpact ? pendingImpactPush : Vector3.zero,
+                hasPendingImpact ? pendingImpactSpeed : 0f);
+
+            vehicleBody.AddForce(launch, ForceMode.VelocityChange);
+
+            if (D.wreckSpinRadiansPerSecond > 0f)
+                vehicleBody.angularVelocity += Random.onUnitSphere * D.wreckSpinRadiansPerSecond;
         }
 
         private void OnRecovered()
         {
+            UprightIfFlipped();
             RestoreControls();
             Recovered?.Invoke(this);
         }
@@ -260,22 +313,10 @@ namespace GMTK
             if (controlsSuspended) return;
             controlsSuspended = true;
 
-            // the vehicle package cuts its own input through the adapter
+            // input only: the bodies keep simulating, which is what lets the wreck tumble on
+            // instead of freezing where it was hit
             if (vehicleAdapter != null)
                 vehicleAdapter.SetControlsEnabled(false);
-
-            // freezing the bodies as well guarantees that cached throttle cannot keep moving the
-            // wrecked car, whichever vehicle package drives it
-            suspendedBodies = GetComponentsInChildren<Rigidbody>(true);
-            originalKinematicStates = new bool[suspendedBodies.Length];
-            for (int i = 0; i < suspendedBodies.Length; i++)
-            {
-                Rigidbody body = suspendedBodies[i];
-                originalKinematicStates[i] = body.isKinematic;
-                body.linearVelocity = Vector3.zero;
-                body.angularVelocity = Vector3.zero;
-                body.isKinematic = true;
-            }
         }
 
         private void RestoreControls()
@@ -283,21 +324,37 @@ namespace GMTK
             if (!controlsSuspended) return;
             controlsSuspended = false;
 
-            if (suspendedBodies != null && originalKinematicStates != null)
-            {
-                int count = Mathf.Min(suspendedBodies.Length, originalKinematicStates.Length);
-                for (int i = 0; i < count; i++)
-                {
-                    if (suspendedBodies[i] != null)
-                        suspendedBodies[i].isKinematic = originalKinematicStates[i];
-                }
-            }
-
-            suspendedBodies = null;
-            originalKinematicStates = null;
-
             if (vehicleAdapter != null)
                 vehicleAdapter.SetControlsEnabled(true);
+        }
+
+        /// <summary>
+        /// A thrown car can land on its roof and nothing in the vehicle package rolls it back over,
+        /// so a recovered car would be stranded for the rest of the race. Levels it in place,
+        /// keeping its heading.
+        /// </summary>
+        private void UprightIfFlipped()
+        {
+            if (vehicleBody == null ||
+                Vector3.Dot(transform.up, Vector3.up) >= D.wreckUprightMinimumUpDot)
+            {
+                return;
+            }
+
+            Vector3 heading = transform.forward;
+            heading.y = 0f;
+
+            if (heading.sqrMagnitude < 1e-4f)
+                heading = Vector3.forward;
+
+            Quaternion rotation = Quaternion.LookRotation(heading.normalized, Vector3.up);
+            Vector3 position = transform.position + Vector3.up * uprightLiftMetres;
+
+            vehicleBody.angularVelocity = Vector3.zero;
+            vehicleBody.position = position;
+            vehicleBody.rotation = rotation;
+            transform.SetPositionAndRotation(position, rotation);
+            Physics.SyncTransforms();
         }
     }
 }

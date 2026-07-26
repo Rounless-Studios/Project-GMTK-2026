@@ -60,7 +60,7 @@ namespace Gmtk2026.GameBalance
         public CurseTargetingMode targetingMode = CurseTargetingMode.NearestAheadThenNearestActive;
 
         [Header("Rupture")]
-        [Min(0)] public float ruptureDurabilityDamage = 35f;
+        [Min(0)] public float ruptureDurabilityDamage = 60f;  // 30% of the 200 durability range
         [Min(0)] public float ruptureKnockbackForce = 8f; // TBD by playtest
 
         [Header("Engine Seal")]
@@ -96,16 +96,37 @@ namespace Gmtk2026.GameBalance
     [System.Serializable]
     public class DamageSettings
     {
-        [Min(0)] public float maximumDurability = 100f;
-        [Min(0)] public float damagedThreshold = 60f;
-        [Min(0)] public float criticalThreshold = 30f;
+        // the visible range is 0-200 (doubled on 2026-07-26 so a car survives longer before it is
+        // thrown out of control); the stages sit at 60% and 30% of it
+        [Min(0)] public float maximumDurability = 200f;
+        [Min(0)] public float damagedThreshold = 120f;
+        [Min(0)] public float criticalThreshold = 60f;
         [Min(0)] public float wreckedThreshold = 0f;
         [Min(0)] public float wreckDurationSeconds = 2f;
-        [Min(0)] public float recoveryDurability = 50f;
+        [Min(0)] public float recoveryDurability = 100f;
         [Min(0)] public float recoveryProtectionSeconds = 2f; // TBD by playtest
         // a collision only hurts above this relative impulse; light bumps are free
         [Min(0)] public float strongCollisionImpulse = 8f;    // TBD by playtest
-        [Min(0)] public float strongCollisionDamage = 15f;    // TBD by playtest
+        [Min(0)] public float strongCollisionDamage = 25f;    // ~8 strong hits from full
+
+        [Header("Wreck Launch")]
+        [Tooltip("A wreck takes the controls away instead of freezing the car: the impact that " +
+                 "emptied the durability is handed back scaled by this, so the car is thrown out " +
+                 "of control.")]
+        [Min(0)] public float wreckImpactSpeedMultiplier = 1.8f;
+        [Tooltip("Slowest launch (m/s), so a gentle hit that still empties the durability throws " +
+                 "the car too. Also the launch for a wreck with no collision behind it.")]
+        [Min(0)] public float wreckMinimumLaunchSpeed = 7f;
+        [Tooltip("Fastest launch (m/s); keeps a huge impulse from firing the car off the map.")]
+        [Min(0)] public float wreckMaximumLaunchSpeed = 18f;
+        [Tooltip("How much of the launch goes upward (1 = 45 degrees). This is what makes the car " +
+                 "tumble instead of sliding flat.")]
+        [Range(0f, 1f)] public float wreckUpwardLaunchRatio = 0.4f;
+        [Tooltip("Spin (rad/s) added on the launch so the wreck rolls out of control.")]
+        [Min(0)] public float wreckSpinRadiansPerSecond = 4f;
+        [Tooltip("How upright the car must still be when the wreck ends. Below this the recovery " +
+                 "rolls it back over, otherwise a car that landed on its roof is stranded.")]
+        [Range(-1f, 1f)] public float wreckUprightMinimumUpDot = 0.4f;
     }
 
     [System.Serializable]
@@ -373,10 +394,18 @@ namespace Gmtk2026.GameBalance
         [Header("Road probing")]
         [Min(1)] public float maxRoadHalfWidthMetres = 13f;
         [Min(0)] public float roadEdgeMarginMetres = 2.2f;
+        [Tooltip("Height of the sideways barrier probe. A guardrail is about a metre tall and starts at " +
+                 "the road edge, so a probe at its top slides over it and reports open road.")]
+        [Min(0.05f)] public float barrierProbeHeightMetres = 0.5f;
+        [Tooltip("Thickness of the barrier probe. A sphere cannot graze past a thin rail the way a ray " +
+                 "can, which is what let cars aim into the guardrail.")]
+        [Min(0.05f)] public float barrierProbeRadiusMetres = 0.35f;
 
         [Header("Diagnostics")]
         [Tooltip("Logs one AI car's speed target versus what the car actually does, once a second.")]
         public bool logDriveTelemetry = false;
+        [Tooltip("Logs the measured road edges (what the barrier probe hit, how wide the road was read as) and every collision with scenery. For finding out why cars hit the guardrail.")]
+        public bool logTrackContact = false;
 
         [Header("Waypoints and recovery")]
         [Min(1)] public float waypointReachMetres = 9f;
@@ -387,13 +416,13 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float reverseDurationSeconds = 1.25f;
 
         [Header("Tactics")]
-        [Min(0.1f)] public float boostDecisionIntervalSeconds = 1f;
+        [Tooltip("How often the AI reconsiders spending a charge. Short so a charge is spent as soon as it recharges.")]
+        [Min(0.1f)] public float boostDecisionIntervalSeconds = 0.25f;
         [Tooltip("Heading change over the corner scan that still counts as a straight, both for " +
                  "spending a boost and for letting the boosted speed target stand.")]
         [Min(0)] public float boostStraightMaximumDegrees = 8f;
-        [Tooltip("The AI will not spend a charge below this speed: boost is for a straight it can " +
-                 "already use, not for crawling out of a spin.")]
-        [Min(0)] public float boostMinimumSpeedKph = 45f;
+        [Tooltip("Speed below which the AI keeps its charge. 0 lets it boost off the line as well, which is the current design; raise it to stop cars burning a charge while crawling out of a spin.")]
+        [Min(0)] public float boostMinimumSpeedKph = 0f;
         [Min(1)] public float catchupGapMetres = 35f;
         [Min(0)] public float eliminationUrgencyScale = 1.12f;
         [Min(1)] public float obstacleProbeMetres = 12f;
@@ -483,7 +512,7 @@ namespace Gmtk2026.GameBalance
 
         [Header("Dump Truck")]
         [Min(1)] public float dumpTruckSpeed = 22f;
-        [Min(0)] public float dumpTruckDamage = 20f;
+        [Min(0)] public float dumpTruckDamage = 35f;
         [Min(0)] public float dumpTruckKnockback = 6f;
         [Min(0.1f)] public float dumpTruckLifetimeSeconds = 12f;
 
@@ -494,7 +523,7 @@ namespace Gmtk2026.GameBalance
         [Header("Meteor")]
         [Min(0)] public float meteorWarningSeconds = 2f;
         [Min(0.1f)] public float meteorImpactRadius = 5f;
-        [Min(0)] public float meteorDamage = 25f;
+        [Min(0)] public float meteorDamage = 45f;
         [Min(0)] public float meteorKnockback = 5f;
         [Min(0.1f)] public float meteorDebrisLifetimeSeconds = 3f;
 
@@ -502,7 +531,7 @@ namespace Gmtk2026.GameBalance
         [Tooltip("Barriers across the track; one of them is always left out as a gap to aim for.")]
         [Min(2)] public int constructionBarrierCount = 5;
         [Min(0.5f)] public float constructionSpacingMetres = 2.4f;
-        [Min(0)] public float constructionDamage = 10f;
+        [Min(0)] public float constructionDamage = 17f;
         [Min(0)] public float constructionKnockback = 2f;
         [Min(0.1f)] public float constructionLifetimeSeconds = 14f;
 
@@ -512,7 +541,7 @@ namespace Gmtk2026.GameBalance
         [Tooltip("How far off to the side the herd starts, so it walks in rather than popping in.")]
         [Min(0)] public float cowStartSideOffsetMetres = 16f;
         [Min(0)] public float cowSpacingMetres = 4f;
-        [Min(0)] public float cowDamage = 12f;
+        [Min(0)] public float cowDamage = 20f;
         [Min(0)] public float cowKnockback = 4f;
         [Min(0.1f)] public float cowLifetimeSeconds = 12f;
 
@@ -521,7 +550,7 @@ namespace Gmtk2026.GameBalance
         [Min(0.1f)] public float ballMass = 3f;
         [Range(0f, 1f)] public float ballBounciness = 0.85f;
         [Min(0)] public float ballDropHeightMetres = 14f;
-        [Min(0)] public float ballDamage = 8f;
+        [Min(0)] public float ballDamage = 14f;
         [Min(0)] public float ballKnockback = 5f;
         [Min(0.1f)] public float ballLifetimeSeconds = 14f;
 
@@ -531,7 +560,7 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float crateScatterRadiusMetres = 7f;
         [Min(0)] public float crateDropHeightMetres = 18f;
         [Min(0.1f)] public float crateMass = 15f;
-        [Min(0)] public float crateDamage = 6f;
+        [Min(0)] public float crateDamage = 10f;
         [Min(0)] public float crateKnockback = 2f;
         [Min(0.1f)] public float crateLifetimeSeconds = 10f;
 
@@ -614,6 +643,8 @@ namespace Gmtk2026.GameBalance
                 errors.Add("damage thresholds must satisfy maximumDurability > damagedThreshold > criticalThreshold > wreckedThreshold");
             if (damage.recoveryDurability > damage.maximumDurability)
                 errors.Add("damage.recoveryDurability must be <= maximumDurability");
+            if (damage.wreckMinimumLaunchSpeed > damage.wreckMaximumLaunchSpeed)
+                errors.Add("damage.wreckMinimumLaunchSpeed must be <= wreckMaximumLaunchSpeed");
 
             if (vehicleRecovery.fallDistanceBelowTrack <= 0f)
                 errors.Add("vehicleRecovery.fallDistanceBelowTrack must be > 0");

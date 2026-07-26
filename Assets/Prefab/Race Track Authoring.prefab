@@ -182431,7 +182431,7 @@ MonoBehaviour:
       type: 3}
   checkpointTrackerPrefab: {fileID: 0}
   spawnPoints: []
-  playerSpawnIndex: 0
+  playerSpawnIndex: 1
   customPlayerSpawnIndex: 0
 --- !u!1 &6799758262907440399
 GameObject:

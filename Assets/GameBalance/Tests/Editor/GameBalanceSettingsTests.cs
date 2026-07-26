@@ -35,7 +35,7 @@ namespace Gmtk2026.GameBalance.Tests
             Assert.AreEqual(2, s.boost.maximumCharges);
             Assert.AreEqual(1.25f, s.boost.durationSeconds);
             Assert.AreEqual(6f, s.boost.rechargeSecondsPerCharge);
-            Assert.AreEqual(100f, s.damage.maximumDurability);
+            Assert.AreEqual(200f, s.damage.maximumDurability);
             Assert.AreEqual(20f, s.overtake.checkIntervalSeconds - 0f); // 20
             Assert.AreEqual(20f, s.overtake.checkIntervalSeconds);
             Object.DestroyImmediate(s);
@@ -54,7 +54,8 @@ namespace Gmtk2026.GameBalance.Tests
         public void DamageThresholds_OutOfOrder_IsInvalid()
         {
             var s = NewDefault();
-            s.damage.criticalThreshold = 80f; // now critical > damaged(60): wrong order
+            // critical above damaged is the wrong order, whatever the durability scale is
+            s.damage.criticalThreshold = s.damage.damagedThreshold + 20f;
             CollectionAssert.IsNotEmpty(s.Validate());
             Object.DestroyImmediate(s);
         }
@@ -168,8 +169,17 @@ namespace Gmtk2026.GameBalance.Tests
             Assert.AreEqual(12f, preset.curse.sharedCooldownSeconds);
             Assert.AreEqual(1.25f, preset.curse.aiQuizResolutionDelayMinimumSeconds);
             Assert.AreEqual(3f, preset.curse.aiQuizResolutionDelayMaximumSeconds);
-            Assert.AreEqual(100f, preset.damage.maximumDurability,
-                "the durability HUD and damage thresholds use a visible 0-100 range");
+            // the durability numbers only mean anything together, so the whole scale is pinned:
+            // 0-200 visible range, stages at 60% / 30%, a wreck back to half, ~8 strong hits from full
+            Assert.AreEqual(200f, preset.damage.maximumDurability,
+                "the durability HUD and damage thresholds use a visible 0-200 range");
+            Assert.AreEqual(120f, preset.damage.damagedThreshold);
+            Assert.AreEqual(60f, preset.damage.criticalThreshold);
+            Assert.AreEqual(0f, preset.damage.wreckedThreshold);
+            Assert.AreEqual(100f, preset.damage.recoveryDurability);
+            Assert.AreEqual(25f, preset.damage.strongCollisionDamage);
+            Assert.AreEqual(60f, preset.curse.ruptureDurabilityDamage,
+                "a rupture curse is worth 30% of the durability range");
             Assert.AreEqual(0.75f, preset.presentation.gateCloseDurationSeconds);
             Assert.AreEqual(0.25f, preset.presentation.gateExecutionDelaySeconds);
             GameBalance.ResetForTests();

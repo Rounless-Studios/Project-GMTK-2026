@@ -29,7 +29,7 @@ namespace GMTK.EditorTools
             {
                 // GDD: eliminations are a steady 30s beat (was 10s for quick manual testing)
                 settings.elimination.intervalSeconds = 30f;
-                RestoreDurabilityOverride(settings);
+                RestoreDurabilityScale(settings);
                 NormalizeFinalGate(settings);
                 NormalizeAiRacecraft(settings);
             });
@@ -37,7 +37,7 @@ namespace GMTK.EditorTools
             Apply(FastTestPath, problems, settings =>
             {
                 // the fast preset keeps its deliberately short timers
-                RestoreDurabilityOverride(settings);
+                RestoreDurabilityScale(settings);
                 NormalizeFinalGate(settings);
                 NormalizeAiRacecraft(settings);
             });
@@ -64,6 +64,9 @@ namespace GMTK.EditorTools
             // than the player could go. Grip rises with it: a high straight target with the old grip
             // only means harder braking at every corner, which reads as slower, not faster.
             settings.ai.driving.straightSpeedKph = 200f;
+            // boost is spent the moment a charge is back, including off the start line
+            settings.ai.driving.boostDecisionIntervalSeconds = 0.25f;
+            settings.ai.driving.boostMinimumSpeedKph = 0f;
             settings.ai.driving.cornerGrip = 18f;
             settings.ai.driving.minCornerSpeedKph = 60f;
 
@@ -95,13 +98,30 @@ namespace GMTK.EditorTools
         }
 
         /// <summary>
-        /// The team settled on a visible 0-100 durability range (the HUD and the damage thresholds read
-        /// it that way, and GameBalanceSettingsTests pins it), so the old wreck-deferring override of a
-        /// million is gone.
+        /// The visible durability range was doubled to 0-200 on 2026-07-26 so a car survives longer
+        /// before it is thrown out of control. Every number below is in durability units, so they only
+        /// mean anything together: the stage thresholds stay at 60% / 30% of the maximum, recovery
+        /// still brings a wreck back to half, and the damage sources were scaled so a full-health car
+        /// still wrecks in about eight strong hits instead of fourteen. GameBalanceSettingsTests pins
+        /// the same set, so a temporary playtest override cannot escape.
         /// </summary>
-        private static void RestoreDurabilityOverride(GameBalanceSettings settings)
+        private static void RestoreDurabilityScale(GameBalanceSettings settings)
         {
-            settings.damage.maximumDurability = 100f;
+            settings.damage.maximumDurability = 200f;
+            settings.damage.damagedThreshold = 120f;
+            settings.damage.criticalThreshold = 60f;
+            settings.damage.wreckedThreshold = 0f;
+            settings.damage.recoveryDurability = 100f;
+            settings.damage.strongCollisionDamage = 25f;
+
+            settings.curse.ruptureDurabilityDamage = 60f;
+
+            settings.specialEvents.meteorDamage = 45f;
+            settings.specialEvents.dumpTruckDamage = 35f;
+            settings.specialEvents.cowDamage = 20f;
+            settings.specialEvents.constructionDamage = 17f;
+            settings.specialEvents.ballDamage = 14f;
+            settings.specialEvents.crateDamage = 10f;
         }
 
         /// <summary>

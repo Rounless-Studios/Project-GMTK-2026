@@ -6,8 +6,22 @@ namespace Gmtk2026.GameBalance.Tests
 {
     public class DurabilityStateTests
     {
-        // GDD defaults: max 100, damaged 60, critical 30, wrecked 0, wreck 2s, recover 50, protect 2s
-        private DamageSettings Settings() => new DamageSettings();
+        /// <summary>
+        /// A 0-100 scale spelled out on purpose: these tests cover the durability rule, not the
+        /// shipped catalog, so re-scaling the presets (0-200 since 2026-07-26) must not rewrite
+        /// every expected number here. The asset's own values are pinned by
+        /// GameBalanceSettingsTests instead.
+        /// </summary>
+        private DamageSettings Settings() => new DamageSettings
+        {
+            maximumDurability = 100f,
+            damagedThreshold = 60f,
+            criticalThreshold = 30f,
+            wreckedThreshold = 0f,
+            wreckDurationSeconds = 2f,
+            recoveryDurability = 50f,
+            recoveryProtectionSeconds = 2f,
+        };
 
         [Test]
         public void StartsPristineAtMaxDurability()
