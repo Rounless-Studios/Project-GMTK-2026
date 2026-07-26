@@ -1188,7 +1188,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.DurabilityHud
   valueLabel: {fileID: 0}
   fill: {fileID: 7483372986271233523}
-  fillImage: {fileID: 2913021778180884543}
 --- !u!1 &2543204198732389387
 GameObject:
   m_ObjectHideFlags: 0
@@ -5794,12 +5793,12 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4278453503
-  m_fontSize: 29.3
-  m_fontSizeBase: 32
+  m_fontSize: 50
+  m_fontSizeBase: 50
   m_fontWeight: 700
-  m_enableAutoSizing: 1
+  m_enableAutoSizing: 0
   m_fontSizeMin: 22
-  m_fontSizeMax: 32
+  m_fontSizeMax: 39.37
   m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512

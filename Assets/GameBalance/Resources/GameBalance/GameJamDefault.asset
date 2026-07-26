@@ -19,7 +19,7 @@ MonoBehaviour:
     targetRaceDurationMinSeconds: 180
     targetRaceDurationMaxSeconds: 300
   elimination:
-    intervalSeconds: 30
+    intervalSeconds: 20
     warningSeconds: 10
     intenseWarningSeconds: 5
     executionCameraLeadSeconds: 3
@@ -139,6 +139,8 @@ MonoBehaviour:
       logDriveTelemetry: 0
       logTrackContact: 0
       waypointReachMetres: 9
+      waypointReachSecondsAhead: 0.25
+      waypointResyncMetres: 45
       maxPersonalityLateralMetres: 3
       stuckSpeedKph: 1.5
       stuckDelaySeconds: 2.5
