@@ -7,7 +7,7 @@ namespace GMTK
 {
     /// <summary>
     /// Per-car boost actuation (checklist stage 3.2). Wraps the settings-driven
-    /// <see cref="BoostState"/>: the player triggers it with Space / Shift, AI drives it through
+    /// <see cref="BoostState"/>: the player triggers it with Shift, AI drives it through
     /// <see cref="TryBoost"/> (stage 9), an overtake win refunds a charge via
     /// <see cref="RewardOvertake"/>, and the engine-seal curse calls <see cref="ApplySeal"/>.
     /// Exposes <see cref="SpeedMultiplier"/> for the vehicle layer to consume.
@@ -21,13 +21,21 @@ namespace GMTK
         public bool IsSealed => State != null && State.IsSealed;
         public float SpeedMultiplier => State != null ? State.CurrentSpeedMultiplier : 1f;
 
-        // static so a single HUD / VFX driver can listen for every car
+        // static so a single HUD / VFX / audio driver can listen for every car
         public static event System.Action<BoostController> Changed;
+
+        // Changed collapses every transition into one signal, so a presentation layer cannot
+        // tell a boost start from a recharge. The distinct moments are published separately.
+        public static event System.Action<BoostController> BoostStarted;
+        public static event System.Action<BoostController> BoostEnded;
+        public static event System.Action<BoostController> ChargeGained;
+        public static event System.Action<BoostController, bool> SealChanged;
 
         public bool IsPlayer { get; private set; }
 
         private BoostSettings B => GameBalance.Current.boost;
         private GmtkVehicleAdapter vehicleAdapter;
+        private int lastCharges;
 
         private void Awake()
         {
@@ -41,9 +49,32 @@ namespace GMTK
         private void Build()
         {
             State = new BoostState(B);
-            State.ChargesChanged += _ => Changed?.Invoke(this);
-            State.BoostStarted += () => Changed?.Invoke(this);
-            State.BoostEnded += () => Changed?.Invoke(this);
+            lastCharges = State.Charges;
+            State.ChargesChanged += OnChargesChanged;
+            State.BoostStarted += () =>
+            {
+                Changed?.Invoke(this);
+                BoostStarted?.Invoke(this);
+            };
+            State.BoostEnded += () =>
+            {
+                Changed?.Invoke(this);
+                BoostEnded?.Invoke(this);
+            };
+            State.SealChanged += isSealed =>
+            {
+                Changed?.Invoke(this);
+                SealChanged?.Invoke(this, isSealed);
+            };
+        }
+
+        private void OnChargesChanged(int charges)
+        {
+            // spending drops the count, a recharge tick or an overtake refund raises it
+            bool gained = charges > lastCharges;
+            lastCharges = charges;
+            Changed?.Invoke(this);
+            if (gained) ChargeGained?.Invoke(this);
         }
 
         /// <summary>Restore full charges and clear timers for a fresh race.</summary>
@@ -63,10 +94,11 @@ namespace GMTK
             if (State == null) return;
             State.Tick(Time.deltaTime);
 
+            // Space is RCCP's handbrake, so boosting with it braked the car at the same time.
+            // Shift is free once GmtkRccpInputOverrides strips RCCP's manual upshift.
             Keyboard keyboard = Keyboard.current;
             if (IsPlayer && keyboard != null &&
-                (keyboard.spaceKey.wasPressedThisFrame ||
-                 keyboard.leftShiftKey.wasPressedThisFrame ||
+                (keyboard.leftShiftKey.wasPressedThisFrame ||
                  keyboard.rightShiftKey.wasPressedThisFrame))
                 State.TryActivate();
 

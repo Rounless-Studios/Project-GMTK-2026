@@ -14,6 +14,9 @@ namespace GMTK
     {
         public enum CueType { Sfx, Ambience, Music, Voice }
 
+        /// <summary>How far a cue id gets: unknown id, registered but unauthored, or playable.</summary>
+        public enum CueStatus { Unknown, NoClip, Ready }
+
         [Serializable]
         public sealed class AudioCue
         {
@@ -35,6 +38,14 @@ namespace GMTK
         [SerializeField] private string buttonClickId = "SFX_UI_BUTTON_CLICK";
         [SerializeField] private string countdownTickId = "VO_ANNOUNCER_READY";
         [SerializeField] private string raceStartId = "VO_ANNOUNCER_GO";
+
+        [Header("Boost Cue IDs")]
+        [Tooltip("Clear an id to silence that boost moment.")]
+        [SerializeField] private string boostStartId = "SFX_VEH_BOOST_START";
+        [SerializeField] private string boostLoopId = "SFX_VEH_BOOST_LOOP";
+        [SerializeField] private string boostEndId = "SFX_VEH_BOOST_END";
+        [SerializeField] private string boostChargeId = "SFX_HUD_BOOST_CHARGE";
+        [SerializeField] private string boostSealedId = "SFX_VEH_BOOST_SEALED";
 
         [Header("Playback")]
         [SerializeField, Range(0f, 1f)] private float musicVolume = 0.7f;
@@ -441,7 +452,10 @@ namespace GMTK
             EliminationManager.FinalDuelStarted += OnFinalDuelStarted;
             EliminationManager.WarningChanged += OnEliminationWarning;
             EliminationManager.EliminationTargetLocked += OnEliminationTargetLocked;
-            BoostController.Changed += OnBoostChanged;
+            BoostController.BoostStarted += OnBoostStarted;
+            BoostController.BoostEnded += OnBoostEnded;
+            BoostController.ChargeGained += OnBoostChargeGained;
+            BoostController.SealChanged += OnBoostSealChanged;
             CurseController.CurseCast += OnCurseCast;
             CurseManager.CurseApplied += OnCurseApplied;
             OvertakeManager.ChallengeStarted += OnOvertakeStarted;
@@ -456,7 +470,10 @@ namespace GMTK
             EliminationManager.FinalDuelStarted -= OnFinalDuelStarted;
             EliminationManager.WarningChanged -= OnEliminationWarning;
             EliminationManager.EliminationTargetLocked -= OnEliminationTargetLocked;
-            BoostController.Changed -= OnBoostChanged;
+            BoostController.BoostStarted -= OnBoostStarted;
+            BoostController.BoostEnded -= OnBoostEnded;
+            BoostController.ChargeGained -= OnBoostChargeGained;
+            BoostController.SealChanged -= OnBoostSealChanged;
             CurseController.CurseCast -= OnCurseCast;
             CurseManager.CurseApplied -= OnCurseApplied;
             OvertakeManager.ChallengeStarted -= OnOvertakeStarted;
@@ -469,6 +486,38 @@ namespace GMTK
         {
             if (RaceFlow.Instance != null)
                 OnPhaseChanged(RaceFlow.Instance.CurrentPhase);
+
+            ReportBoostCues();
+        }
+
+        /// <summary>
+        /// A mistyped or unauthored cue id costs nothing at compile time and everything at
+        /// runtime, so the boost ids are checked once instead of failing silently.
+        /// </summary>
+        private void ReportBoostCues()
+        {
+            ReportCue(boostStartId);
+            ReportCue(boostLoopId);
+            ReportCue(boostEndId);
+            ReportCue(boostChargeId);
+            ReportCue(boostSealedId);
+        }
+
+        private void ReportCue(string cueId)
+        {
+            if (string.IsNullOrEmpty(cueId)) return;   // an empty id is a deliberate mute
+
+            switch (GetCueStatus(cueId))
+            {
+                case CueStatus.Unknown:
+                    Debug.LogError($"GameAudioManager: no cue named '{cueId}' in the sound "
+                                   + "list, that moment will be silent.", this);
+                    break;
+                case CueStatus.NoClip:
+                    Debug.LogWarning($"GameAudioManager: cue '{cueId}' has no clip assigned "
+                                     + "yet, that moment will be silent.", this);
+                    break;
+            }
         }
 
         private void EnsureSources()
@@ -563,12 +612,37 @@ namespace GMTK
                 PlayCue("VO_ANNOUNCER_CHALLENGE_FAILED");
         }
 
-        private void OnBoostChanged(BoostController boost)
+        // Only the player is heard: five AI cars firing the same cue would bury the mix.
+        private void OnBoostStarted(BoostController boost)
         {
             if (boost == null || !boost.IsPlayer) return;
-            if (boost.IsSealed) PlayCue("SFX_VEH_BOOST_SEALED");
-            else if (boost.IsBoosting) PlayCue("SFX_VEH_BOOST_START");
-            else if (boost.Charges > 0) PlayCue("SFX_VEH_BOOST_READY");
+            PlayBoostCue(boostStartId);
+            PlayBoostCue(boostLoopId);
+        }
+
+        private void OnBoostEnded(BoostController boost)
+        {
+            if (boost == null || !boost.IsPlayer) return;
+
+            // the loop cue holds the single loop source for the boost's duration, so it has
+            // to be released before the tail-off one-shot
+            StopLoop();
+            PlayBoostCue(boostEndId);
+        }
+
+        private void OnBoostChargeGained(BoostController boost)
+        {
+            if (boost != null && boost.IsPlayer) PlayBoostCue(boostChargeId);
+        }
+
+        private void OnBoostSealChanged(BoostController boost, bool isSealed)
+        {
+            if (isSealed && boost != null && boost.IsPlayer) PlayBoostCue(boostSealedId);
+        }
+
+        private void PlayBoostCue(string cueId)
+        {
+            if (!string.IsNullOrEmpty(cueId)) PlayCue(cueId);
         }
 
         private void OnCurseCast(CurseController caster, CurseType type, int target)
@@ -688,6 +762,24 @@ namespace GMTK
             return cues.Find(
                 item => item != null &&
                         string.Equals(item.eventId, eventId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Resolves a cue id the same way <see cref="PlayCue(string, float)"/> does, without
+        /// playing it. A mistyped id otherwise just goes silent, so callers can check their ids
+        /// once at start-up and say so out loud.
+        /// </summary>
+        public CueStatus GetCueStatus(string eventId)
+        {
+            AudioCue cue = FindCue(eventId);
+            if (cue == null) return CueStatus.Unknown;
+
+            if (cue.clip != null) return CueStatus.Ready;
+            if (cue.variations != null && Array.Exists(cue.variations, item => item != null))
+                return CueStatus.Ready;
+
+            // PlayCue falls back to a same-named clip under a Resources folder
+            return Resources.Load<AudioClip>(eventId) != null ? CueStatus.Ready : CueStatus.NoClip;
         }
 
         public void StopLoop()
