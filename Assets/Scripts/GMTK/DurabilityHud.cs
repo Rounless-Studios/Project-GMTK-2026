@@ -28,13 +28,15 @@ namespace GMTK
                 RefreshTarget();
             }
 
-            if (target == null || valueLabel == null || fill == null) return;
+            if (target == null || fill == null) return;
             float maximum = Mathf.Max(1f, GameBalance.Current.damage.maximumDurability);
             float ratio = Mathf.Clamp01(target.Durability / maximum);
             Vector2 anchors = fill.anchorMax;
             anchors.x = ratio;
             fill.anchorMax = anchors;
-            valueLabel.text = $"DUR {Mathf.CeilToInt(target.Durability):000}";
+
+            if (valueLabel != null)
+                valueLabel.text = $"DUR {Mathf.CeilToInt(target.Durability):000}";
 
             if (fillImage != null)
             {

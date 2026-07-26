@@ -1251,7 +1251,7 @@ MonoBehaviour:
     loop: 0
   - eventId: MUS_MAIN_THEME
     type: 2
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: f9307c80c869bbf4798209683f80f737, type: 3}
     variations: []
     volume: 1
     loop: 0
@@ -1263,7 +1263,7 @@ MonoBehaviour:
     loop: 0
   - eventId: MUS_RACE_EARLY
     type: 2
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 4e35d073d182fcf46a35f527bf1b8ae2, type: 3}
     variations: []
     volume: 1
     loop: 0
