@@ -19,7 +19,7 @@ MonoBehaviour:
   m_StartFrame: 0
   m_EndFrame: 0
   m_StartTime: 0
-  m_EndTime: 7.5
+  m_EndTime: 7.2699995
   m_CapFrameRate: 1
   m_ExitPlayMode: 1
   m_RecorderSettings:
@@ -45,9 +45,9 @@ MonoBehaviour:
       m_Leaf: 
       m_ForceAssetFolder: 0
       m_AbsolutePath: 
-    m_FileName: Prologue
+    m_FileName: Prologue_Take_<Take>
   encoderSettings:
-    rid: 9176368498260312482
+    rid: 5010818129580523782
   captureAlpha: 0
   captureAudio: 1
   m_ImageInputSelector:
@@ -123,6 +123,16 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
+    - rid: 5010818129580523782
+      type: {class: CoreEncoderSettings, ns: UnityEditor.Recorder.Encoder, asm: Unity.Recorder.Editor}
+      data:
+        targetBitRate: 8
+        gopSize: 25
+        numConsecutiveBFrames: 2
+        encodingProfile: 2
+        keyframeDistance: 25
+        codec: 0
+        encodingQuality: 2
     - rid: 9176368498260312318
       type: {class: AccumulationSettings, ns: , asm: Unity.Recorder.Editor}
       data:
@@ -157,13 +167,3 @@ MonoBehaviour:
         shutterFullyOpen: 0.25
         shutterBeginsClosing: 0.75
         useSubPixelJitter: 1
-    - rid: 9176368498260312482
-      type: {class: CoreEncoderSettings, ns: UnityEditor.Recorder.Encoder, asm: Unity.Recorder.Editor}
-      data:
-        targetBitRate: 8
-        gopSize: 25
-        numConsecutiveBFrames: 2
-        encodingProfile: 2
-        keyframeDistance: 25
-        codec: 0
-        encodingQuality: 2

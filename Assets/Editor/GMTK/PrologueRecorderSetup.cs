@@ -36,16 +36,21 @@ namespace GMTK.Editor
             controller.FrameRatePlayback = FrameRatePlayback.Constant;
             controller.CapFrameRate = true;
             controller.ExitPlayMode = true;
+            GMTK.PrologueCrashCutscene cutscene =
+                Object.FindFirstObjectByType<GMTK.PrologueCrashCutscene>();
+            float durationSeconds = cutscene != null
+                ? cutscene.ConfiguredRecordingDurationSeconds
+                : GMTK.PrologueCrashCutscene.DefaultDurationSeconds;
             controller.SetRecordModeToTimeInterval(
                 0f,
-                GMTK.PrologueCrashCutscene.DurationSeconds);
+                durationSeconds);
 
             movie.name = "GMTK Prologue MP4";
             movie.Enabled = true;
             movie.OutputFile = Path.Combine(
                 Application.dataPath,
                 "StreamingAssets",
-                "Prologue");
+                "Prologue_Take_") + DefaultWildcard.Take;
             movie.CaptureAlpha = false;
             movie.CaptureAudio = true;
             movie.ImageInputSettings = new GameViewInputSettings
@@ -74,7 +79,8 @@ namespace GMTK.Editor
 
             Debug.Log(
                 $"[Prologue Recorder] Ready: 1920x1080, 30 FPS, H.264 MP4, " +
-                $"{GMTK.PrologueCrashCutscene.DurationSeconds:0.0} seconds. " +
+                $"{durationSeconds:0.0} seconds. " +
+                "Output: Prologue_Take_<Take>.mp4. " +
                 "Press START RECORDING in the Recorder window.");
         }
 
