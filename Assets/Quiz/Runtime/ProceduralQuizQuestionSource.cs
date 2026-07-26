@@ -5,6 +5,8 @@ namespace Gmtk2026.Quiz
 {
     public sealed class ProceduralQuizQuestionSource : IQuizQuestionSource
     {
+        private const float RhythmTimeLimitSeconds = 5f;
+
         private readonly float? configuredTimeLimitSeconds;
         private readonly int configuredMinimumAnswers;
         private readonly int configuredMaximumAnswers;
@@ -105,7 +107,7 @@ namespace Gmtk2026.Quiz
                 lanes,
                 0,
                 "You played the rhythm successfully.",
-                Limit(5f));
+                RhythmTimeLimitSeconds);
         }
 
         private QuizQuestion CreateArithmetic(Random random)

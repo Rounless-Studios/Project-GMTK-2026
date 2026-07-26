@@ -70,14 +70,26 @@ namespace Gmtk2026.Quiz.Tests
                 maximumAnswers: 3);
             var questions = new List<QuizQuestion>(
                 source.CreateQuestions(50, new Random(2026)));
+            bool foundRhythmQuestion = false;
 
             foreach (QuizQuestion question in questions)
             {
-                Assert.That(question.TimeLimitSeconds, Is.EqualTo(2.5f));
+                if (question.Kind == QuizKind.RhythmTap)
+                {
+                    foundRhythmQuestion = true;
+                    Assert.That(question.TimeLimitSeconds, Is.EqualTo(5f));
+                }
+                else
+                {
+                    Assert.That(question.TimeLimitSeconds, Is.EqualTo(2.5f));
+                }
+
                 if (question.Kind == QuizKind.Text ||
                     question.Kind == QuizKind.MultipleChoice)
                     Assert.That(question.Choices.Count, Is.InRange(2, 3));
             }
+
+            Assert.That(foundRhythmQuestion, Is.True);
         }
 
         [Test]
