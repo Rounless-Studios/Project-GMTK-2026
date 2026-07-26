@@ -138,6 +138,21 @@ namespace Gmtk2026.GameBalance.Tests
         }
 
         [Test]
+        public void WaypointReachGrowsWithSpeedSoTheCursorKeepsUp()
+        {
+            var s = Settings();
+
+            Assert.AreEqual(s.waypointReachMetres, AiDriving.WaypointReachMetres(0f, s), 0.001f,
+                "a stopped car keeps the authored radius");
+
+            float fast = AiDriving.WaypointReachMetres(212f, s);
+            Assert.Greater(fast, s.waypointReachMetres,
+                "at 212 kph the car covers 59 m a second and would step past a 9 m sphere");
+            Assert.AreEqual(212f / 3.6f * s.waypointReachSecondsAhead, fast, 0.001f);
+            Assert.Greater(fast, AiDriving.WaypointReachMetres(120f, s));
+        }
+
+        [Test]
         public void NormalCorneringSlipIsLeftAlone()
         {
             var s = Settings();

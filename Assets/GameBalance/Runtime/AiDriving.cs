@@ -110,6 +110,18 @@ namespace Gmtk2026.GameBalance
             return Mathf.Max(s.minCornerSpeedKph, targetKph - excess * s.slipSpeedPenalty);
         }
 
+        /// <summary>
+        /// How close a waypoint has to be before it counts as reached. The fixed radius is a distance,
+        /// but passing one is an event in time: at 200 kph a 9 m sphere is crossed in a sixth of a
+        /// second, and a car on an offset racing line can pass outside it altogether. Adding a slice of
+        /// travel time keeps the cursor moving with the car.
+        /// </summary>
+        public static float WaypointReachMetres(float speedKph, AiDrivingSettings s)
+        {
+            float travel = Mathf.Max(0f, speedKph) / 3.6f * s.waypointReachSecondsAhead;
+            return Mathf.Max(s.waypointReachMetres, travel);
+        }
+
         /// <summary>Steering authority falls off with speed.</summary>
         public static float SteerGain(float speedKph, AiDrivingSettings s)
         {

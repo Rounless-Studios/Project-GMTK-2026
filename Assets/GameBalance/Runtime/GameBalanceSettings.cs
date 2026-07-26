@@ -409,6 +409,10 @@ namespace Gmtk2026.GameBalance
 
         [Header("Waypoints and recovery")]
         [Min(1)] public float waypointReachMetres = 9f;
+        [Tooltip("The reach also covers this many seconds of travel, so a fast car consumes waypoints as it passes them. A fixed 9 m sphere is passed in a tenth of a second at 200 kph and is easy to miss entirely when the car is running an offset racing line.")]
+        [Min(0)] public float waypointReachSecondsAhead = 0.25f;
+        [Tooltip("Distance from its own waypoint at which a car re-anchors to the nearest one. Without it a cursor left behind never catches up, and the corner scan keeps reading the piece of track the car has already driven.")]
+        [Min(5)] public float waypointResyncMetres = 45f;
         [Tooltip("Largest sideways nudge the ram/block personality may add to the racing line.")]
         [Min(0)] public float maxPersonalityLateralMetres = 3f;
         [Min(0)] public float stuckSpeedKph = 1.5f;

@@ -196,7 +196,7 @@ namespace GMTK.Rccp
                 ScanRivals();
             }
 
-            AdvanceWaypoint();
+            AdvanceWaypoint(speedKph);
 
             // Corner and traffic speed are resolved before stuck recovery. A car deliberately
             // waiting behind a slow rival must not be mistaken for one lodged against scenery.
@@ -632,9 +632,27 @@ namespace GMTK.Rccp
         /// Consumes waypoints that are reached or already behind the car, so the racing line can cut a
         /// corner instead of driving to every marker, and a missed marker does not turn the car around.
         /// </summary>
-        private void AdvanceWaypoint()
+        private void AdvanceWaypoint(float speedKph)
         {
-            float reach = S.waypointReachMetres;
+            // A cursor that fell behind can never catch up on its own: the waypoint it still points at
+            // is too far back to count as reached or as passed, so the corner scan keeps reading track
+            // the car has already driven and reports a straight while the car is entering a bend.
+            Vector3 toCursor = path[waypointIndex].position - transform.position;
+            toCursor.y = 0f;
+
+            if (toCursor.sqrMagnitude > S.waypointResyncMetres * S.waypointResyncMetres)
+            {
+                int resynced = path.FindClosestIndex(transform.position);
+
+                if (S.logTrackContact)
+                    Debug.Log($"AI waypoint resync {name}: {waypointIndex} -> {resynced} " +
+                              $"(was {toCursor.magnitude:F0}m away, spd={speedKph:F0})");
+
+                waypointIndex = resynced;
+                waypointStepsThisSecond++;
+            }
+
+            float reach = AiDriving.WaypointReachMetres(speedKph, S);
             float reachSqr = reach * reach;
             float behindLimitSqr = reach * 3f * (reach * 3f);
 
