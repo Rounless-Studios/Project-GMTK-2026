@@ -1,7 +1,7 @@
 fileFormatVersion: 2
-guid: 9909a7e3782d08b4490fb850b1ebd7fd
+guid: 10a4b90bd7a861b4aa708eefa506b3ff
 ModelImporter:
-  serializedVersion: 22200
+  serializedVersion: 24300
   internalIDToNameTable: []
   externalObjects: {}
   materials:
@@ -9,6 +9,7 @@ ModelImporter:
     materialName: 0
     materialSearch: 1
     materialLocation: 1
+    searchTexturesGlobally: 0
   animations:
     legacyGenerateAnimations: 4
     bakeSimulation: 0
@@ -56,6 +57,9 @@ ModelImporter:
     maxBonesPerVertex: 4
     minBoneWeight: 0.001
     optimizeBones: 1
+    generateMeshLods: 0
+    meshLodGenerationFlags: 0
+    maximumMeshLod: -1
     meshOptimizationFlags: -1
     indexFormat: 0
     secondaryUVAngleDistortion: 8
@@ -105,10 +109,3 @@ ModelImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 80117
-  packageName: PBR - Hospital Horror Pack. Free
-  packageVersion: 1.2
-  assetPath: Assets/Dnk_Dev/HospitalHorrorPack/Models/SM_BedBedding_01.FBX
-  uploadId: 725137

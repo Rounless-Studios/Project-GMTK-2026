@@ -8,6 +8,10 @@ Shader "Custom/ParticleAlphaBlend"
         _CameraOffset("Camera Offset", Range(-5.0, 5.0)) = 0.0
         [HDR] _EmissionColor("Emission Color", Color) = (0, 0, 0, 1)
         [Toggle(_USE_R_CHANNEL_MASK)] _UseRChannelMask("Use Base Map R Channel as Mask", Float) = 0
+
+        [Toggle(_DISSOLVE)] _UseDissolve("Use Dissolve", Float) = 0
+        _DissolveMap("Dissolve Map (R = Threshold)", 2D) = "white" {}
+        _DissolveAmount("Dissolve Amount", Range(0.0, 1.0)) = 0.0
     }
 
     SubShader
@@ -25,6 +29,7 @@ Shader "Custom/ParticleAlphaBlend"
             #pragma vertex vert
             #pragma fragment frag
             #pragma shader_feature_local _USE_R_CHANNEL_MASK
+            #pragma shader_feature_local _DISSOLVE
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
@@ -43,10 +48,15 @@ Shader "Custom/ParticleAlphaBlend"
                 float2 uv          : TEXCOORD1;
                 float4 color       : TEXCOORD2;
                 float  eyeDepth    : TEXCOORD3;
+                #if defined(_DISSOLVE)
+                    float2 dissolveUV : TEXCOORD4;
+                #endif
             };
 
             TEXTURE2D(_BaseMap);
             SAMPLER(sampler_BaseMap);
+            TEXTURE2D(_DissolveMap);
+            SAMPLER(sampler_DissolveMap);
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST;
@@ -54,6 +64,8 @@ Shader "Custom/ParticleAlphaBlend"
                 float _FadeDistance;
                 float _CameraOffset;
                 half4 _EmissionColor;
+                float4 _DissolveMap_ST;
+                float _DissolveAmount;
             CBUFFER_END
 
             Varyings vert(Attributes IN)
