@@ -137,7 +137,7 @@ MonoBehaviour:
       barrierProbeHeightMetres: 0.5
       barrierProbeRadiusMetres: 0.35
       logDriveTelemetry: 0
-      logTrackContact: 1
+      logTrackContact: 0
       waypointReachMetres: 9
       maxPersonalityLateralMetres: 3
       stuckSpeedKph: 1.5
