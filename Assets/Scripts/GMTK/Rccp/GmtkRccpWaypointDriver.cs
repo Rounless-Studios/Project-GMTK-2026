@@ -53,6 +53,7 @@ namespace GMTK.Rccp
         private float gapBehindMetres;
         private float behindLateralMetres;
         private float currentSpeedKph;
+        private float lateralSlipKph;
 
         /// <summary>Metres to the car ahead inside the scan window, 0 when there is none. Diagnostics.</summary>
         public float GapAheadMetres => gapAheadMetres;
@@ -175,6 +176,9 @@ namespace GMTK.Rccp
 
             float speedKph = carRigidbody != null ? carRigidbody.linearVelocity.magnitude * 3.6f : 0f;
             currentSpeedKph = speedKph;
+            lateralSlipKph = carRigidbody != null
+                ? transform.InverseTransformDirection(carRigidbody.linearVelocity).x * 3.6f
+                : 0f;
             mergeTravelled += speedKph / 3.6f * Time.fixedDeltaTime;
 
             if (Time.time >= nextRivalScanAt)
@@ -213,6 +217,10 @@ namespace GMTK.Rccp
                 aheadSpeedKph,
                 profile != null ? profile.contactToleranceMetres : S.followGapMetres,
                 S);
+
+            // measured slip has the last word: the grip figure above is an assumption, this is what
+            // the car is actually doing
+            targetSpeed = AiDriving.SlipCorrectedTargetKph(targetSpeed, lateralSlipKph, S);
 
             // A burning boost raises the target on a straight, so the car stops braking against
             // its own boost; at a corner the target is left alone and the boost simply runs out.
@@ -430,7 +438,7 @@ namespace GMTK.Rccp
 
             lastTelemetryTime = Time.time;
 
-            Debug.Log($"AI drive {name}: spd={speedKph:F0} target={targetSpeed:F0} " +
+            Debug.Log($"AI drive {name}: spd={speedKph:F0} target={targetSpeed:F0} slip={lateralSlipKph:F0} " +
                       $"thr={inputs.throttleInput:F2} brk={inputs.brakeInput:F2} steer={inputs.steerInput:F2} " +
                       $"gear={carController.currentGear} rpm={carController.engineRPM:F0} " +
                       $"engine={carController.engineRunning} scan={scan:F0}m angle={headingChange:F0}deg " +

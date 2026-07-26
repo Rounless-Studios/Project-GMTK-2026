@@ -72,6 +72,27 @@ namespace Gmtk2026.GameBalance
             return Mathf.Clamp(speedKph, s.minCornerSpeedKph, s.straightSpeedKph) * throttleScale;
         }
 
+        /// <summary>
+        /// Backs the speed target off while the car is actually sliding sideways.
+        /// <para>
+        /// Corner speed is computed from an assumed grip figure, and if that figure is optimistic for
+        /// the car the AI keeps entering corners too fast and understeers off the outside - it never
+        /// finds out, because nothing in the model measures the result. Sideways speed is that
+        /// measurement: it needs no tyre model and it is right whatever the vehicle package does.
+        /// </para>
+        /// </summary>
+        public static float SlipCorrectedTargetKph(
+            float targetKph,
+            float lateralSlipKph,
+            AiDrivingSettings s)
+        {
+            float slip = Mathf.Abs(lateralSlipKph);
+            if (slip <= s.slipToleranceKph) return targetKph;
+
+            float excess = slip - s.slipToleranceKph;
+            return Mathf.Max(s.minCornerSpeedKph, targetKph - excess * s.slipSpeedPenalty);
+        }
+
         /// <summary>Steering authority falls off with speed.</summary>
         public static float SteerGain(float speedKph, AiDrivingSettings s)
         {
