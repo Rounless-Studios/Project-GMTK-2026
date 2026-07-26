@@ -467,8 +467,13 @@ namespace GMTK
 
         private void Start()
         {
-            if (RaceFlow.Instance != null)
-                OnPhaseChanged(RaceFlow.Instance.CurrentPhase);
+            if (RaceFlow.Instance == null)
+            {
+                PlayMenuTheme();
+                return;
+            }
+
+            OnPhaseChanged(RaceFlow.Instance.CurrentPhase);
         }
 
         private void EnsureSources()
@@ -528,8 +533,7 @@ namespace GMTK
         {
             if (phase == RaceFlow.Phase.StartScreen || phase == RaceFlow.Phase.Prologue || phase == RaceFlow.Phase.Countdown)
             {
-                StopLoop();
-                PlayCue(menuMusicId, 1f, true);
+                PlayMenuTheme();
             }
             else if (phase == RaceFlow.Phase.Racing)
             {
@@ -693,6 +697,12 @@ namespace GMTK
         public void StopLoop()
         {
             loopSource?.Stop();
+        }
+
+        public void PlayMenuTheme()
+        {
+            StopLoop();
+            PlayCue(menuMusicId, 1f, true);
         }
 
         public void PlayCountdownTick() => PlayCue(countdownTickId);
