@@ -83,6 +83,9 @@ Shader "Custom/ParticleAlphaBlend"
                 OUT.screenPos = ComputeScreenPos(OUT.positionHCS);
                 OUT.eyeDepth = -positionVS.z;
                 OUT.uv = TRANSFORM_TEX(IN.uv, _BaseMap);
+                #if defined(_DISSOLVE)
+                    OUT.dissolveUV = TRANSFORM_TEX(IN.uv, _DissolveMap);
+                #endif
                 OUT.color = IN.color;
                 return OUT;
             }
@@ -95,6 +98,12 @@ Shader "Custom/ParticleAlphaBlend"
                     // sprite) - R drives both color and alpha, tint comes from _BaseColor.
                     texColor = texColor.rrrr;
                 #endif
+
+                #if defined(_DISSOLVE)
+                    half dissolveMask = SAMPLE_TEXTURE2D(_DissolveMap, sampler_DissolveMap, IN.dissolveUV).r;
+                    clip(dissolveMask - _DissolveAmount);
+                #endif
+
                 half4 col = texColor * _BaseColor * IN.color;
 
                 // --- Soft particles: fade alpha out near intersections with scene geometry ---
