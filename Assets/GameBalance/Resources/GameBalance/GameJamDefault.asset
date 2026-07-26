@@ -1,0 +1,281 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b0f04d15b8523a47bc043a053dee25b, type: 3}
+  m_Name: GameJamDefault
+  m_EditorClassIdentifier: GMTK.GameBalance.Runtime::Gmtk2026.GameBalance.GameBalanceSettings
+  race:
+    aiCount: 5
+    lapCount: 1
+    finalDuelRacerCount: 2
+    targetRaceDurationMinSeconds: 180
+    targetRaceDurationMaxSeconds: 300
+  elimination:
+    intervalSeconds: 20
+    warningSeconds: 10
+    intenseWarningSeconds: 5
+    executionCameraLeadSeconds: 3
+    executeAtRemainingSeconds: 0
+  result:
+    playerDeathCinematicMaxSeconds: 3
+    restartToControlMaxSeconds: 5
+  quiz:
+    answerTimeSeconds: 4
+    minimumAnswerCount: 4
+    maximumAnswerCount: 4
+  curse:
+    sharedCooldownSeconds: 12
+    selectionMode: 0
+    targetingMode: 0
+    ruptureDurabilityDamage: 60
+    ruptureKnockbackForce: 8
+    engineSealDurationSeconds: 5
+    soulSwapMinimumDistanceMeters: 15
+    soulSwapMaximumDistanceMeters: 40
+    soulSwapCollisionIgnoreSeconds: 0.3
+    aiInitialCastDelayMinimumSeconds: 2
+    aiInitialCastDelayMaximumSeconds: 5
+    aiFailedCastRetrySeconds: 1
+    aiQuizResolutionDelayMinimumSeconds: 1.25
+    aiQuizResolutionDelayMaximumSeconds: 3
+  boost:
+    maximumCharges: 2
+    durationSeconds: 1.25
+    rechargeSecondsPerCharge: 6
+    overtakeRewardCharges: 1
+    boostSpeedMultiplier: 1.5
+  damage:
+    maximumDurability: 200
+    damagedThreshold: 120
+    criticalThreshold: 60
+    wreckedThreshold: 0
+    wreckDurationSeconds: 2
+    recoveryDurability: 100
+    recoveryProtectionSeconds: 2
+    strongCollisionImpulse: 8
+    strongCollisionDamage: 25
+    wreckImpactSpeedMultiplier: 1.8
+    wreckMinimumLaunchSpeed: 7
+    wreckMaximumLaunchSpeed: 18
+    wreckUpwardLaunchRatio: 0.4
+    wreckSpinRadiansPerSecond: 4
+    wreckUprightMinimumUpDot: 0.4
+  vehicleRecovery:
+    fallDistanceBelowTrack: 8
+    respawnHeightAboveWaypoint: 2
+    maximumTrackDistanceFromWaypoint: 20
+    maximumTrackHeightDifference: 4
+    maximumAirborneSeconds: 3
+    groundProbeDistance: 5
+    trackSampleIntervalSeconds: 0.1
+  vehicle:
+    boostAcceleration: 18
+    lateralGripRecovery: 2.2
+    yawDamping: 1.8
+    maximumYawRadiansPerSecond: 2.8
+    bindingDeceleration: 14
+    stabilizationMinimumSpeedKph: 25
+  overtake:
+    checkIntervalSeconds: 20
+    challengeDurationSeconds: 8
+    requiredLeadHoldSeconds: 0.5
+    cooldownRewardMode: 0
+    cooldownReductionSeconds: 6
+    bindDurationSeconds: 5
+    bindSpeedMultiplier: 0.5
+  camera:
+    sideBySideActivationSeconds: 0.6
+    executionCctvViewportRect:
+      serializedVersion: 2
+      x: 0.01
+      y: 0.35
+      width: 0.32
+      height: 0.3
+    executionTransitionSeconds: 0.2
+    executionReturnSeconds: 0.25
+  ai:
+    personalityAssignments: 0300000003000000010000000200000000000000
+    driving:
+      minLookAheadMetres: 14
+      lookAheadMetresPerKph: 0.32
+      maximumLookAheadMetres: 42
+      lookAheadTightenDegrees: 22
+      minCornerScanMetres: 30
+      cornerBrakingDecel: 8
+      targetSpeedRiseKphPerSecond: 50
+      slipToleranceKph: 12
+      slipSpeedPenalty: 2.5
+      straightSpeedKph: 200
+      minCornerSpeedKph: 60
+      cornerGrip: 18
+      steerGainLowSpeed: 1.5
+      steerGainHighSpeed: 0.55
+      steerDamping: 0.06
+      apexOffsetMetres: 4.5
+      entryOffsetMetres: 3.5
+      racingLineReferenceDegrees: 30
+      laneMergeMetres: 140
+      maxLaneOffsetMetres: 6
+      laneSpreadMetres: 1.2
+      rivalScanMetres: 40
+      overtakeOffsetMetres: 3.2
+      overtakeMinClosingKph: 5
+      followGapMetres: 7
+      followLiftKph: 10
+      blockOffsetMetres: 2.4
+      rivalScanIntervalSeconds: 0.2
+      maxRoadHalfWidthMetres: 13
+      roadEdgeMarginMetres: 2.2
+      barrierProbeHeightMetres: 0.5
+      barrierProbeRadiusMetres: 0.35
+      logDriveTelemetry: 0
+      logTrackContact: 0
+      waypointReachMetres: 9
+      waypointReachSecondsAhead: 0.25
+      waypointResyncMetres: 45
+      maxPersonalityLateralMetres: 3
+      stuckSpeedKph: 1.5
+      stuckDelaySeconds: 2.5
+      reverseDurationSeconds: 1.25
+      boostDecisionIntervalSeconds: 0
+      boostOnlyOnStraights: 0
+      boostStraightMaximumDegrees: 8
+      boostMinimumSpeedKph: 0
+      catchupGapMetres: 35
+      eliminationUrgencyScale: 1.12
+      obstacleProbeMetres: 12
+      obstacleAvoidanceStrength: 0.65
+    personalityAssignment:
+      shuffleSeed: 0
+      logAssignment: 1
+      aggroRangeMetres: 45
+    defaultQuizAvoidChance: 0.5
+    personalityProfiles:
+    - personality: 3
+      paceScale: 1
+      lateralStrengthMetres: 0
+      boostTendency: 1
+      quizAvoidChance: 0.3
+      catchupAcceleration: 0.1
+      brakingConfidence: 1.2
+      overtakeAggression: 1.4
+      blockStrength: 0
+      contactToleranceMetres: 2.5
+    - personality: 1
+      paceScale: 0.96
+      lateralStrengthMetres: 7
+      boostTendency: 1
+      quizAvoidChance: 0.35
+      catchupAcceleration: 0.1
+      brakingConfidence: 1.05
+      overtakeAggression: 1
+      blockStrength: 0.2
+      contactToleranceMetres: 0
+    - personality: 2
+      paceScale: 0.86
+      lateralStrengthMetres: 5
+      boostTendency: 1
+      quizAvoidChance: 0.65
+      catchupAcceleration: 0.1
+      brakingConfidence: 0.95
+      overtakeAggression: 0.3
+      blockStrength: 1
+      contactToleranceMetres: 5
+    - personality: 0
+      paceScale: 0.9
+      lateralStrengthMetres: 0
+      boostTendency: 1
+      quizAvoidChance: 0.8
+      catchupAcceleration: 0.1
+      brakingConfidence: 1
+      overtakeAggression: 0.6
+      blockStrength: 0.15
+      contactToleranceMetres: 8
+  trackValidation:
+    minimumBoostStraights: 2
+    minimumParallelSections: 1
+  presentation:
+    gateOpenDurationSeconds: 20
+    gateWidthMeters: 16
+    gateHeightMeters: 7
+    gateCloseDelaySeconds: 0.2
+    gateCloseDurationSeconds: 0.75
+    gateExecutionDelaySeconds: 0.25
+    executionBreakableVehiclePrefab: {fileID: 3921044463232729353, guid: 2ba8e6ad6e744aa428cde71cc8a19a86,
+      type: 3}
+    explosionVfxDurationSeconds: 0.45
+    wreckLingerSeconds: 2.5
+    curseAppliedEffectPrefab: {fileID: 9157105887711914197, guid: c4f829cb7dd4b864caf8832ec5b1ee55,
+      type: 3}
+    curseAppliedEffectScale: 1.5
+    masterSfxVolume: 1
+    warningAudioFadeSeconds: 0.25
+  playtest:
+    ruleUnderstandingTargetSeconds: 15
+    minimumExternalTesterCount: 3
+  specialEvents:
+    enabled: 1
+    initialDelaySeconds: 15
+    minimumIntervalSeconds: 25
+    maximumIntervalSeconds: 40
+    warningLeadSeconds: 2
+    maximumSimultaneousEvents: 1
+    maximumEventsPerRace: 4
+    blockDuringExecutionWarning: 1
+    blockDuringQuiz: 1
+    blockDuringOvertakeChallenge: 1
+    blockDuringFinalDuel: 1
+    preventImmediateRepeat: 1
+    spawnAheadOfPlayer: 1
+    spawnAheadMinimumMetres: 60
+    spawnAheadMaximumMetres: 140
+    dumpTruckSpeed: 22
+    dumpTruckDamage: 35
+    dumpTruckKnockback: 6
+    dumpTruckLifetimeSeconds: 12
+    earthquakeDurationSeconds: 3
+    earthquakeLateralVelocityChange: 2
+    meteorWarningSeconds: 2
+    meteorImpactRadius: 5
+    meteorDamage: 45
+    meteorKnockback: 5
+    meteorDebrisLifetimeSeconds: 3
+    constructionBarrierCount: 5
+    constructionSpacingMetres: 2.4
+    constructionDamage: 17
+    constructionKnockback: 2
+    constructionLifetimeSeconds: 14
+    cowCount: 3
+    cowSpeed: 7
+    cowStartSideOffsetMetres: 16
+    cowSpacingMetres: 4
+    cowDamage: 20
+    cowKnockback: 4
+    cowLifetimeSeconds: 12
+    ballDiameterMetres: 6
+    ballMass: 3
+    ballBounciness: 0.85
+    ballDropHeightMetres: 14
+    ballDamage: 14
+    ballKnockback: 5
+    ballLifetimeSeconds: 14
+    crateMinimumCount: 5
+    crateMaximumCount: 9
+    crateScatterRadiusMetres: 7
+    crateDropHeightMetres: 18
+    crateMass: 15
+    crateDamage: 10
+    crateKnockback: 2
+    crateLifetimeSeconds: 10
+    boostPadForce: 25
+    boostPadLengthMetres: 8
+    boostPadWidthMetres: 4
+    boostPadLifetimeSeconds: 16

@@ -1,0 +1,263 @@
+name: Reusable Unity validation and builds
+
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        description: Exact branch, tag, or SHA to check out
+        required: true
+        type: string
+      release_version:
+        required: true
+        type: string
+      release_type:
+        required: true
+        type: string
+      build_windows:
+        required: true
+        type: boolean
+      retention_days:
+        required: true
+        type: number
+    secrets:
+      UNITY_LICENSE:
+        required: false
+      UNITY_EMAIL:
+        required: false
+      UNITY_PASSWORD:
+        required: false
+      UNITY_SERIAL:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Repository and LFS preflight
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.identity.outputs.sha }}
+      short_sha: ${{ steps.identity.outputs.short_sha }}
+      unity_version: ${{ steps.identity.outputs.unity_version }}
+      build_matrix: ${{ steps.identity.outputs.build_matrix }}
+    steps:
+      - name: Check out exact source with LFS
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+          lfs: true
+          persist-credentials: false
+      - name: Record resolved identity
+        id: identity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(git rev-parse --short=8 HEAD)" >> "$GITHUB_OUTPUT"
+          echo "unity_version=$(sed -n 's/^m_EditorVersion: //p' ProjectSettings/ProjectVersion.txt)" >> "$GITHUB_OUTPUT"
+          if [[ '${{ inputs.build_windows }}' == true ]]; then
+            echo 'build_matrix={"include":[{"target":"StandaloneWindows64","label":"Windows 64-bit","image":"unityci/editor:6000.3.19f1-windows-mono-3","slug":"windows"},{"target":"WebGL","label":"WebGL","image":"unityci/editor:6000.3.19f1-webgl-3","slug":"webgl"}]}' >> "$GITHUB_OUTPUT"
+          else
+            echo 'build_matrix={"include":[{"target":"WebGL","label":"WebGL","image":"unityci/editor:6000.3.19f1-webgl-3","slug":"webgl"}]}' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run repository preflight
+        run: bash scripts/ci/repository-preflight.sh
+
+  unity_credentials:
+    name: Resolve Unity credential availability
+    needs: preflight
+    runs-on: ubuntu-latest
+    outputs:
+      can_run_unity: ${{ steps.check.outputs.can_run_unity }}
+    steps:
+      - name: Check Unity credentials
+        id: check
+        shell: bash
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          set -Eeuo pipefail
+          if [[ -n "${UNITY_SERIAL:-}" && ( -z "${UNITY_EMAIL:-}" || -z "${UNITY_PASSWORD:-}" ) ]]; then
+            echo '::error::Missing Unity credentials: UNITY_EMAIL and UNITY_PASSWORD are required when UNITY_SERIAL is configured.'
+            exit 1
+          fi
+          if [[ -n "${UNITY_LICENSE:-}" || -n "${UNITY_SERIAL:-}" ]]; then
+            echo 'can_run_unity=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            echo 'can_run_unity=false' >> "$GITHUB_OUTPUT"
+            echo '### Unity jobs skipped' >> "$GITHUB_STEP_SUMMARY"
+            echo '- UNITY_LICENSE/UNITY_SERIAL are unavailable in this pull request run, so licensed Unity tests and builds were skipped.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ -z "${UNITY_EMAIL:-}" || -z "${UNITY_PASSWORD:-}" ]]; then
+            echo '::error::Missing Unity credentials: configure UNITY_EMAIL and UNITY_PASSWORD in repository or environment secrets available to this workflow run.'
+            exit 1
+          fi
+          if [[ -z "${UNITY_LICENSE:-}" && -z "${UNITY_SERIAL:-}" ]]; then
+            echo '::error::Missing Unity license activation secret: configure UNITY_LICENSE (Personal) or UNITY_SERIAL (eligible Pro) for this workflow run.'
+            exit 1
+          fi
+
+  tests:
+    name: ${{ matrix.label }} tests
+    needs: [preflight, unity_credentials]
+    if: needs.unity_credentials.outputs.can_run_unity == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mode: editmode
+            label: EditMode
+          - mode: playmode
+            label: PlayMode
+    steps:
+      - name: Check out exact resolved commit with LFS
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.preflight.outputs.sha }}
+          fetch-depth: 1
+          lfs: true
+          persist-credentials: false
+      - name: Pull and verify LFS objects
+        run: bash scripts/ci/repository-preflight.sh
+      # Same reasoning as the build job: keep the incremental artifacts, drop *.cs from the key.
+      - name: Restore isolated test Library cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            Library/Bee
+            Library/Artifacts
+            Library/ArtifactDB
+            Library/ScriptAssemblies
+          key: unity-${{ runner.os }}-${{ needs.preflight.outputs.unity_version }}-test-${{ matrix.mode }}-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/**', 'Assets/**/*.asmdef') }}
+          restore-keys: |
+            unity-${{ runner.os }}-${{ needs.preflight.outputs.unity_version }}-test-${{ matrix.mode }}-
+      - name: Run ${{ matrix.label }} tests
+        id: unity_tests
+        uses: game-ci/unity-test-runner@0ff419b913a3630032cbe0de48a0099b5a9f0ed9 # v4.3.1
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          unityVersion: 6000.3.19f1
+          customImage: unityci/editor:6000.3.19f1-base-3
+          testMode: ${{ matrix.mode }}
+          artifactsPath: test-results/${{ matrix.mode }}
+      - name: Write test summary
+        if: always()
+        run: |
+          echo "### ${{ matrix.label }} tests" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source: \`${{ needs.preflight.outputs.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '- NUnit results and Unity logs are attached. Zero discovered tests means no gameplay coverage, not a comprehensive pass.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload test results and logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unity-${{ matrix.mode }}-${{ needs.preflight.outputs.short_sha }}
+          path: test-results/${{ matrix.mode }}
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention_days }}
+
+  build:
+    name: Build and validate ${{ matrix.label }}
+    needs: [preflight, unity_credentials, tests]
+    if: needs.unity_credentials.outputs.can_run_unity == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.preflight.outputs.build_matrix) }}
+    steps:
+      - name: Check out exact resolved commit with LFS
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.preflight.outputs.sha }}
+          fetch-depth: 1
+          lfs: true
+          persist-credentials: false
+      - name: Pull and verify LFS objects
+        run: bash scripts/ci/repository-preflight.sh
+      # A full Library is 9.4 GB here, and the GitHub cache is 10 GB per repository: caching all of it
+      # meant the Windows and WebGL entries evicted each other, so almost every build started cold.
+      # These four hold what makes a rebuild incremental (IL2CPP/Bee artifacts, imported assets,
+      # compiled assemblies); everything else Unity regenerates cheaply.
+      # The key also no longer hashes *.cs — one edited script used to miss the exact key every time.
+      - name: Restore target-isolated Library cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            Library/Bee
+            Library/Artifacts
+            Library/ArtifactDB
+            Library/PlayerDataCache
+            Library/ScriptAssemblies
+          key: unity-${{ runner.os }}-${{ needs.preflight.outputs.unity_version }}-${{ matrix.target }}-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/**', 'Assets/**/*.asmdef') }}
+          restore-keys: |
+            unity-${{ runner.os }}-${{ needs.preflight.outputs.unity_version }}-${{ matrix.target }}-
+      - name: Build non-development player
+        uses: game-ci/unity-builder@d829bfc901f2347c8fe18898f06712b66916ef42 # v5.0.0
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          CI_BUILD_TARGET: ${{ matrix.target }}
+          CI_BUILD_OUTPUT: build/${{ matrix.slug }}
+          CI_RELEASE_VERSION: ${{ inputs.release_version }}
+        with:
+          unityVersion: 6000.3.19f1
+          customImage: ${{ matrix.image }}
+          targetPlatform: ${{ matrix.target }}
+          buildMethod: RounlessStudios.CI.CIBuild.Build
+          versioning: None
+          allowDirtyBuild: true
+      - name: Validate player output
+        run: bash scripts/ci/validate-output.sh '${{ matrix.target }}' 'build/${{ matrix.slug }}'
+      - name: Run WebGL HTTP structural smoke test
+        if: matrix.target == 'WebGL'
+        run: mkdir -p reports && bash scripts/ci/webgl-smoke.sh build/webgl reports/webgl-server.log
+      - name: Package player
+        run: bash scripts/ci/package-build.sh '${{ matrix.target }}' 'build/${{ matrix.slug }}' 'dist/project-gmtk-2026-${{ matrix.slug }}-${{ inputs.release_version }}.zip'
+      - name: Generate build manifest and checksum
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+          SOURCE_SHA: ${{ needs.preflight.outputs.sha }}
+          SOURCE_SHORT_SHA: ${{ needs.preflight.outputs.short_sha }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p manifests reports
+          bash scripts/ci/generate-manifest.sh '${{ matrix.target }}' 'build/${{ matrix.slug }}' 'dist/project-gmtk-2026-${{ matrix.slug }}-${{ inputs.release_version }}.zip' 'manifests/${{ matrix.slug }}.json'
+          sha256sum 'dist/project-gmtk-2026-${{ matrix.slug }}-${{ inputs.release_version }}.zip' > 'manifests/${{ matrix.slug }}.sha256'
+      - name: Upload immutable build payload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unity-build-${{ matrix.slug }}-${{ needs.preflight.outputs.short_sha }}
+          path: |
+            build/${{ matrix.slug }}/
+            dist/project-gmtk-2026-${{ matrix.slug }}-${{ inputs.release_version }}.zip
+            manifests/${{ matrix.slug }}.json
+            manifests/${{ matrix.slug }}.sha256
+            reports/
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention_days }}
+      - name: Upload Unity build logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unity-build-logs-${{ matrix.slug }}-${{ needs.preflight.outputs.short_sha }}
+          path: |
+            build.log
+            reports/
+          if-no-files-found: warn
+          retention-days: ${{ inputs.retention_days }}

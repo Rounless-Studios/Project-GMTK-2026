@@ -1,0 +1,14 @@
+{
+  "name": "GMTK.GameBalance.Runtime",
+  "rootNamespace": "Gmtk2026.GameBalance",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

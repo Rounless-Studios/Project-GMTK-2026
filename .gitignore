@@ -78,3 +78,9 @@ InitTestScene*.unity*
 
 # Unity generated dependency cache in Assets
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Claude Code local (per-machine) settings — never commit
+/.claude/settings.local.json
+
+# Codex CLI local scratch output (visualizations, per-machine)
+/.codex/

@@ -83,7 +83,7 @@ PlayerSettings:
   androidApplicationEntry: 2
   defaultIsNativeResolution: 1
   macRetinaSupport: 1
-  runInBackground: 0
+  runInBackground: 1
   muteOtherAudioSources: 0
   Prepare IOS For Recording: 0
   Force IOS Speakers When Recording: 0
@@ -530,6 +530,9 @@ PlayerSettings:
   - m_BuildTarget: Standalone
     m_StaticBatching: 1
     m_DynamicBatching: 0
+  - m_BuildTarget: WebGL
+    m_StaticBatching: 0
+    m_DynamicBatching: 0
   m_BuildTargetShaderSettings: []
   m_BuildTargetGraphicsJobs: []
   m_BuildTargetGraphicsJobMode: []
@@ -565,6 +568,9 @@ PlayerSettings:
   - serializedVersion: 3
     m_BuildTarget: Android
     m_Formats: 03000000
+  - serializedVersion: 3
+    m_BuildTarget: WebGL
+    m_Formats: 05000000
   playModeTestRunnerEnabled: 0
   runPlayModeTestAsEditModeTest: 0
   actionOnDotNetUnhandledException: 1
@@ -831,7 +837,24 @@ PlayerSettings:
   webWasm2023: 0
   webEnableSubmoduleStrippingCompatibility: 0
   scriptingDefineSymbols:
-    Standalone: SENTIS_ANALYTICS_ENABLED;APP_UI_EDITOR_ONLY
+    Android: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    EmbeddedLinux: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    GameCoreScarlett: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    GameCoreXboxOne: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    Kepler: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    LinuxHeadlessSimulation: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    Nintendo Switch: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    Nintendo Switch 2: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    PS4: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    PS5: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    QNX: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    Standalone: SENTIS_ANALYTICS_ENABLED;APP_UI_EDITOR_ONLY;UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    VisionOS: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    WebGL: SENTIS_ANALYTICS_ENABLED;APP_UI_EDITOR_ONLY;UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    Windows Store Apps: BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    XboxOne: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    iPhone: BCG_RCCP;BCG_RCCP_LITE;BCG_URP
+    tvOS: UNITY_POST_PROCESSING_STACK_V2;BCG_RCCP;BCG_RCCP_LITE;BCG_URP
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:
@@ -871,7 +894,8 @@ PlayerSettings:
   metroDefaultTileSize: 1
   metroTileForegroundText: 2
   metroTileBackgroundColor: {r: 0.13333334, g: 0.17254902, b: 0.21568628, a: 0}
-  metroSplashScreenBackgroundColor: {r: 0.12941177, g: 0.17254902, b: 0.21568628, a: 1}
+  metroSplashScreenBackgroundColor: {r: 0.12941177, g: 0.17254902, b: 0.21568628,
+    a: 1}
   metroSplashScreenUseBackgroundColor: 0
   syncCapabilities: 0
   platformCapabilities: {}
@@ -928,7 +952,7 @@ PlayerSettings:
   qnxGraphicConfPath: 
   apiCompatibilityLevel: 6
   captureStartupLogs: {}
-  activeInputHandler: 1
+  activeInputHandler: 2
   windowsGamepadBackendHint: 0
   cloudProjectId: b52ce064-fb97-4654-ac98-a9282b087ab1
   framebufferDepthMemorylessMode: 0

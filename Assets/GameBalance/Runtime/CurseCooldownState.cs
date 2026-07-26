@@ -1,0 +1,73 @@
+using UnityEngine;
+
+namespace Gmtk2026.GameBalance
+{
+    /// <summary>
+    /// Shared curse cooldown + selection rule (checklist stage 3.7), as a plain, unit-testable
+    /// class. All three curses share one <c>sharedCooldownSeconds</c> timer. Under
+    /// OrderedRotation the next curse advances only after a *successful* cast; a failed attempt
+    /// (wrong answer / timeout) still spends the cooldown but keeps the same next curse so the
+    /// player is not punished with a different curse. An overtake win clears the cooldown at once.
+    /// The rule is caster-agnostic; both player and AI casters spend the same cooldown.
+    /// </summary>
+    public class CurseCooldownState
+    {
+        private readonly CurseSettings s;
+        private float cooldownTimer;
+        private int rotationIndex;
+
+        public bool IsReady => cooldownTimer <= 0f;
+        public float CooldownRemaining => Mathf.Max(0f, cooldownTimer);
+        public float CooldownProgress => s.sharedCooldownSeconds <= 0f
+            ? 1f
+            : Mathf.Clamp01(1f - CooldownRemaining / s.sharedCooldownSeconds);
+
+        public CurseCooldownState(CurseSettings settings) { s = settings; }
+
+        /// <summary>The curse an OrderedRotation cast would use next.</summary>
+        public CurseType NextOrdered() => CurseCatalog.All[rotationIndex % CurseCatalog.All.Length];
+
+        /// <summary>Spend the cooldown and advance the rotation after a successful cast.</summary>
+        public void OnCastSucceeded()
+        {
+            rotationIndex = (rotationIndex + 1) % CurseCatalog.All.Length;
+            cooldownTimer = s.sharedCooldownSeconds;
+        }
+
+        /// <summary>Spend the cooldown after a wrong answer / timeout (rotation unchanged).</summary>
+        public void OnCastFailed() => cooldownTimer = s.sharedCooldownSeconds;
+
+        /// <summary>Overtake reward (Reset mode): make a curse available immediately.</summary>
+        public void ResetCooldown() => cooldownTimer = 0f;
+
+        /// <summary>Overtake reward (Reduce mode): shorten the remaining cooldown.</summary>
+        public void ReduceCooldown(float seconds)
+        {
+            if (seconds > 0f) cooldownTimer = Mathf.Max(0f, cooldownTimer - seconds);
+        }
+
+        public void Tick(float deltaTime)
+        {
+            if (cooldownTimer > 0f) cooldownTimer = Mathf.Max(0f, cooldownTimer - deltaTime);
+        }
+
+        /// <summary>Only racers strictly ahead of the caster are valid curse targets.</summary>
+        public static bool IsValidTargetByScore(double casterScore, double targetScore) =>
+            targetScore > casterScore;
+
+        /// <summary>Resolve an AI quiz from a normalized ability and random roll.</summary>
+        public static bool ResolveAiQuiz(float successChance, float normalizedRoll)
+        {
+            float chance = Mathf.Clamp01(successChance);
+            if (chance <= 0f) return false;
+            if (chance >= 1f) return true;
+            return Mathf.Clamp01(normalizedRoll) < chance;
+        }
+
+        public void ResetForRace()
+        {
+            cooldownTimer = 0f;
+            rotationIndex = 0;
+        }
+    }
+}
