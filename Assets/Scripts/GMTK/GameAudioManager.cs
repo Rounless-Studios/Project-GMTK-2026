@@ -595,6 +595,9 @@ namespace GMTK
 
         private void OnEliminationWarning(int target, EliminationWarningLevel level)
         {
+            if (level == EliminationWarningLevel.Warning)
+                PlayCue("SFX_ELIM_TIMER_10");
+
             string cue = level switch
             {
                 EliminationWarningLevel.Warning => "SFX_ELIM_WARN_START",
