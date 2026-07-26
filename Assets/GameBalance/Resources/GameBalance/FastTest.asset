@@ -29,8 +29,8 @@ MonoBehaviour:
     restartToControlMaxSeconds: 5
   quiz:
     answerTimeSeconds: 2
-    minimumAnswerCount: 2
-    maximumAnswerCount: 3
+    minimumAnswerCount: 4
+    maximumAnswerCount: 4
   curse:
     sharedCooldownSeconds: 12
     selectionMode: 0
@@ -152,6 +152,7 @@ MonoBehaviour:
     gateCloseDelaySeconds: 0.2
     gateCloseDurationSeconds: 0.75
     gateExecutionDelaySeconds: 0.25
+    executionBreakableVehiclePrefab: {fileID: 3921044463232729353, guid: 2ba8e6ad6e744aa428cde71cc8a19a86, type: 3}
     explosionVfxDurationSeconds: 0.45
     wreckLingerSeconds: 2.5
     masterSfxVolume: 1

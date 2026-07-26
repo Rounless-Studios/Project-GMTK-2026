@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using SpinMotion;
@@ -127,7 +128,11 @@ namespace GMTK
                 foreach (var ai in car.GetComponentsInChildren<CarAIControl>(true)) ai.enabled = true;
                 foreach (var user in car.GetComponentsInChildren<CarUserControl>(true)) user.enabled = true;
                 var ex = car.GetComponent<CarExplosion>();
-                if (ex != null) Destroy(ex);
+                if (ex != null)
+                {
+                    ex.RestoreVehicle();
+                    Destroy(ex);
+                }
             }
         }
 
@@ -245,8 +250,10 @@ namespace GMTK
 
             if (last == 0)
             {
-                // the player was executed → immediate loss (no auto-win path)
-                FinishRace(RaceFinishType.Lose);
+                // Keep the race camera alive long enough to show the player's own car breaking
+                // apart. The starter-kit finish camera and result panel take over afterwards.
+                armed = false;
+                StartCoroutine(FinishAfterPlayerExecution());
                 return;
             }
 
@@ -285,6 +292,13 @@ namespace GMTK
             armed = false;
             RaceResultAuthority authority = RaceResultAuthority.Instance;
             if (authority != null) authority.TryFinish(type);
+        }
+
+        private IEnumerator FinishAfterPlayerExecution()
+        {
+            yield return new WaitForSeconds(
+                GameBalance.Current.presentation.wreckLingerSeconds);
+            FinishRace(RaceFinishType.Lose);
         }
     }
 }

@@ -141,7 +141,7 @@ GDD의 네 유형과 1:1로 대응하되 명칭과 행동 정의는 프로젝트
 - [ ] MonoBehaviour와 프리팹에 동일 수치를 중복 직렬화하지 않음 — **미완.** 중복·독립 직렬화 확인: `EliminationManager.explosionForce/upwardForce/explosionRadius`(public 필드), `CarExplosion` 12개 필드, `RandomEventManager` 전체, `FinalGate.gateDurationSeconds`, `ExecutionCctvDirector.followOffset/targetOffset/fieldOfView`, `AIPersonality`의 성격별 speedMultiplier 4개, `RaceFlow.prologueSeconds/countdownSeconds`, `QuizSessionController.feedbackDurationSeconds`, `GmtkRccpVehicle.boostAcceleration`
 - [ ] 정적 상수, 메서드 내부 리터럴, 코루틴 대기시간에 밸런스 숫자를 직접 작성하지 않음 — **미완.** `ProceduralQuizQuestionSource`의 문제 제한시간 리터럴(`3f`/`4f`/`5f`), `CurseManager.HidePenaltyFeedbackAfterDelay`의 `WaitForSecondsRealtime(2.5f)`, `RaceFlow`의 `WaitForSecondsRealtime(0.45f)`·`ConfigureFeedbackDuration(1.8f)`, `StartMenuCanvas`의 게이지 상수 4개, `ExecutionCctvDirector.HideBeforeWreckVanishes = 0.1f`
 - [x] 테스트도 숫자를 다시 하드코딩하지 않고 테스트 프리셋 또는 설정 스냅샷을 사용 — 상태 클래스 테스트가 설정 객체를 생성해 주입
-- [ ] 설정값 변경이 재시작 후 새 레이스에 반영되고 코드 재컴파일은 요구하지 않음 — 스냅샷 구조상 성립하지만 **Play Mode 미검증**. 재시작 경로에 별건 결함 있음(아래 `RaceFinish.finishTrigger` 항목)
+- [ ] 설정값 변경이 재시작 후 새 레이스에 반영되고 코드 재컴파일은 요구하지 않음 — 스냅샷 구조와 재시작 카운트다운 연결은 구현, **Play Mode 미검증**
 - [x] 빌드에서도 Resources 또는 명시적 프리셋 참조를 통해 설정을 로드 — `GameBalance.Load()`가 `Resources.Load<GameBalanceSettings>("GameBalance/" + name)` 사용. 프리셋이 `Assets/GameBalance/Resources/GameBalance/` 아래에 있어 빌드에 포함됨
 - [x] 설정 누락 시 조용히 임의 기본값을 만들지 않고 명확한 검증 오류 출력 — `Load()`가 프리셋 부재 시 `LogError`, 검증 실패 시 필드명이 담긴 `LogError`, `OnValidate()`가 `LogWarning`
 
@@ -173,8 +173,8 @@ GDD의 네 유형과 1:1로 대응하되 명칭과 행동 정의는 프로젝트
 | Result | `playerDeathCinematicMaxSeconds` | 3 | 3 | **선언만** |
 | Result | `restartToControlMaxSeconds` | 5 | 5 | **선언만** |
 | Quiz | `answerTimeSeconds` | 4 | 4 | **선언만** (실제 제한시간은 `ProceduralQuizQuestionSource` 리터럴 3/4/5초) — 방어형 흐름에서는 이 값이 곧 **방어 제한시간**이다 |
-| Quiz | `minimumAnswerCount` | 2 | 2 | **선언만** |
-| Quiz | `maximumAnswerCount` | 3 | 3 | **선언만** (실제 보기 수 4~5개) |
+| Quiz | `minimumAnswerCount` | 4 | 4 | 사용 (`CurseManager` → `QuizSessionController`) |
+| Quiz | `maximumAnswerCount` | 4 | 4 | 사용 (일반 객관식 보기 수를 4개로 고정) |
 | Curse | `sharedCooldownSeconds` | 12 | 12 | 사용 (`CurseCooldownState`) |
 | Boost | `maximumCharges` | 2 | 2 | 사용 |
 | Boost | `durationSeconds` | 1.25 | 1.25 | 사용 |
@@ -210,7 +210,7 @@ GDD의 네 유형과 1:1로 대응하되 명칭과 행동 정의는 프로젝트
 | Camera | `executionTransitionSeconds` | 0.2 | 0.2 | 사용 |
 | Camera | `executionReturnSeconds` | 0.25 | 0.25 | 사용 |
 | Gate | `closeDurationSeconds` | 0.75 | — | **미구현** (`presentation.gateCloseSpeed 2` / `gateCloseDelaySeconds 0.2`가 **선언만**) |
-| Gate | `loserExecutionDelaySeconds` | 0.25 | — | **미구현** (`presentation.gateExecutionDelaySeconds 0.5`가 **선언만**, 실제로는 즉시 처형) |
+| Gate | `loserExecutionDelaySeconds` | 0.25 | 0.25 | 사용 (`FinalGate`의 `gateExecutionDelaySeconds`) |
 | Presentation | `wreckLingerSeconds` | (문서 없음) | 2.5 | 사용 (`EliminationManager`, `ExecutionCctvDirector`) |
 | Presentation | `explosionVfxDurationSeconds` / `masterSfxVolume` / `warningAudioFadeSeconds` | (문서 없음) | 0.45 / 1 / 0.25 | **선언만** |
 | Special Event | `enabled` | true | — | **미구현** (`RandomEventManager.enableEvents` 인스펙터 값이 대신 쓰임) |
@@ -309,7 +309,7 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 | 추월 도전 (20초 주기·8초 제한·0.5초 유지·보상) | 구현 | `OvertakeManager.cs`, `OvertakeChallengeState.cs` | 정적 |
 | 추월 실패 속박(심판의 사슬) | **미완** | `BindSpeedMultiplier`를 읽는 차량·드라이버 코드가 없어 감속이 실제로 적용되지 않는다 | 정적 |
 | 퀴즈 + 미니게임 (산술·수도·숫자 순서·리듬·버튼 연타 5종) | 구현 | `Assets/Quiz/Runtime/*`(17파일), 휴대폰 월드 UI, `pauseGameplayDuringQuiz` 기본 false로 레이스 계속 | 정적 |
-| 퀴즈 설정화 | **미완** | `QuizSettings` 3필드 전부 미참조. 제한시간은 `ProceduralQuizQuestionSource` 리터럴, 보기 수 4~5개 | 정적 |
+| 퀴즈 설정화 | 구현 | `CurseManager`가 `QuizSettings`의 제한시간과 보기 수를 `QuizSessionController`에 전달. 일반 객관식은 4개 | 정적 |
 | 주행 랜덤 이벤트 6종 (공사 구간·가축 횡단·비치볼·운석 상자·지진·부스트 패드) | 구현 (레거시 프로토타입) | `RandomEventManager.cs`(303줄). `GMTK_Race`에서 `enableEvents: 1`로 **활성 상태** | 정적 |
 | 차량 계층 (RCCP Lite) | 구현 | `Assets/Scripts/GMTK/Rccp/*`, `GmtkVehicleAdapter.cs` | 정적 |
 | AI 주행 (look-ahead·레이싱 라인·코너 속도·그리드 합류·도로 폭 프로빙) | 구현 | `GmtkRccpWaypointDriver.cs`(351줄), `GmtkRccpWaypointPath.cs`, `AiDriving.cs` | 정적 |
@@ -357,11 +357,9 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
    제거하거나 조건을 조정해야 한다.
 3. **씬에 `AudioListener`가 2개** — 플레이 중 매 프레임 "There are 2 audio listeners in the scene" 로그가
    찍혀 콘솔 버퍼(800줄)를 6초마다 밀어낸다. 실제 에러가 콘솔에서 사라지므로 진단을 방해한다.
-4. **킷 `RaceFinish`가 `GMTK_Race` YAML에는 남아 있다.** `feature/improvements` 런타임 권한 계층이
-   씬 로드 시 제거하므로 더 이상 승패를 발행하지 않게 수정했으나 Play Mode 확인 대기.
-   추가로 `RaceFinish.finishTrigger`는 **어디에서도 대입되지 않는데** `OnRestartRace()`에서
-   `finishTrigger.enabled = false`를 호출하므로 **재시작 시 NullReferenceException이 난다.**
-   서드파티 폴더라 직접 수정 금지 대상 — 컴포넌트를 씬에서 제거하거나 GMTK 어댑터로 대체해야 한다.
+4. **킷 `RaceFinish`가 `GMTK_Race` YAML에는 남아 있다.** 런타임 권한 계층이 씬 로드 시 제거해
+   승패 발행을 막는다. 제거 시 이벤트 구독을 해제하고 `finishTrigger`를 null-safe 처리해 재시작
+   이벤트 체인이 끊기던 문제는 코드 수정 완료했으며 Play Mode 확인 대기.
 5. **`RaceHud`가 어디에도 배치되지 않았다.** 처형 카운트다운·최하위 경고·부스트·저주·추월·관문
    상태가 화면에 전혀 표시되지 않는다.
 6. **`GameJamDefault.maximumDurability = 1000000`** — 대파를 미루기 위한 임시값. 최종 밸런스 값은
@@ -484,7 +482,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [ ] 스폰·랩 수가 `RaceSettings`를 실제로 참조하도록 연결 — **미완.** 현재 `race.aiCount` / `race.lapCount`는 선언만 되어 있어, 프리셋만 바꿔서는 차량 수·랩 수가 변하지 않는다
 - [ ] 문서에 등장하는 모든 런타임·밸런스·연출 수치를 `GameBalanceSettings`로 이전 — 위 카탈로그 표의 "선언만"/"미구현" 항목 잔존
 - [ ] 게임 잼 빌드에서 레이스 설정 선택 UI 숨김 — `Bot Selector GUI` / `Lap Selector GUI`가 `Main UI.prefab`에 그대로 노출
-- [ ] 재시작 후에도 같은 설정 유지 — 스냅샷 구조상 성립하지만 재시작 경로에 `RaceFinish.finishTrigger` NRE 결함이 있어 미검증
+- [ ] 재시작 후에도 같은 설정 유지 — 스냅샷 구조와 커스텀 카운트다운 재진입은 구현, Play Mode 미검증
 
 ### 2.2 조작감과 드리프트
 
@@ -535,11 +533,11 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 현재 퀴즈는 저주 대상이 인간 플레이어일 때만 실행되며, 정답이면 저주를 방어하고
 오답 또는 시간 초과면 페널티를 받는다.
 
-- [ ] 퀴즈 시간·답안 수·출제 간격을 `QuizSettings` 참조로 교체 — **미착수.** `QuizSettings`를 읽는 코드가 한 줄도 없다. 제한시간은 `ProceduralQuizQuestionSource` 리터럴(산술 3초, 수도·숫자순서·연타 4초, 리듬 5초)
+- [x] 퀴즈 시간·답안 수를 `QuizSettings` 참조로 교체 — `CurseManager`가 제한시간과 최소·최대 보기 수를 생성기에 전달. 출제 간격은 저주 시스템이 관리
 - [x] 레이스 중 자동 퀴즈 실행 중단 — `TriggerNow()`의 유일한 호출자가 `CurseManager.BeginHumanQuiz`
 - [x] 저주 활성화 시에만 퀴즈 시작 — 동일 근거. `RaceFlow`는 Racing 진입 시 컴포넌트만 enable
 - [x] 퀴즈 중 레이스와 차량 물리를 멈추지 않음 — `pauseGameplayDuringQuiz` 기본 false, 타이머는 `Time.unscaledDeltaTime` 사용
-- [ ] 레이스 문제를 짧은 문제와 답안 2~3개로 제한 — 현재 보기 수는 수도 4개(정답 1 + 오답 3), 숫자 순서 5개. 2~3개 제한 없음
+- [x] 일반 객관식 문제의 보기를 4개로 고정 — 산술·수도 문제는 정답 1개와 오답 3개. 숫자 순서 등 인터랙티브 미니게임은 별도 입력 규칙 사용
 - [x] 마우스 입력을 주 입력으로 유지 — `QuizUiPresenter` 버튼 + `InputSystemUIInputModule`
 - [x] 정답 시 저주 페널티 없이 방어 성공 — `OnHumanQuizEvaluated`가 `IsCorrect`면 아무 효과도 적용하지 않음
 - [x] 오답·시간 초과 시 저주 페널티 적용 — `ApplyPenalty(type, targetIndex)` + 화면 피드백 라벨
@@ -580,8 +578,8 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [ ] 중앙 레이스 관리자만 승패 판정 — **미완.** 승패를 던지는 지점이 3곳(`EliminationManager.FinishRace`, `FinalGate.ResolveWinner`, 킷 `RaceFinish`)
 - [ ] 플레이어 폭발 후 3초 이내 패배 화면 — `result.playerDeathCinematicMaxSeconds` 미참조, 지연 연출 없음
 - [ ] 패배부터 재조작까지 5초 이내 유지 — `result.restartToControlMaxSeconds` 미참조
-- [ ] 재시작 시 차량·AI·타이머·퀴즈·저주·도전·관문 초기화 — `RestartRaceEvent` 구독자는 `EliminationManager.ReviveAllCars` / `BoostManager` / `DurabilityManager` / `CurseManager.EnsureControllers` / `OvertakeManager.OnRaceStarted` / `FinalGate.ResetGate` / `RandomEventManager.ClearAll` / `GmtkRccpPlayersSpawner.OnRestartRace` / `ExecutionCctvDirector.HideImmediately`로 **모두 존재**하지만, 아래 결함 때문에 흐름이 끊길 수 있어 미검증
-- [ ] `RaceFinish`의 Finish Trigger 참조 안전성 검증 — **결함 확인.** `RaceFinish.finishTrigger`는 `private Collider`로 선언만 되고 **어디에서도 대입되지 않는데** `OnRestartRace()`가 `finishTrigger.enabled = false`를 호출한다 → 재시작 시 NullReferenceException. 서드파티 폴더이므로 직접 수정 금지, 씬에서 컴포넌트를 제거하거나 GMTK 어댑터로 대체할 것
+- [ ] 재시작 시 차량·AI·타이머·퀴즈·저주·도전·관문 초기화 — 각 매니저의 `RestartRaceEvent` 초기화와 `RaceFlow`의 프롤로그 없는 READY/3·2·1/GO 재진입을 연결. Play Mode 미검증
+- [x] `RaceFinish`의 Finish Trigger 참조 안전성 검증 — null guard와 `OnDestroy` 이벤트 구독 해제로 죽은 리스너가 재시작 체인을 끊지 않게 수정
 - [ ] 현재 `RandomEventManager`를 설정 기반 `SpecialEventDirector`로 리팩터링 — 미착수
 - [ ] 기존 지진과 운석 로직은 재사용 가능한 부분만 유지 — 현재 지진은 **위 방향** `VelocityChange`(4~7) + 랜덤 2로 차를 띄우고, 운석은 물리 상자를 위에서 떨어뜨린다. GDD의 횡방향 흔들림·경고 반경 피해와 형태가 다르다
 - [ ] 덤프트럭 습격 이벤트 추가 — 미착수
@@ -621,7 +619,8 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 > 상태: **코드 구현 완료·Play Mode 미검증.** `ExecutionCctvDirector`(593줄)가 Cinemachine 3.1.5의
 > `OutputChannels.Channel01`로 전용 브레인/가상 카메라를 만들고, 플레이어 카메라는 rect·depth를 건드리지
-> 않고 그대로 둔 채 CCTV 출력 카메라만 `depth + 1`로 위에 겹친다. 파일이 **Git 미추적**이다.
+> 않고 그대로 둔 채 CCTV 출력 카메라만 `depth + 1`로 위에 겹친다. 처형 시
+> `Model_Skyline (Breakable)`을 생성해 조각 물리를 적용하고 내부 폭발 파티클 3종 중 하나를 무작위 재생한다.
 
 - [x] 시작 시점·Viewport Rect·전환 시간·복귀 시간을 `CameraSettings`에서 읽음 — 시작 시점은 `elimination.executionCameraLeadSeconds`, 나머지는 `camera.executionCctvViewportRect`/`executionTransitionSeconds`/`executionReturnSeconds`
 - [x] 3초 전 처형 대상 카메라 활성화 — `EliminationWarningLevel.Execution` → `ExecutionTargetChanged` → `ShowLiveTarget`. 대상은 잠기지 않고 매 프레임 현재 꼴찌를 따라간다
@@ -629,8 +628,8 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [x] 처형 CCTV를 오른쪽 아래로 표시 — `GameJamDefault` rect `x .66 / y 0`
 - [x] 처형 CCTV를 약 1/3 크기로 표시 — `w .34 / h .34`
 - [x] 메인 플레이어 화면에서 계속 조작 가능 — 입력·차량 제어를 건드리는 코드가 없다 (Play Mode 확인 필요)
-- [x] 처형 종료 후 CCTV가 닫히고 플레이어 화면 유지 — `CarEliminated` → `wreckLingerSeconds - 0.1s` 후 축소 애니메이션 → `CompleteHide`에서 원본 rect/depth 복원
-- [ ] 플레이어 자신이 대상일 때 패배 연출로 전환 — `EliminationManager`가 `index 0` 처형 시 `RaceFinishType.Lose`를 즉시 던지지만, 3초 이내 패배 화면 등 **연출 규정(`result` 설정)은 미구현**
+- [x] 처형 종료 후 CCTV가 닫히고 플레이어 화면 유지 — 대상 확정 시 CCTV를 월드 고정 앵커에 잠그고 원본 차량 Rigidbody를 고정한다. `CarEliminated` → `wreckLingerSeconds - 0.1s` 후 축소 애니메이션 → `CompleteHide`에서 원본 rect/depth 복원
+- [ ] 플레이어 자신이 대상일 때 패배 연출로 전환 — 플레이어 차량 파괴와 CCTV 잔해가 `wreckLingerSeconds` 동안 보인 뒤 패배 결과를 발행하도록 코드 구현. Play Mode에서 실제 시야·전환 확인 필요
 - [ ] 복수 카메라 렌더링의 WebGL 성능 확인 — 미검증
 
 ### 3.4 최종 관문
@@ -646,9 +645,9 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [x] 최종 두 대에서 관문 단계 활성화 — `EliminationManager.FinalDuelStarted` → `FinalGate.OnFinalDuel`이 생존자 목록을 만들고 `IsOpen = true`, `GateOpened` 발행
 - [x] 첫 번째 관문 통과 차량 판정과 승리 — `FinalGateCrossingTrigger`가 차량 루트를 raceIndex로 해석해 `ReportGateCrossing` 호출. 호출자가 `GMTKAutoPlaytest`뿐이던 문제 해소
 - [ ] 승자 뒤에서 관문 즉시 폐쇄 — `GateSlamming` → `gateCloseDelaySeconds` 후 `gateCloseDurationSeconds` 동안 SmoothStep 폐쇄. 문짝 콜라이더를 유지해 닫히면 실제로 막힌다. **연출 체감 미검증**
-- [x] 패자 즉시 처형 — `CloseGateThenExecute`가 문이 닫힌 뒤 `gateExecutionDelaySeconds`(0.25초) 후 처형. GDD 지연 규정 반영
+- [x] 패자 처형 — `CloseGateThenExecute`가 문이 닫힌 뒤 `gateExecutionDelaySeconds`(0.25초) 후 처형. GDD 지연 규정 반영
 - [ ] 관문 애니메이션과 충돌 판정 동기화 — 문짝이 콜라이더를 항상 갖고 이동하므로 보이는 것과 막히는 것이 같은 지오메트리. **다만 Rigidbody 없이 transform 이동이라 밀착 시 관통 가능, Play Mode 확인 필요**
-- [ ] 승리 관문 시퀀스 — 폐쇄 → 처형 → 결과 보고 순서(총 1.2초)로 구성. 전용 카메라 프레이밍과 승리 연출은 3.13 범위로 남음
+- [ ] 승리 관문 시퀀스 — 폐쇄 → 처형 → 결과 보고 순서로 구성. 플레이어가 패자면 자기 차량 파괴를 `wreckLingerSeconds` 동안 보여준 뒤 결과를 보고한다. 전용 카메라 프레이밍과 승리 연출은 3.13 범위로 남음
 - [x] 20초 타임아웃 시 `duelCars[0]` 자동 승리 규칙 제거 또는 정당화 — 타임아웃 시 `LeadingDuelCar()`로 실제 선두(`Race.ScoreOf` 최대)를 승자로 판정. 낮은 인덱스가 무조건 이기던 버그 수정
 - [ ] 관문 슬램 SFX — `Assets/Sound`에 음원이 없어 `SFX_VEH_COLLISION_`을 플레이스홀더로 인스펙터 노출 (3.14 범위)
 
@@ -773,13 +772,13 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 ### 3.13 처형·카메라 연출
 
-- [ ] 카메라 임계값·FOV·거리·감쇠·흔들림·전환 시간을 `CameraSettings`에서 읽음 — 부분. 처형 CCTV의 전환·복귀·Rect만 설정에서 읽고, FOV·팔로우 오프셋·댐핑은 `ExecutionCctvDirector`의 컴포넌트 필드다. 플레이어 추격 카메라는 RCCP 설정을 그대로 쓴다
-- [ ] VFX 크기·지속시간·강도·잔해 유지시간을 `PresentationSettings`에서 읽음 — 부분. `wreckLingerSeconds`만 `CarExplosion`에 주입되고, 플래시 색·크기·지속·광량 7개 필드는 컴포넌트 값이며 `explosionVfxDurationSeconds`는 선언만 되어 있다
+- [ ] 카메라 임계값·FOV·거리·감쇠·흔들림·전환 시간을 `CameraSettings`에서 읽음 — 부분. 처형 CCTV의 전환·복귀·Rect만 설정에서 읽고, FOV·팔로우 오프셋·댐핑은 `ExecutionCctvDirector`의 컴포넌트 필드다. 대상 확정 뒤에는 월드 고정 앵커를 Follow·LookAt으로 사용해 잔해를 지나치지 않는다
+- [ ] VFX 크기·지속시간·강도·잔해 유지시간을 `PresentationSettings`에서 읽음 — 부분. `executionBreakableVehiclePrefab`과 `wreckLingerSeconds`를 읽지만, 조각 폭발력·반경·상향력·토크는 컴포넌트 값이며 `explosionVfxDurationSeconds`는 선언만 되어 있다
 - [ ] 붉은색 또는 지옥식 최하위 외곽선 — 없음
-- [ ] 잠금 → 점화 → 경련 → 폭발 연출 — `CarExplosion`은 즉시 폭발 1단계뿐 (제어 차단 → 폭발력 + 토크 → 구체 플래시/포인트 라이트 → 비활성화)
-- [x] 불길·스파크·짧게 남는 잔해 — 프리미티브 구체 플래시 + 포인트 라이트 페이드(`ExplosionFlashAnim`) + `wreckLingerSeconds` 후 잔해 비활성화. 불길·스파크 파티클은 아직 없음
+- [ ] 잠금 → 점화 → 경련 → 폭발 연출 — 잠금 뒤 즉시 `Model_Skyline (Breakable)` 차체 조각에 독립 Rigidbody·Collider와 폭발력·토크를 적용한다. 점화·경련 예고 단계는 아직 없음
+- [x] 불길·스파크·짧게 남는 잔해 — 파괴 프리팹 내부 `Explosion01/02/03` 중 하나를 무작위 재생하고 차체 조각을 `wreckLingerSeconds` 동안 유지한 뒤 제거
 - [x] 잔해가 트랙을 영구적으로 막지 않게 처리 — `CarExplosion`이 `wreckLingerSeconds`(2.5초) 후 `SetActive(false)`
-- [ ] 플레이어 처형 바이탈 사운드 — 없음
+- [ ] 플레이어 처형 바이탈 사운드 — 처형 대상 확정 시 플레이어(`index 0`)면 `VO_ANNOUNCER_CHALLENGE_FAILED`를 재생하도록 코드 연결. Play Mode 청취 확인 필요
 - [ ] 예측형 전방 주시와 속도 기반 거리·FOV — 없음 (RCCP 기본 추종)
 - [ ] 카메라 충돌 회피와 수평선 안정화 — 없음
 - [ ] 옆 차량이 0.6초 유지되면 두 차량 투샷 — 미구현 (`sideBySideActivationSeconds: 0.6` 선언만)
@@ -1117,7 +1116,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [ ] 6대에서 네 번의 처형 후 정확히 두 대가 남음
 - [ ] 순위 역전 직후에도 올바른 차량이 처형됨
 - [ ] 플레이어가 메인 화면으로 계속 조작 가능
-- [ ] 플레이어 자신이 대상이어도 메인 주행 화면을 유지하고 CCTV 처형 연출 후 0초 패배 흐름으로 전환
+- [ ] 플레이어 자신이 대상이어도 메인 주행 화면과 CCTV로 자기 차량 파괴를 `wreckLingerSeconds` 동안 보여준 뒤 패배 흐름으로 전환 — 코드 구현, Play Mode 미검증
 
 **필수 검증:**
 
@@ -1140,7 +1139,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
   `StreamingAssets/Ending.mp4` 전체 화면 재생을 연결했고, 재생 종료 후에는
   플레이어가 애플리케이션을 종료할 때까지 마지막 프레임을 유지한다. 패배는 여전히
   킷 `RaceFinishGUI`에 의존하며, 승리 엔딩의 실제 레이스 종단 Play Mode 검증이 필요
-- [ ] 모든 런타임 상태를 초기화하는 빠른 재시작 — 각 매니저의 `RestartRaceEvent` 구독은 모두 존재하지만 킷 `RaceFinish.OnRestartRace`의 NRE로 흐름이 끊길 수 있다
+- [ ] 모든 런타임 상태를 초기화하는 빠른 재시작 — 결과 버튼 → `RestartRaceEvent` → 프롤로그 없는 커스텀 카운트다운 → `RaceStartedEvent` 연결 완료, Play Mode 미검증
 
 **1랩 구조 안전 규칙:**
 
@@ -1308,7 +1307,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [ ] 속도 기반 카메라 거리·FOV와 충돌 회피
 - [ ] 나란히 달릴 때 두 차량 투샷
 - [ ] 저주 대상과 최종 관문 프레이밍
-- [ ] 잠금·점화·경련·폭발 처형 VFX
+- [ ] 잠금·점화·경련·폭발 처형 VFX — 파괴 차량 조각 물리와 랜덤 폭발 파티클 구현, 점화·경련 예고 단계 미구현
 - [ ] 지옥 주조 고속도로 랜드마크와 레이싱 라인
 - [ ] 엔진·부스트·처형·저주·도전·관문·승리 오디오
 
@@ -1447,7 +1446,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [ ] 두 대가 남으면 닫히는 관문 질주로 전환 — 상태 전환은 되지만 관문 오브젝트가 없다
 - [ ] 관문을 먼저 통과한 차량만 승리 — **트리거 없음 + 킷 `RaceFinish` 랩 완주 승리 잔존**
 - [ ] 승리와 패배가 시각적·기계적으로 명확 — 킷 결과 UI 의존, 규정 시간 미구현
-- [ ] 재시작이 빠르고 이전 상태가 남지 않음 — `RaceFinish.finishTrigger` NRE 위험
+- [ ] 재시작이 빠르고 이전 상태가 남지 않음 — 코드 연결 완료, 연속 Play Mode 검증 필요
 - [ ] 폭발·차량 6대·UI·복수 카메라·특수 이벤트가 겹쳐도 성능 안정 — 미측정
 - [ ] 외부 플레이테스터 3명이 핵심 규칙 설명 가능 — 미진행. 규칙 HUD가 없어 현 상태로는 어렵다
 
@@ -1481,7 +1480,7 @@ P0 레이스가 성립하지 않게 만드는 것부터 정렬했다. 위쪽 4�
    현재는 프리셋이 `Validate()` 오류를 내는 상태다.
 3. `GMTK_Race.unity`의 `RandomEventManager.enableEvents`를 `0`으로 내려 레거시 이벤트를 끈다.
 4. `GMTK_Race.unity`에서 킷 `RaceFinish` 컴포넌트를 제거하거나 비활성화한다.
-   랩 완주 승리 우회 + 재시작 시 NullReferenceException을 동시에 없앤다.
+   랩 완주 승리 우회가 목적이며 재시작 NullReferenceException은 코드에서 방어 완료했다.
 
 **P0 차단 요소 (코드 작업)**
 
@@ -1511,7 +1510,7 @@ P0 레이스가 성립하지 않게 만드는 것부터 정렬했다. 위쪽 4�
 
 15. `BoostController`의 레거시 `Input` API를 새 Input System으로 교체.
 16. `VehicleSettings`·`SpecialEventSettings` 그룹 추가와 "선언만" 필드 연결.
-17. `QuizSettings`를 `ProceduralQuizQuestionSource`에 연결하고 보기 수를 2~3개로 제한.
+17. ~~`QuizSettings` 연결과 보기 수 확정~~ → **완료.** 제한시간과 보기 수를 생성기에 전달하고 일반 객관식은 4개로 고정.
 
 **사용자가 직접 실행해야 하는 검증**
 

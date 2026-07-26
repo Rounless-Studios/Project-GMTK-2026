@@ -29,6 +29,8 @@ namespace Gmtk2026.GameBalance.Tests
             Assert.AreEqual(30f, s.elimination.intervalSeconds);
             Assert.AreEqual(10f, s.elimination.warningSeconds);
             Assert.AreEqual(5f, s.elimination.intenseWarningSeconds);
+            Assert.AreEqual(4, s.quiz.minimumAnswerCount);
+            Assert.AreEqual(4, s.quiz.maximumAnswerCount);
             Assert.AreEqual(12f, s.curse.sharedCooldownSeconds);
             Assert.AreEqual(2, s.boost.maximumCharges);
             Assert.AreEqual(1.25f, s.boost.durationSeconds);
@@ -161,6 +163,8 @@ namespace Gmtk2026.GameBalance.Tests
             Assert.AreEqual(30f, preset.elimination.intervalSeconds,
                 "GDD: a steady 30s elimination beat");
             Assert.AreEqual(4f, preset.quiz.answerTimeSeconds);
+            Assert.AreEqual(4, preset.quiz.minimumAnswerCount);
+            Assert.AreEqual(4, preset.quiz.maximumAnswerCount);
             Assert.AreEqual(12f, preset.curse.sharedCooldownSeconds);
             Assert.AreEqual(1000000f, preset.damage.maximumDurability,
                 "GameJamDefault intentionally suppresses wrecks during active playtesting");
@@ -198,6 +202,24 @@ namespace Gmtk2026.GameBalance.Tests
             Assert.IsNotNull(preset);
             Assert.Less(preset.elimination.intervalSeconds, 30f,
                 "the fast preset exists so automated tests need not wait a full beat");
+            Assert.AreEqual(4, preset.quiz.minimumAnswerCount);
+            Assert.AreEqual(4, preset.quiz.maximumAnswerCount);
+            GameBalance.ResetForTests();
+        }
+
+        [TestCase("GameJamDefault")]
+        [TestCase("FastTest")]
+        public void ShippedPreset_AssignsExecutionBreakableVehicle(string presetName)
+        {
+            GameBalance.ResetForTests();
+            var preset = GameBalance.Load(presetName);
+            Assert.IsNotNull(preset);
+            Assert.IsNotNull(
+                preset.presentation.executionBreakableVehiclePrefab,
+                $"{presetName} must assign the execution breakable vehicle");
+            Assert.AreEqual(
+                "Model_Skyline (Breakable)",
+                preset.presentation.executionBreakableVehiclePrefab.name);
             GameBalance.ResetForTests();
         }
 

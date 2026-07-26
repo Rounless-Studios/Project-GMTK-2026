@@ -40,6 +40,7 @@ namespace GMTK
         private Coroutine hideRoutine;
         private int shownRaceIndex = -1;
         private bool targetLocked;
+        private Transform lockedTargetAnchor;
         private bool quizVisible;
         private QuizSessionController quizSession;
 
@@ -137,6 +138,7 @@ namespace GMTK
 
             shownRaceIndex = raceIndex;
             targetLocked = true;
+            LockCameraAtTarget(raceIndex);
             UpdateTargetLabel();
         }
 
@@ -239,6 +241,7 @@ namespace GMTK
             if (car == null)
                 return;
 
+            DestroyLockedTargetAnchor();
             Transform target = car.transform;
             virtualCamera.Follow = target;
             virtualCamera.LookAt = target;
@@ -251,6 +254,33 @@ namespace GMTK
 
             virtualCamera.PreviousStateIsValid = false;
             virtualCamera.ForceCameraPosition(initialPosition, initialRotation);
+        }
+
+        private void LockCameraAtTarget(int raceIndex)
+        {
+            GameObject car = Race.CarByIndex(raceIndex);
+            if (car == null)
+                return;
+
+            DestroyLockedTargetAnchor();
+            GameObject anchorObject = new("Execution CCTV Locked Target");
+            anchorObject.transform.SetParent(transform, true);
+            anchorObject.transform.SetPositionAndRotation(
+                car.transform.position,
+                car.transform.rotation);
+            lockedTargetAnchor = anchorObject.transform;
+
+            virtualCamera.Follow = lockedTargetAnchor;
+            virtualCamera.LookAt = lockedTargetAnchor;
+            composer.TargetOffset = targetOffset;
+        }
+
+        private void DestroyLockedTargetAnchor()
+        {
+            if (lockedTargetAnchor == null)
+                return;
+            Destroy(lockedTargetAnchor.gameObject);
+            lockedTargetAnchor = null;
         }
 
         private void CapturePlayerCamera()
@@ -419,6 +449,7 @@ namespace GMTK
                 virtualCamera.LookAt = null;
             }
 
+            DestroyLockedTargetAnchor();
             playerCamera = null;
             playerCameraCaptured = false;
         }

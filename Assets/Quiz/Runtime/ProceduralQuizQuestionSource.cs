@@ -11,7 +11,7 @@ namespace Gmtk2026.Quiz
 
         public ProceduralQuizQuestionSource(
             float? timeLimitSeconds = null,
-            int minimumAnswers = 2,
+            int minimumAnswers = 4,
             int maximumAnswers = 4)
         {
             configuredTimeLimitSeconds = timeLimitSeconds;

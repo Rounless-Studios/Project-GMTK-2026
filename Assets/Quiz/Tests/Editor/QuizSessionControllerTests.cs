@@ -89,6 +89,24 @@ namespace Gmtk2026.Quiz.Tests
         }
 
         [Test]
+        public void ResetForRace_ClosesQuestionAndClearsSessionCounts()
+        {
+            bool closed = false;
+            controller.QuizClosed += () => closed = true;
+            controller.TriggerNow();
+            controller.SubmitAnswer(controller.CurrentQuestion.CorrectChoiceIndex);
+
+            controller.ResetForRace();
+
+            Assert.That(closed, Is.True);
+            Assert.That(controller.State, Is.EqualTo(QuizSessionState.Waiting));
+            Assert.That(controller.CurrentQuestion, Is.Null);
+            Assert.That(controller.RemainingSeconds, Is.Zero);
+            Assert.That(controller.CorrectAnswerCount, Is.Zero);
+            Assert.That(controller.TotalQuestionCount, Is.Zero);
+        }
+
+        [Test]
         public void SubmitInteractiveResult_CompletesInteractiveQuestion()
         {
             QuizQuestion question = new QuizQuestion(

@@ -134,8 +134,14 @@ namespace GMTK
                 if (car == null) continue;
                 var ex = car.GetComponent<CarExplosion>();
                 if (ex == null) ex = car.AddComponent<CarExplosion>();
+                ex.wreckLingerSeconds = p.wreckLingerSeconds;
                 ex.Explode();
             }
+
+            // When the player is locked outside, keep the chase view alive long enough for
+            // their own breakable wreck and explosion particle to be visible before results.
+            if (winner != 0 && p.wreckLingerSeconds > 0f)
+                yield return new WaitForSeconds(p.wreckLingerSeconds);
 
             RaceResultAuthority authority = RaceResultAuthority.Instance;
             if (authority != null)

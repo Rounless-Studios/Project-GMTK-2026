@@ -29,7 +29,7 @@ namespace Gmtk2026.Quiz
         private float previousTimeScale = 1f;
         private bool initialized;
         private float? configuredTimeLimitSeconds;
-        private int configuredMinimumAnswers = 2;
+        private int configuredMinimumAnswers = 4;
         private int configuredMaximumAnswers = 4;
         private readonly HashSet<QuizKind> presentedKinds = new HashSet<QuizKind>();
         private QuizKind? previousPresentedKind;
@@ -170,6 +170,21 @@ namespace Gmtk2026.Quiz
             configuredMinimumAnswers = Mathf.Max(2, minimumAnswers);
             configuredMaximumAnswers = Mathf.Max(configuredMinimumAnswers, maximumAnswers);
             Initialize();
+        }
+
+        /// <summary>Clears any open phone quiz and starts a fresh question cycle for a restarted race.</summary>
+        public void ResetForRace()
+        {
+            bool wasVisible = State != QuizSessionState.Waiting || CurrentQuestion != null;
+            RestoreGameplayTime();
+            CurrentQuestion = null;
+            RemainingSeconds = 0f;
+            CorrectAnswerCount = 0;
+            TotalQuestionCount = 0;
+            Initialize();
+
+            if (wasVisible)
+                QuizClosed?.Invoke();
         }
 
         private void BeginNextQuestion()
