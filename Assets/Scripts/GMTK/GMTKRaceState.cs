@@ -22,6 +22,8 @@ namespace GMTK
 
         public static event System.Action<RacePhase> PhaseChanged;
 
+        private bool endingStarted;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttach()
         {
@@ -65,7 +67,11 @@ namespace GMTK
 
         private void OnPlayRace() => SetPhase(RacePhase.PreRace);
         private void OnCountdown() => SetPhase(RacePhase.Countdown);
-        private void OnRestart() => SetPhase(RacePhase.PreRace);
+        private void OnRestart()
+        {
+            endingStarted = false;
+            SetPhase(RacePhase.PreRace);
+        }
         private void OnFinalDuel() => SetPhase(RacePhase.FinalDuel);
 
         private void OnRacePhaseChanged(RaceFlow.Phase phase)
@@ -103,6 +109,12 @@ namespace GMTK
             LastResult = type;
             SetPhase(RacePhase.Finished);
             GameBalance.EndRace();
+
+            if (type == RaceFinishType.Win && !endingStarted)
+            {
+                endingStarted = true;
+                StartCoroutine(EndingCutscenePlayer.Play());
+            }
         }
 
         private void SetPhase(RacePhase phase)

@@ -1136,7 +1136,10 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [ ] 최종 결투 전에는 일반 결승선이 승패를 발생시키지 않도록 보호 — **미착수.** 킷 `RaceFinish`가 페이즈를 확인하지 않는다. 단 관문 자체는 결투 시작 시에만 생성되므로 조기 통과로 관문 승패가 발생하지는 않는다
 - [x] 첫 관문 통과 차량 승리 — `FinalGateCrossingTrigger` → `FinalGate.ReportGateCrossing`. 타임아웃 폴백도 실제 선두 판정으로 교체
 - [ ] 승자 뒤 관문 폐쇄와 패자 처형 — 폐쇄 애니메이션(0.75초) → 0.25초 후 처형까지 구현. **연출 체감 Play Mode 확인 필요**
-- [ ] 승리·패배 결과 화면 — 킷 `RaceFinishGUI`(`RaceUI/RaceFinishUI`)에 의존. GDD의 3초·5초 규정 미구현
+- [ ] 승리·패배 결과 화면 — `RaceFinishType.Win`에는 11초짜리
+  `StreamingAssets/Ending.mp4` 전체 화면 재생을 연결했고, 재생 종료 후에는
+  플레이어가 애플리케이션을 종료할 때까지 마지막 프레임을 유지한다. 패배는 여전히
+  킷 `RaceFinishGUI`에 의존하며, 승리 엔딩의 실제 레이스 종단 Play Mode 검증이 필요
 - [ ] 모든 런타임 상태를 초기화하는 빠른 재시작 — 각 매니저의 `RestartRaceEvent` 구독은 모두 존재하지만 킷 `RaceFinish.OnRestartRace`의 NRE로 흐름이 끊길 수 있다
 
 **1랩 구조 안전 규칙:**
