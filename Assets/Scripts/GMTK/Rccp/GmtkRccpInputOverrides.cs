@@ -7,6 +7,8 @@ namespace GMTK.Rccp
     /// Unbinds RCCP input actions that GMTK does not use. Shift is the boost key
     /// (<see cref="BoostController"/>) and RCCP binds it to a manual upshift, so both fired at
     /// once; the gearbox runs in automatic mode and never needs the manual shift anyway.
+    /// RCCP's F-key NOS is also disabled because GMTK owns boost duration, charges, force,
+    /// audio, and exhaust flames.
     /// RCCP's action asset lives in a third-party folder, so the bindings are overridden at
     /// runtime instead of being edited out of the asset.
     /// </summary>
@@ -15,7 +17,7 @@ namespace GMTK.Rccp
         // RCCP may hand out a clone of the asset, which Unity names "RCCP_InputActions(Clone)"
         private const string AssetNamePrefix = "RCCP_InputActions";
 
-        private static readonly string[] UnboundActions = { "Gear Shift Up" };
+        private static readonly string[] UnboundActions = { "Gear Shift Up", "NOS" };
 
         /// <summary>
         /// Applies the overrides to every RCCP action asset currently loaded. Cheap enough to

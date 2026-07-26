@@ -13,6 +13,7 @@ namespace GMTK
     /// Exposes <see cref="SpeedMultiplier"/> for the vehicle layer to consume.
     /// </summary>
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(1000)]
     public class BoostController : MonoBehaviour
     {
         public BoostState State { get; private set; }
@@ -35,7 +36,10 @@ namespace GMTK
 
         private BoostSettings B => GameBalance.Current.boost;
         private GmtkVehicleAdapter vehicleAdapter;
+        private RCCP_Exhaust[] boostExhausts;
+        private Light[] boostFlameLights;
         private int lastCharges;
+        private bool boostFlamesActive;
 
         private void Awake()
         {
@@ -43,6 +47,7 @@ namespace GMTK
             IsPlayer = vehicleAdapter != null
                 ? vehicleAdapter.IsPlayer
                 : GetComponentInChildren<CarUserControl>(true) != null;
+            CacheBoostExhausts();
             Build();
         }
 
@@ -78,7 +83,11 @@ namespace GMTK
         }
 
         /// <summary>Restore full charges and clear timers for a fresh race.</summary>
-        public void ResetForRace() => Build();
+        public void ResetForRace()
+        {
+            SetBoostFlames(false);
+            Build();
+        }
 
         /// <summary>Request a boost (AI or scripted). Returns true if one started.</summary>
         public bool TryBoost() => State != null && State.TryActivate();
@@ -108,6 +117,75 @@ namespace GMTK
         {
             if (vehicleAdapter != null && State != null)
                 vehicleAdapter.ApplyBoost(State.CurrentSpeedMultiplier);
+        }
+
+        private void LateUpdate()
+        {
+            bool shouldShowFlames = IsBoosting;
+            if (shouldShowFlames)
+                SetBoostFlames(true);
+            else if (boostFlamesActive)
+                SetBoostFlames(false);
+        }
+
+        private void OnDisable()
+        {
+            SetBoostFlames(false);
+        }
+
+        private void CacheBoostExhausts()
+        {
+            boostExhausts = GetComponentsInChildren<RCCP_Exhaust>(true);
+            boostFlameLights = new Light[boostExhausts.Length];
+
+            for (int i = 0; i < boostExhausts.Length; i++)
+            {
+                ParticleSystem flame = boostExhausts[i] != null
+                    ? boostExhausts[i].flame
+                    : null;
+                boostFlameLights[i] = flame != null
+                    ? flame.GetComponentInChildren<Light>(true)
+                    : null;
+            }
+        }
+
+        private void SetBoostFlames(bool active)
+        {
+            if (boostExhausts == null || boostExhausts.Length == 0)
+                CacheBoostExhausts();
+
+            for (int i = 0; i < boostExhausts.Length; i++)
+            {
+                RCCP_Exhaust exhaust = boostExhausts[i];
+                ParticleSystem flame = exhaust != null ? exhaust.flame : null;
+                if (flame == null)
+                    continue;
+
+                ParticleSystem.EmissionModule emission = flame.emission;
+                emission.enabled = active;
+
+                Light flameLight = boostFlameLights[i];
+                if (!active)
+                {
+                    if (flameLight != null)
+                        flameLight.intensity = 0f;
+                    continue;
+                }
+
+                ParticleSystem.MainModule main = flame.main;
+                main.startColor = exhaust.boostFlameColor;
+                if (!flame.isPlaying)
+                    flame.Play(true);
+
+                if (flameLight != null)
+                {
+                    flameLight.color = exhaust.boostFlameColor;
+                    // Match RCCP_Exhaust's original NOS flame-light flicker.
+                    flameLight.intensity = 3f * Random.Range(.25f, 1f);
+                }
+            }
+
+            boostFlamesActive = active;
         }
     }
 }
