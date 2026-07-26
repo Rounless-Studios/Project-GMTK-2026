@@ -44,6 +44,8 @@ MonoBehaviour:
     aiInitialCastDelayMinimumSeconds: 2
     aiInitialCastDelayMaximumSeconds: 5
     aiFailedCastRetrySeconds: 1
+    aiQuizResolutionDelayMinimumSeconds: 1.25
+    aiQuizResolutionDelayMaximumSeconds: 3
   boost:
     maximumCharges: 2
     durationSeconds: 1.25
@@ -78,7 +80,7 @@ MonoBehaviour:
     sideBySideActivationSeconds: 0.6
     executionCctvViewportRect:
       serializedVersion: 2
-      x: 0.67
+      x: 0.01
       y: 0.35
       width: 0.32
       height: 0.3
@@ -155,6 +157,8 @@ MonoBehaviour:
     executionBreakableVehiclePrefab: {fileID: 3921044463232729353, guid: 2ba8e6ad6e744aa428cde71cc8a19a86, type: 3}
     explosionVfxDurationSeconds: 0.45
     wreckLingerSeconds: 2.5
+    curseAppliedEffectPrefab: {fileID: 9157105887711914197, guid: c4f829cb7dd4b864caf8832ec5b1ee55, type: 3}
+    curseAppliedEffectScale: 1.5
     masterSfxVolume: 1
     warningAudioFadeSeconds: 0.25
   playtest:

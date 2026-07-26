@@ -78,6 +78,9 @@ namespace Gmtk2026.GameBalance
         [Min(0f)] public float aiInitialCastDelayMinimumSeconds = 2f;
         [Min(0f)] public float aiInitialCastDelayMaximumSeconds = 5f;
         [Min(0.1f)] public float aiFailedCastRetrySeconds = 1f;
+        [Tooltip("Simulated time an AI target takes to answer its invisible defence quiz.")]
+        [Min(0f)] public float aiQuizResolutionDelayMinimumSeconds = 1.25f;
+        [Min(0f)] public float aiQuizResolutionDelayMaximumSeconds = 3f;
     }
 
     [System.Serializable]
@@ -150,7 +153,7 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float sideBySideActivationSeconds = 0.6f;
         // Execution CCTV inset; the player's camera remains in its original main viewport.
         [FormerlySerializedAs("executionPlayerViewportRect")]
-        public Rect executionCctvViewportRect = new Rect(0.67f, 0.35f, 0.32f, 0.30f);
+        public Rect executionCctvViewportRect = new Rect(0.01f, 0.35f, 0.32f, 0.30f);
         [Min(0)] public float executionTransitionSeconds = 0.2f;
         [Min(0)] public float executionReturnSeconds = 0.25f;
     }
@@ -367,6 +370,10 @@ namespace Gmtk2026.GameBalance
         public GameObject executionBreakableVehiclePrefab;
         [Min(0)] public float explosionVfxDurationSeconds = 0.45f;
         [Min(0)] public float wreckLingerSeconds = 2.5f;
+        [Header("Curse")]
+        [Tooltip("One-shot effect spawned on a racer when a curse penalty is applied.")]
+        public GameObject curseAppliedEffectPrefab;
+        [Min(0.01f)] public float curseAppliedEffectScale = 1.5f;
         [Header("Audio")]
         [Range(0f, 1f)] public float masterSfxVolume = 1f;
         [Min(0)] public float warningAudioFadeSeconds = 0.25f;
@@ -494,6 +501,13 @@ namespace Gmtk2026.GameBalance
                 errors.Add("curse.aiInitialCastDelayMinimumSeconds must be <= aiInitialCastDelayMaximumSeconds");
             if (curse.aiFailedCastRetrySeconds < 0.1f)
                 errors.Add("curse.aiFailedCastRetrySeconds must be >= 0.1");
+            if (curse.aiQuizResolutionDelayMinimumSeconds >
+                curse.aiQuizResolutionDelayMaximumSeconds)
+            {
+                errors.Add(
+                    "curse.aiQuizResolutionDelayMinimumSeconds must be <= " +
+                    "aiQuizResolutionDelayMaximumSeconds");
+            }
 
             if (boost.overtakeRewardCharges > boost.maximumCharges)
                 errors.Add("boost.overtakeRewardCharges must be <= boost.maximumCharges");
