@@ -46,15 +46,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.GameAudioManager
   menuMusicId: MUS_MAIN_THEME
   raceMusicId: MUS_RACE_EARLY
+  finalDuelMusicId: MUS_TIMER_COUNT
   raceAmbienceId: AMB_HELL
   buttonClickId: SFX_UI_BUTTON_CLICK
   countdownTickId: VO_ANNOUNCER_READY
   raceStartId: VO_ANNOUNCER_GO
+  boostStartId: SFX_VEH_BOOST_START
+  boostLoopId: SFX_VEH_BOOST_LOOP
+  boostEndId: SFX_VEH_BOOST_END
+  boostChargeId: SFX_HUD_BOOST_CHARGE
+  boostSealedId: SFX_VEH_BOOST_SEALED
   musicVolume: 0.7
   sfxVolume: 1
   musicSource: {fileID: 0}
   sfxSource: {fileID: 0}
+  uiSfxSource: {fileID: 0}
   loopSource: {fileID: 0}
+  curseHitGain: 2
   soundFolder: Assets/Sound
   cues:
   - eventId: SFX_VEH_ENGINE_IDLE
@@ -329,7 +337,7 @@ MonoBehaviour:
     loop: 0
   - eventId: SFX_ELIM_TIMER_10
     type: 0
-    clip: {fileID: 0}
+    clip: {fileID: 8300000, guid: 14c875ef3f7148847945e985673064cd, type: 3}
     variations: []
     volume: 1
     loop: 0
@@ -1450,6 +1458,12 @@ MonoBehaviour:
   - eventId: SFX_RACE_START
     type: 0
     clip: {fileID: 0}
+    variations: []
+    volume: 1
+    loop: 0
+  - eventId: MUS_TIMER_COUNT
+    type: 2
+    clip: {fileID: 8300000, guid: e4e9eab161d302943b0c1aad46e4ef9a, type: 3}
     variations: []
     volume: 1
     loop: 0
