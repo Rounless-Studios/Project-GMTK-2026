@@ -51,13 +51,15 @@ namespace Gmtk2026.GameBalance
         /// <paramref name="scanMetres"/> is read as an arc (radius = arc / angle) and the speed comes
         /// from the sideways grip limit, which keeps a wide sweeper fast while a hairpin still slows.
         /// Scaling the angle down directly would over-brake every long corner.
-        /// <paramref name="throttleScale"/> is the personality's pace multiplier.
+        /// <paramref name="throttleScale"/> is the personality's pace multiplier, and
+        /// <paramref name="gripScale"/> is how much grip it believes it has - its braking point.
         /// </summary>
         public static float CornerSpeedKph(
             float headingChangeDegrees,
             float scanMetres,
             float throttleScale,
-            AiDrivingSettings s)
+            AiDrivingSettings s,
+            float gripScale = 1f)
         {
             float angle = Mathf.Abs(headingChangeDegrees) * Mathf.Deg2Rad;
 
@@ -65,7 +67,7 @@ namespace Gmtk2026.GameBalance
                 return s.straightSpeedKph * throttleScale;
 
             float radius = Mathf.Max(1f, Mathf.Max(1f, scanMetres) / angle);
-            float speedKph = Mathf.Sqrt(s.cornerGrip * radius) * 3.6f;
+            float speedKph = Mathf.Sqrt(s.cornerGrip * Mathf.Max(0.01f, gripScale) * radius) * 3.6f;
 
             return Mathf.Clamp(speedKph, s.minCornerSpeedKph, s.straightSpeedKph) * throttleScale;
         }
@@ -103,6 +105,132 @@ namespace Gmtk2026.GameBalance
         public static float ClampLateral(float desiredMetres, float edgeLeftMetres, float edgeRightMetres)
         {
             return Mathf.Clamp(desiredMetres, -Mathf.Max(0f, edgeLeftMetres), Mathf.Max(0f, edgeRightMetres));
+        }
+
+        /// <summary>
+        /// Which way to go around the car ahead: the side with more room, and away from where the
+        /// rival actually sits when both sides are equally open. Returns +1 for right, -1 for left.
+        /// </summary>
+        public static float OvertakeSideBias(
+            float rivalLateralMetres,
+            float spaceLeftMetres,
+            float spaceRightMetres)
+        {
+            float room = Mathf.Max(0f, spaceRightMetres) - Mathf.Max(0f, spaceLeftMetres);
+            if (Mathf.Abs(room) > 0.5f) return room > 0f ? 1f : -1f;
+
+            // equally boxed in: go the opposite way to the rival, and pick a side when it is dead ahead
+            return rivalLateralMetres > 0f ? -1f : 1f;
+        }
+
+        /// <summary>
+        /// Sideways offset that takes the car out of the tow of the one ahead and onto a passing line.
+        /// Nothing happens until the rival is inside the scan distance and actually being caught, so
+        /// the AI does not weave behind a car it cannot pass. Grows as the gap closes and is scaled by
+        /// the personality's aggression; the caller still clamps it to the measured road.
+        /// </summary>
+        public static float OvertakeOffsetMetres(
+            float gapAheadMetres,
+            float closingKph,
+            float rivalLateralMetres,
+            float spaceLeftMetres,
+            float spaceRightMetres,
+            float aggression,
+            AiDrivingSettings s)
+        {
+            if (gapAheadMetres <= 0f || gapAheadMetres > s.rivalScanMetres) return 0f;
+            if (closingKph < s.overtakeMinClosingKph) return 0f;
+            if (aggression <= 0f) return 0f;
+
+            float urgency = 1f - Mathf.Clamp01(gapAheadMetres / Mathf.Max(1f, s.rivalScanMetres));
+            float side = OvertakeSideBias(rivalLateralMetres, spaceLeftMetres, spaceRightMetres);
+
+            return side * s.overtakeOffsetMetres * aggression * urgency;
+        }
+
+        /// <summary>
+        /// Caps the speed target so the car settles behind the one ahead instead of driving through it.
+        /// The gap it keeps is the personality's tolerance: at zero the car never lifts, which is what
+        /// makes a rammer a rammer. Only the closing car lifts - a car being caught keeps its pace.
+        /// </summary>
+        public static float FollowSpeedKph(
+            float targetSpeedKph,
+            float gapAheadMetres,
+            float rivalSpeedKph,
+            float contactToleranceMetres,
+            AiDrivingSettings s)
+        {
+            if (contactToleranceMetres <= 0f) return targetSpeedKph;
+            if (gapAheadMetres <= 0f || gapAheadMetres > s.rivalScanMetres) return targetSpeedKph;
+
+            float keep = Mathf.Min(contactToleranceMetres, s.followGapMetres + contactToleranceMetres);
+            if (gapAheadMetres > keep) return targetSpeedKph;
+
+            // Inside the gap the car matches the one ahead and only lifts a little more as it closes
+            // right up. Scaling down by the remaining gap instead would drop each car to a fraction of
+            // the one in front, and a queue of cars would brake each other to walking pace.
+            float squeeze = Mathf.Clamp01(gapAheadMetres / Mathf.Max(0.1f, keep));
+            float cap = Mathf.Max(0f, rivalSpeedKph) - (1f - squeeze) * s.followLiftKph;
+
+            return Mathf.Min(targetSpeedKph, Mathf.Max(0f, cap));
+        }
+
+        /// <summary>
+        /// Sideways offset that puts a defending car in front of the one behind it, so a faster car has
+        /// to work for the pass. Strength is the personality's; a car with none stays on its line.
+        /// </summary>
+        public static float BlockOffsetMetres(
+            float gapBehindMetres,
+            float rivalLateralMetres,
+            float blockStrength,
+            AiDrivingSettings s)
+        {
+            if (blockStrength <= 0f) return 0f;
+            if (gapBehindMetres <= 0f || gapBehindMetres > s.rivalScanMetres) return 0f;
+
+            float urgency = 1f - Mathf.Clamp01(gapBehindMetres / Mathf.Max(1f, s.rivalScanMetres));
+            float wanted = Mathf.Clamp(rivalLateralMetres, -s.blockOffsetMetres, s.blockOffsetMetres);
+
+            return wanted * blockStrength * urgency;
+        }
+
+        /// <summary>
+        /// Whether to spend a boost charge now. Only on a straight - a boost into a corner is thrown
+        /// away and usually into a barrier - only while actually moving, and only with a charge in hand.
+        /// <paramref name="roll"/> is a 0..1 random draw compared against the personality's eagerness,
+        /// passed in so the decision stays deterministic under test.
+        /// </summary>
+        public static bool ShouldBoostOnStraight(
+            float headingChangeDegrees,
+            float speedKph,
+            bool hasCharge,
+            float boostTendency,
+            float roll,
+            AiDrivingSettings s)
+        {
+            if (!hasCharge) return false;
+            if (Mathf.Abs(headingChangeDegrees) > s.boostStraightMaximumDegrees) return false;
+            if (speedKph < s.boostMinimumSpeedKph) return false;
+
+            return roll <= boostTendency;
+        }
+
+        /// <summary>
+        /// Raises the speed target while a boost burns, but only while the path ahead is straight.
+        /// Without this the AI brakes against its own boost - the extra speed pushes it past a target it
+        /// then tries to hold - and a boost that is still burning at a corner would carry it off the
+        /// road instead of being ignored.
+        /// </summary>
+        public static float BoostedTargetKph(
+            float targetKph,
+            float speedMultiplier,
+            float headingChangeDegrees,
+            AiDrivingSettings s)
+        {
+            if (speedMultiplier <= 1f) return targetKph;
+            if (Mathf.Abs(headingChangeDegrees) > s.boostStraightMaximumDegrees) return targetKph;
+
+            return targetKph * speedMultiplier;
         }
 
         /// <summary>Throttle and brake from the speed error against the corner speed.</summary>

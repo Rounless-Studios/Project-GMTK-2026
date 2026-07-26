@@ -31,6 +31,7 @@ namespace GMTK.EditorTools
                 settings.elimination.intervalSeconds = 30f;
                 RestoreDurabilityOverride(settings);
                 NormalizeFinalGate(settings);
+                NormalizeAiRacecraft(settings);
             });
 
             Apply(FastTestPath, problems, settings =>
@@ -38,6 +39,7 @@ namespace GMTK.EditorTools
                 // the fast preset keeps its deliberately short timers
                 RestoreDurabilityOverride(settings);
                 NormalizeFinalGate(settings);
+                NormalizeAiRacecraft(settings);
             });
 
             AssetDatabase.SaveAssets();
@@ -47,6 +49,42 @@ namespace GMTK.EditorTools
                 Debug.Log("[PresetNormalizer] OK: both presets normalised and validated.");
             else
                 Debug.LogError("[PresetNormalizer] FAILED:\n - " + string.Join("\n - ", problems));
+        }
+
+        /// <summary>
+        /// The racecraft axes (braking point, overtaking, defending, the gap kept behind another car)
+        /// were added after these presets were authored, so their personality rows carry the C# field
+        /// defaults - identical for all four, which is exactly the "personalities do nothing" symptom.
+        /// Writes the intended spread instead: reckless brakes latest and attacks, the blocker defends,
+        /// the rammer keeps no gap at all, the clean racer leaves the most room.
+        /// </summary>
+        private static void NormalizeAiRacecraft(GameBalanceSettings settings)
+        {
+            SetRacecraft(settings, AIPersonalityType.Reckless, 1.2f, 1.4f, 0f, 2.5f);
+            SetRacecraft(settings, AIPersonalityType.Rammer, 1.05f, 1f, 0.2f, 0f);
+            SetRacecraft(settings, AIPersonalityType.Blocker, 0.95f, 0.3f, 1f, 5f);
+            SetRacecraft(settings, AIPersonalityType.CleanRacer, 1f, 0.6f, 0.15f, 8f);
+        }
+
+        private static void SetRacecraft(
+            GameBalanceSettings settings,
+            AIPersonalityType personality,
+            float brakingConfidence,
+            float overtakeAggression,
+            float blockStrength,
+            float contactToleranceMetres)
+        {
+            AiPersonalityProfile profile = settings.ai.GetProfile(personality);
+            if (profile == null) return;
+
+            profile.brakingConfidence = brakingConfidence;
+            profile.overtakeAggression = overtakeAggression;
+            profile.blockStrength = blockStrength;
+            profile.contactToleranceMetres = contactToleranceMetres;
+
+            // every personality boosts on every straight it has a charge for; hoarding is a per-car
+            // tuning decision, not the default
+            profile.boostTendency = 1f;
         }
 
         /// <summary>
