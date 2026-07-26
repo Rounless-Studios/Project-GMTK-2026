@@ -5669,6 +5669,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: BOOST
       objectReference: {fileID: 0}
+    - target: {fileID: 3732993208004313919, guid: cdb58cb55df1e654c9162f8cc0f2e79d,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4424240670367652574, guid: cdb58cb55df1e654c9162f8cc0f2e79d,
         type: 3}
       propertyPath: m_Pivot.x
