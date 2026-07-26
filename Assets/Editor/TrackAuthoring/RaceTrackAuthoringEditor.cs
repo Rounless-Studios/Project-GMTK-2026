@@ -1,7 +1,7 @@
 using System.IO;
 using System.Linq;
 using GMTK.TrackAuthoring;
-using SpinMotion;
+using GMTK.Kit;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;

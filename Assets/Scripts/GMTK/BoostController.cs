@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using SpinMotion;
 using Gmtk2026.GameBalance;
 
 namespace GMTK
@@ -32,9 +31,7 @@ namespace GMTK
         private void Awake()
         {
             vehicleAdapter = GetComponent<GmtkVehicleAdapter>();
-            IsPlayer = vehicleAdapter != null
-                ? vehicleAdapter.IsPlayer
-                : GetComponentInChildren<CarUserControl>(true) != null;
+            IsPlayer = vehicleAdapter != null && vehicleAdapter.IsPlayer;
             Build();
         }
 

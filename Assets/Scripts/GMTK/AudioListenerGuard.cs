@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
-using SpinMotion;
+using GMTK.Kit;
 using UnityEngine;
 
 namespace GMTK

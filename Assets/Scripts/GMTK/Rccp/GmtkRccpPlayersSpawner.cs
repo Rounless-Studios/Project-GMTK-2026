@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.Events;
-using SpinMotion;
+using GMTK.Kit;
 using Gmtk2026.GameBalance;
 
 namespace GMTK.Rccp

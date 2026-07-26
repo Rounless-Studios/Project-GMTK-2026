@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using SpinMotion;
+using GMTK.Kit;
 using Gmtk2026.GameBalance;
 
 namespace GMTK
@@ -125,8 +125,8 @@ namespace GMTK
                 var car = Race.CarByIndex(idx);
                 if (car == null) continue;
                 car.SetActive(true);
-                foreach (var ai in car.GetComponentsInChildren<CarAIControl>(true)) ai.enabled = true;
-                foreach (var user in car.GetComponentsInChildren<CarUserControl>(true)) user.enabled = true;
+                var vehicleAdapter = car.GetComponent<GmtkVehicleAdapter>();
+                if (vehicleAdapter != null) vehicleAdapter.SetControlsEnabled(true);
                 var ex = car.GetComponent<CarExplosion>();
                 if (ex != null)
                 {

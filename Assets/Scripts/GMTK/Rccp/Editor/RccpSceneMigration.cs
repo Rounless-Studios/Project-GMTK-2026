@@ -4,7 +4,7 @@ using UnityEditor.Build;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using SpinMotion;
+using GMTK.Kit;
 
 namespace GMTK.Rccp.Editor
 {

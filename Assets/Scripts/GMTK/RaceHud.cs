@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 using Gmtk2026.GameBalance;
-using SpinMotion;
+using GMTK.Kit;
 
 namespace GMTK
 {

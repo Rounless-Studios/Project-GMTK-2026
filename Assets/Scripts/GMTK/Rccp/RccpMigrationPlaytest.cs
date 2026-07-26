@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Text;
 using UnityEngine;
-using SpinMotion;
+using GMTK.Kit;
 
 namespace GMTK.Rccp
 {
