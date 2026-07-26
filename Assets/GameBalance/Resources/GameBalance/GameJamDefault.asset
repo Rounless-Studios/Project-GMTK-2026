@@ -53,7 +53,7 @@ MonoBehaviour:
     overtakeRewardCharges: 1
     boostSpeedMultiplier: 1.5
   damage:
-    maximumDurability: 100
+    maximumDurability: 1000000
     damagedThreshold: 60
     criticalThreshold: 30
     wreckedThreshold: 0
@@ -68,6 +68,13 @@ MonoBehaviour:
     maximumTrackDistanceFromWaypoint: 20
     groundProbeDistance: 5
     trackSampleIntervalSeconds: 0.1
+  vehicle:
+    boostAcceleration: 18
+    lateralGripRecovery: 2.2
+    yawDamping: 1.8
+    maximumYawRadiansPerSecond: 2.8
+    bindingDeceleration: 14
+    stabilizationMinimumSpeedKph: 25
   overtake:
     checkIntervalSeconds: 20
     challengeDurationSeconds: 8
@@ -94,9 +101,9 @@ MonoBehaviour:
       minCornerScanMetres: 30
       cornerBrakingDecel: 8
       targetSpeedRiseKphPerSecond: 50
-      straightSpeedKph: 160
-      minCornerSpeedKph: 55
-      cornerGrip: 14
+      straightSpeedKph: 200
+      minCornerSpeedKph: 60
+      cornerGrip: 18
       steerGainLowSpeed: 1.5
       steerGainHighSpeed: 0.55
       steerDamping: 0.06
@@ -106,6 +113,13 @@ MonoBehaviour:
       laneMergeMetres: 140
       maxLaneOffsetMetres: 6
       laneSpreadMetres: 1.2
+      rivalScanMetres: 40
+      overtakeOffsetMetres: 3.2
+      overtakeMinClosingKph: 5
+      followGapMetres: 7
+      followLiftKph: 10
+      blockOffsetMetres: 2.4
+      rivalScanIntervalSeconds: 0.2
       maxRoadHalfWidthMetres: 13
       roadEdgeMarginMetres: 2.2
       logDriveTelemetry: 0
@@ -114,6 +128,13 @@ MonoBehaviour:
       stuckSpeedKph: 1.5
       stuckDelaySeconds: 2.5
       reverseDurationSeconds: 1.25
+      boostDecisionIntervalSeconds: 1
+      boostStraightMaximumDegrees: 8
+      boostMinimumSpeedKph: 45
+      catchupGapMetres: 35
+      eliminationUrgencyScale: 1.12
+      obstacleProbeMetres: 12
+      obstacleAvoidanceStrength: 0.65
     personalityAssignment:
       shuffleSeed: 0
       logAssignment: 1
@@ -123,27 +144,43 @@ MonoBehaviour:
     - personality: 3
       paceScale: 1
       lateralStrengthMetres: 0
-      boostTendency: 0.8
+      boostTendency: 1
       quizAvoidChance: 0.3
       catchupAcceleration: 0.1
+      brakingConfidence: 1.2
+      overtakeAggression: 1.4
+      blockStrength: 0
+      contactToleranceMetres: 2.5
     - personality: 1
       paceScale: 0.96
       lateralStrengthMetres: 7
-      boostTendency: 0.5
+      boostTendency: 1
       quizAvoidChance: 0.35
       catchupAcceleration: 0.1
+      brakingConfidence: 1.05
+      overtakeAggression: 1
+      blockStrength: 0.2
+      contactToleranceMetres: 0
     - personality: 2
       paceScale: 0.86
       lateralStrengthMetres: 5
-      boostTendency: 0.5
+      boostTendency: 1
       quizAvoidChance: 0.65
       catchupAcceleration: 0.1
+      brakingConfidence: 0.95
+      overtakeAggression: 0.3
+      blockStrength: 1
+      contactToleranceMetres: 5
     - personality: 0
       paceScale: 0.9
       lateralStrengthMetres: 0
-      boostTendency: 0.5
+      boostTendency: 1
       quizAvoidChance: 0.8
       catchupAcceleration: 0.1
+      brakingConfidence: 1
+      overtakeAggression: 0.6
+      blockStrength: 0.15
+      contactToleranceMetres: 8
   trackValidation:
     minimumBoostStraights: 2
     minimumParallelSections: 1
@@ -154,13 +191,39 @@ MonoBehaviour:
     gateCloseDelaySeconds: 0.2
     gateCloseDurationSeconds: 0.75
     gateExecutionDelaySeconds: 0.25
-    executionBreakableVehiclePrefab: {fileID: 3921044463232729353, guid: 2ba8e6ad6e744aa428cde71cc8a19a86, type: 3}
+    executionBreakableVehiclePrefab: {fileID: 3921044463232729353, guid: 2ba8e6ad6e744aa428cde71cc8a19a86,
+      type: 3}
     explosionVfxDurationSeconds: 0.45
     wreckLingerSeconds: 2.5
-    curseAppliedEffectPrefab: {fileID: 9157105887711914197, guid: c4f829cb7dd4b864caf8832ec5b1ee55, type: 3}
+    curseAppliedEffectPrefab: {fileID: 9157105887711914197, guid: c4f829cb7dd4b864caf8832ec5b1ee55,
+      type: 3}
     curseAppliedEffectScale: 1.5
     masterSfxVolume: 1
     warningAudioFadeSeconds: 0.25
   playtest:
     ruleUnderstandingTargetSeconds: 15
     minimumExternalTesterCount: 3
+  specialEvents:
+    enabled: 1
+    initialDelaySeconds: 15
+    minimumIntervalSeconds: 25
+    maximumIntervalSeconds: 40
+    warningLeadSeconds: 2
+    maximumSimultaneousEvents: 1
+    maximumEventsPerRace: 4
+    blockDuringExecutionWarning: 1
+    blockDuringQuiz: 1
+    blockDuringOvertakeChallenge: 1
+    blockDuringFinalDuel: 1
+    preventImmediateRepeat: 1
+    dumpTruckSpeed: 22
+    dumpTruckDamage: 20
+    dumpTruckKnockback: 6
+    dumpTruckLifetimeSeconds: 12
+    earthquakeDurationSeconds: 3
+    earthquakeLateralVelocityChange: 2
+    meteorWarningSeconds: 2
+    meteorImpactRadius: 5
+    meteorDamage: 25
+    meteorKnockback: 5
+    meteorDebrisLifetimeSeconds: 3

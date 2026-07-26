@@ -179698,6 +179698,22 @@ MonoBehaviour:
   gameEvents: {fileID: 0}
   vehiclePrefab: {fileID: 7039974021762241078, guid: 792b48efe97f4da4aaafbee80e86c553,
     type: 3}
+  aiCars:
+  - personality: 3
+    prefab: {fileID: 7039974021762241078, guid: 694e6e0465de7f94dbe89ccd76d64761,
+      type: 3}
+  - personality: 1
+    prefab: {fileID: 7039974021762241078, guid: c3793c2883137be4d98b5c3ecf6b8a10,
+      type: 3}
+  - personality: 2
+    prefab: {fileID: 7039974021762241078, guid: 4ee5094605a99e549919413065860c8c,
+      type: 3}
+  - personality: 0
+    prefab: {fileID: 7039974021762241078, guid: 64f6278b63b124b458e1dab079367abc,
+      type: 3}
+  - personality: 3
+    prefab: {fileID: 7039974021762241078, guid: 792b48efe97f4da4aaafbee80e86c553,
+      type: 3}
   checkpointTrackerPrefab: {fileID: 0}
   spawnPoints: []
   playerSpawnIndex: 0
