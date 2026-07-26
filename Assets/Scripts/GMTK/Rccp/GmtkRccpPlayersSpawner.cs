@@ -3,6 +3,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.Events;
 using SpinMotion;
+using Gmtk2026.GameBalance;
 
 namespace GMTK.Rccp
 {
@@ -22,6 +23,7 @@ namespace GMTK.Rccp
 
         private readonly List<SpawnedVehicle> spawnedVehicles = new();
         private readonly List<CheckpointTracker> checkpointTrackers = new();
+        private static GmtkRccpPlayersSpawner authority;
         private bool subscribed;
 
         private readonly struct SpawnedVehicle
@@ -44,34 +46,65 @@ namespace GMTK.Rccp
             PlayersSpawner[] legacySpawners =
                 Object.FindObjectsByType<PlayersSpawner>(FindObjectsSortMode.None);
 
+            PlayersSpawner source = null;
             foreach (PlayersSpawner legacy in legacySpawners)
             {
-                GmtkRccpPlayersSpawner replacement =
-                    legacy.GetComponent<GmtkRccpPlayersSpawner>();
+                if (source == null || legacy.spawnPoints.Count > source.spawnPoints.Count)
+                    source = legacy;
+            }
 
-                if (replacement == null)
-                    replacement = legacy.gameObject.AddComponent<GmtkRccpPlayersSpawner>();
+            GmtkRccpPlayersSpawner[] replacements =
+                Object.FindObjectsByType<GmtkRccpPlayersSpawner>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+            GmtkRccpPlayersSpawner replacement =
+                source != null ? source.GetComponent<GmtkRccpPlayersSpawner>() : null;
 
-                replacement.CopyFromLegacy(legacy);
-                replacement.Subscribe();
+            if (replacement == null && source != null)
+                replacement = source.gameObject.AddComponent<GmtkRccpPlayersSpawner>();
+
+            foreach (PlayersSpawner legacy in legacySpawners)
+            {
                 UnsubscribeLegacy(legacy);
                 legacy.enabled = false;
                 Object.Destroy(legacy);
             }
+
+            foreach (GmtkRccpPlayersSpawner candidate in replacements)
+            {
+                if (candidate == replacement)
+                    continue;
+
+                candidate.enabled = false;
+                Object.Destroy(candidate);
+            }
+
+            if (replacement == null)
+                return;
+
+            replacement.CopyFromLegacy(source);
+            authority = replacement;
+            replacement.Subscribe();
         }
 
         private void Start()
         {
+            if (authority == null && spawnPoints.Count > 0)
+                authority = this;
             Subscribe();
         }
 
         private void OnDestroy()
         {
-            if (!subscribed || gameEvents == null)
-                return;
+            if (subscribed && gameEvents != null)
+            {
+                gameEvents.SpawnPlayersEvent.RemoveListener(OnSpawnPlayers);
+                gameEvents.RestartRaceEvent.RemoveListener(OnRestartRace);
+                gameEvents.OnClickPlayRaceEvent.RemoveListener(OnSpawnPlayers);
+            }
 
-            gameEvents.SpawnPlayersEvent.RemoveListener(OnSpawnPlayers);
-            gameEvents.RestartRaceEvent.RemoveListener(OnRestartRace);
+            if (authority == this)
+                authority = null;
         }
 
         public void CopyFromLegacy(PlayersSpawner legacy)
@@ -140,6 +173,12 @@ namespace GMTK.Rccp
 
         private void OnSpawnPlayers()
         {
+            // ScriptableObject event assets can retain runtime listeners between editor play
+            // sessions. Only the canonical scene spawner may ever own a grid, so stale callbacks
+            // cannot create duplicate cars that the ranking list does not know about.
+            if (authority != this)
+                return;
+
             if (spawnPoints.Count == 0)
             {
                 Debug.LogError("RCCP migration: no race spawn points assigned, nothing spawned.", this);
@@ -160,8 +199,9 @@ namespace GMTK.Rccp
 
             spawnedVehicles.Clear();
             checkpointTrackers.Clear();
+            RemoveOrphanedRccpGrid();
 
-            int aiCount = Mathf.Min(RaceData.AiBotsSelected, spawnPoints.Count - 1);
+            int aiCount = Mathf.Min(GameBalance.Current.race.aiCount, spawnPoints.Count - 1);
             int playerIndex = ResolvePlayerSpawnIndex(aiCount);
             GmtkRccpWaypointPath waypointPath = GmtkRccpWaypointPath.GetOrCreate();
 
@@ -184,10 +224,11 @@ namespace GMTK.Rccp
                         0,
                         spawnPoints.Count - 1);
                 Transform spawnPoint = spawnPoints[spawnIndex];
+                Vector3 spawnPosition = spawnPoint.position;
 
                 GameObject vehicle = Instantiate(
                     source.gameObject,
-                    spawnPoint.position,
+                    spawnPosition,
                     spawnPoint.rotation);
                 vehicle.name = isPlayer
                     ? "GMTK_RCCP_Player"
@@ -207,7 +248,7 @@ namespace GMTK.Rccp
                     playerAdapter = adapter;
 
                 spawnedVehicles.Add(
-                    new SpawnedVehicle(vehicle, spawnPoint.position, spawnPoint.rotation));
+                    new SpawnedVehicle(vehicle, spawnPosition, spawnPoint.rotation));
 
                 if (tracker != null)
                     checkpointTrackers.Add(tracker);
@@ -225,6 +266,23 @@ namespace GMTK.Rccp
             Debug.Log($"RCCP grid: vehicle={source.name}, spawned={spawnedVehicles.Count} " +
                       $"(player + {aiCount} AI), trackers={checkpointTrackers.Count}, " +
                       $"playerSpawn={spawnPoints[playerIndex].name} at {spawnPoints[playerIndex].position:F1}");
+        }
+
+        private static void RemoveOrphanedRccpGrid()
+        {
+            GmtkRccpVehicle[] existing =
+                Object.FindObjectsByType<GmtkRccpVehicle>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+
+            foreach (GmtkRccpVehicle vehicle in existing)
+            {
+                if (!vehicle.gameObject.name.StartsWith("GMTK_RCCP_"))
+                    continue;
+
+                vehicle.gameObject.SetActive(false);
+                Object.Destroy(vehicle.gameObject);
+            }
         }
 
         private RCCP_CarController ResolveVehiclePrefab()

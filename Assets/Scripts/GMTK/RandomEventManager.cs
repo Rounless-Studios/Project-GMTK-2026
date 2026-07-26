@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using SpinMotion;
+using Gmtk2026.GameBalance;
+using Gmtk2026.Quiz;
 
 namespace GMTK
 {
@@ -67,6 +69,11 @@ namespace GMTK
         private float nextEventTime;
         private bool armed;
         private readonly List<GameObject> spawned = new();
+        private int eventsTriggered;
+        private int lastEvent = -1;
+        private int activeEvents;
+
+        private SpecialEventSettings Settings => GameBalance.Current.specialEvents;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttach()
@@ -82,14 +89,28 @@ namespace GMTK
             if (events == null) return;
             events.RaceStartedEvent.AddListener(OnRaceStarted);
             events.RestartRaceEvent.AddListener(ClearAll);
-            events.RaceFinishedEvent.AddListener(_ => armed = false);
+            events.RaceFinishedEvent.AddListener(OnRaceFinished);
         }
+
+        private void OnDestroy()
+        {
+            GameEvents events = Race.Events;
+            if (events == null) return;
+            events.RaceStartedEvent.RemoveListener(OnRaceStarted);
+            events.RestartRaceEvent.RemoveListener(ClearAll);
+            events.RaceFinishedEvent.RemoveListener(OnRaceFinished);
+        }
+
+        private void OnRaceFinished(RaceFinishType _) => armed = false;
 
         private void OnRaceStarted()
         {
             ClearAll();
-            armed = enableEvents;
-            nextEventTime = Time.time + firstEventDelay;
+            eventsTriggered = 0;
+            lastEvent = -1;
+            activeEvents = 0;
+            armed = enableEvents && Settings.enabled;
+            nextEventTime = Time.time + Settings.initialDelaySeconds;
         }
 
         private void ClearAll()
@@ -97,29 +118,169 @@ namespace GMTK
             armed = false;
             foreach (var go in spawned) if (go != null) Destroy(go);
             spawned.Clear();
+            activeEvents = 0;
         }
 
         private void Update()
         {
             if (!armed || !Race.IsRaceInProgress) return;
             if (Time.time < nextEventTime) return;
+            if (eventsTriggered >= Settings.maximumEventsPerRace)
+            {
+                armed = false;
+                return;
+            }
+            if (IsProtectedPhase())
+            {
+                nextEventTime = Time.time + 0.5f;
+                return;
+            }
+            if (activeEvents >= Settings.maximumSimultaneousEvents) return;
 
-            nextEventTime = Time.time + Random.Range(intervalRange.x, intervalRange.y);
+            nextEventTime = Time.time + Random.Range(
+                Settings.minimumIntervalSeconds,
+                Settings.maximumIntervalSeconds);
             TriggerRandomEvent();
         }
 
         /// <summary>Fire one random hazard immediately (also callable from tools/tests).</summary>
         public void TriggerRandomEvent()
         {
-            switch (Random.Range(0, 6))
+            int next;
+            do next = Random.Range(0, 3);
+            while (Settings.preventImmediateRepeat && next == lastEvent);
+            lastEvent = next;
+            eventsTriggered++;
+            activeEvents++;
+            StartCoroutine(ReleaseEventSlotAfter(
+                Mathf.Max(Settings.dumpTruckLifetimeSeconds,
+                    Settings.earthquakeDurationSeconds,
+                    Settings.meteorDebrisLifetimeSeconds + Settings.meteorWarningSeconds)));
+
+            switch (next)
             {
-                case 0: ConstructionZone(); break;
-                case 1: LivestockCrossing(); break;
-                case 2: GiantBeachBall(); break;
-                case 3: MeteorCrates(); break;
-                case 4: Earthquake(); break;
-                default: BoostPad(); break;
+                case 0: DumpTruck(); break;
+                case 1: StartCoroutine(EarthquakeOverTime()); break;
+                default: StartCoroutine(WarnThenMeteor()); break;
             }
+        }
+
+        private bool IsProtectedPhase()
+        {
+            if (Settings.blockDuringFinalDuel &&
+                GMTKRaceState.Instance != null &&
+                GMTKRaceState.Instance.CurrentPhase == RacePhase.FinalDuel)
+                return true;
+
+            EliminationManager elimination = FindFirstObjectByType<EliminationManager>();
+            if (Settings.blockDuringExecutionWarning &&
+                elimination != null &&
+                elimination.Level != EliminationWarningLevel.None)
+                return true;
+
+            if (Settings.blockDuringOvertakeChallenge &&
+                OvertakeManager.Instance?.Challenge?.Status == OvertakeStatus.Active)
+                return true;
+
+            if (Settings.blockDuringQuiz)
+            {
+                QuizSessionController quiz =
+                    FindFirstObjectByType<QuizSessionController>(FindObjectsInactive.Include);
+                if (quiz != null && quiz.State != QuizSessionState.Waiting) return true;
+            }
+
+            return false;
+        }
+
+        private System.Collections.IEnumerator ReleaseEventSlotAfter(float seconds)
+        {
+            yield return new WaitForSeconds(Mathf.Max(0.1f, seconds));
+            activeEvents = Mathf.Max(0, activeEvents - 1);
+        }
+
+        private void DumpTruck()
+        {
+            if (!TryRandomWaypoint(out Transform waypoint)) return;
+            Vector3 right = waypoint.right;
+            GameObject truck = MakeBox(
+                waypoint.position - right * 12f + Vector3.up * 1.5f,
+                new Vector3(3.5f, 3f, 7f),
+                new Color(0.75f, 0.16f, 0.05f),
+                isStatic: false);
+            truck.name = "GMTK_DumpTruck";
+            truck.transform.rotation = Quaternion.LookRotation(right, Vector3.up);
+            Rigidbody body = truck.GetComponent<Rigidbody>();
+            body.mass = 1200f;
+            truck.AddComponent<ConstantMover>().velocity =
+                right * Settings.dumpTruckSpeed;
+            HazardImpact impact = truck.AddComponent<HazardImpact>();
+            impact.damage = Settings.dumpTruckDamage;
+            impact.knockback = Settings.dumpTruckKnockback;
+            Register(truck, Settings.dumpTruckLifetimeSeconds);
+        }
+
+        private System.Collections.IEnumerator EarthquakeOverTime()
+        {
+            float end = Time.time + Settings.earthquakeDurationSeconds;
+            int direction = Random.value < 0.5f ? -1 : 1;
+            while (Time.time < end)
+            {
+                foreach (int index in Race.AllCarIndices())
+                {
+                    GameObject car = Race.CarByIndex(index);
+                    Rigidbody body = car != null ? car.GetComponent<Rigidbody>() : null;
+                    if (body != null)
+                        body.AddForce(
+                            car.transform.right * direction *
+                            Settings.earthquakeLateralVelocityChange * Time.deltaTime,
+                            ForceMode.VelocityChange);
+                }
+                direction *= -1;
+                yield return null;
+            }
+        }
+
+        private System.Collections.IEnumerator WarnThenMeteor()
+        {
+            if (!TryRandomWaypoint(out Transform waypoint)) yield break;
+
+            GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            marker.name = "GMTK_MeteorWarning";
+            marker.transform.position = waypoint.position + Vector3.up * 0.05f;
+            marker.transform.localScale =
+                new Vector3(Settings.meteorImpactRadius, 0.03f, Settings.meteorImpactRadius);
+            Paint(marker, new Color(1f, 0.08f, 0.02f));
+            Collider markerCollider = marker.GetComponent<Collider>();
+            if (markerCollider != null) Destroy(markerCollider);
+            Register(marker, Settings.meteorWarningSeconds);
+
+            yield return new WaitForSeconds(Settings.meteorWarningSeconds);
+
+            Collider[] hits = Physics.OverlapSphere(
+                waypoint.position,
+                Settings.meteorImpactRadius);
+            var affected = new HashSet<Rigidbody>();
+            foreach (Collider hit in hits)
+            {
+                Rigidbody body = hit.attachedRigidbody;
+                if (body == null || !affected.Add(body)) continue;
+                DurabilityController durability =
+                    body.GetComponentInParent<DurabilityController>();
+                durability?.ApplyDamage(Settings.meteorDamage);
+                Vector3 away = body.worldCenterOfMass - waypoint.position;
+                away.y = Mathf.Max(0.25f, away.y);
+                body.AddForce(
+                    away.normalized * Settings.meteorKnockback,
+                    ForceMode.VelocityChange);
+            }
+
+            GameObject debris = MakeBox(
+                waypoint.position + Vector3.up,
+                Vector3.one * 2f,
+                new Color(0.35f, 0.12f, 0.04f),
+                isStatic: false);
+            debris.name = "GMTK_MeteorDebris";
+            Register(debris, Settings.meteorDebrisLifetimeSeconds);
         }
 
         // ---- events ---------------------------------------------------------
@@ -298,6 +459,24 @@ namespace GMTK
             var adapter = other.GetComponentInParent<GmtkVehicleAdapter>();
             if (adapter != null)
                 adapter.ApplyForwardImpulse(boostForce);
+        }
+    }
+
+    /// <summary>Applies authored hazard damage once per impacted vehicle.</summary>
+    public sealed class HazardImpact : MonoBehaviour
+    {
+        public float damage;
+        public float knockback;
+        private readonly HashSet<Rigidbody> hitBodies = new();
+
+        private void OnCollisionEnter(Collision collision)
+        {
+            Rigidbody body = collision.rigidbody;
+            if (body == null || !hitBodies.Add(body)) return;
+            collision.gameObject.GetComponentInParent<DurabilityController>()?.ApplyDamage(damage);
+            Vector3 away = collision.transform.position - transform.position;
+            away.y = 0.2f;
+            body.AddForce(away.normalized * knockback, ForceMode.VelocityChange);
         }
     }
 }

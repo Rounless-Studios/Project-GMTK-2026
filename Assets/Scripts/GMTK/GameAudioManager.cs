@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
+using Gmtk2026.GameBalance;
 
 namespace GMTK
 {
@@ -436,12 +437,26 @@ namespace GMTK
         {
             RaceFlow.PhaseChanged += OnPhaseChanged;
             EliminationManager.FinalDuelStarted += OnFinalDuelStarted;
+            EliminationManager.WarningChanged += OnEliminationWarning;
+            BoostController.Changed += OnBoostChanged;
+            CurseController.CurseCast += OnCurseCast;
+            OvertakeManager.ChallengeStarted += OnOvertakeStarted;
+            OvertakeManager.ChallengeSucceeded += OnOvertakeSucceeded;
+            OvertakeManager.ChallengeFailed += OnOvertakeFailed;
+            FinalGate.GateSlamming += OnGateSlamming;
         }
 
         private void OnDisable()
         {
             RaceFlow.PhaseChanged -= OnPhaseChanged;
             EliminationManager.FinalDuelStarted -= OnFinalDuelStarted;
+            EliminationManager.WarningChanged -= OnEliminationWarning;
+            BoostController.Changed -= OnBoostChanged;
+            CurseController.CurseCast -= OnCurseCast;
+            OvertakeManager.ChallengeStarted -= OnOvertakeStarted;
+            OvertakeManager.ChallengeSucceeded -= OnOvertakeSucceeded;
+            OvertakeManager.ChallengeFailed -= OnOvertakeFailed;
+            FinalGate.GateSlamming -= OnGateSlamming;
         }
 
         private void Start()
@@ -485,9 +500,10 @@ namespace GMTK
         {
             if (musicSource != null)
                 musicSource.volume = musicVolume * currentMusicVolumeScale;
-            if (sfxSource != null) sfxSource.volume = sfxVolume;
+            float master = GameBalance.Current.presentation.masterSfxVolume;
+            if (sfxSource != null) sfxSource.volume = sfxVolume * master;
             if (loopSource != null)
-                loopSource.volume = sfxVolume * currentLoopVolumeScale;
+                loopSource.volume = sfxVolume * master * currentLoopVolumeScale;
         }
 
         private void OnPhaseChanged(RaceFlow.Phase phase)
@@ -508,6 +524,38 @@ namespace GMTK
         {
             PlayCue(finalDuelMusicId, 1f, true);
         }
+
+        private void OnEliminationWarning(int target, EliminationWarningLevel level)
+        {
+            string cue = level switch
+            {
+                EliminationWarningLevel.Warning => "SFX_ELIM_WARN_START",
+                EliminationWarningLevel.Intense => "SFX_ELIM_WARN_ESCALATE",
+                EliminationWarningLevel.Execution => "SFX_ELIM_WARN_PEAK",
+                _ => null,
+            };
+            if (!string.IsNullOrEmpty(cue)) PlayCue(cue);
+            if (target == 0 && level == EliminationWarningLevel.Warning)
+                PlayCue("SFX_ELIM_WARN_PLAYER_LAST");
+        }
+
+        private void OnBoostChanged(BoostController boost)
+        {
+            if (boost == null || !boost.IsPlayer) return;
+            if (boost.IsSealed) PlayCue("SFX_VEH_BOOST_SEALED");
+            else if (boost.IsBoosting) PlayCue("SFX_VEH_BOOST_START");
+            else if (boost.Charges > 0) PlayCue("SFX_VEH_BOOST_READY");
+        }
+
+        private void OnCurseCast(CurseController caster, CurseType type, int target)
+        {
+            PlayCue(target == 0 ? "SFX_CURSE_INCOMING" : "SFX_CURSE_CAST");
+        }
+
+        private void OnOvertakeStarted(int _) => PlayCue("SFX_OVERTAKE_START");
+        private void OnOvertakeSucceeded(int _) => PlayCue("SFX_OVERTAKE_SUCCESS");
+        private void OnOvertakeFailed(int _) => PlayCue("SFX_OVERTAKE_FAIL");
+        private void OnGateSlamming(int _) => PlayCue("SFX_GATE_CLOSE");
 
         private void PlayContinuous(
             AudioSource source,

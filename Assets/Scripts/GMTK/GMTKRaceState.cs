@@ -51,6 +51,15 @@ namespace GMTK
         {
             RaceFlow.PhaseChanged -= OnRacePhaseChanged;
             EliminationManager.FinalDuelStarted -= OnFinalDuel;
+            GameEvents e = Race.Events;
+            if (e != null)
+            {
+                e.OnClickPlayRaceEvent.RemoveListener(OnPlayRace);
+                e.PlayPreRaceCountdownEvent.RemoveListener(OnCountdown);
+                e.RaceStartedEvent.RemoveListener(OnRaceStarted);
+                e.RaceFinishedEvent.RemoveListener(OnRaceFinished);
+                e.RestartRaceEvent.RemoveListener(OnRestart);
+            }
             if (Instance == this) Instance = null;
         }
 
@@ -101,6 +110,85 @@ namespace GMTK
             if (CurrentPhase == phase) return;
             CurrentPhase = phase;
             PhaseChanged?.Invoke(phase);
+        }
+    }
+
+    /// <summary>
+    /// Publishes exactly one terminal result per race and disables the starter kit's independent
+    /// lap-completion finish rule. Elimination and the final gate are the only GMTK result sources.
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class RaceResultAuthority : MonoBehaviour
+    {
+        public static RaceResultAuthority Instance { get; private set; }
+        public bool HasResult { get; private set; }
+        public RaceFinishType Result { get; private set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void AutoAttach()
+        {
+            RaceFinish[] legacyFinishers =
+                Object.FindObjectsByType<RaceFinish>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None);
+
+            foreach (RaceFinish legacy in legacyFinishers)
+            {
+                legacy.enabled = false;
+                Object.Destroy(legacy);
+            }
+
+            GameObject host = GMTKGameMode.GetOrCreate();
+            if (host.GetComponent<RaceResultAuthority>() == null)
+                host.AddComponent<RaceResultAuthority>();
+        }
+
+        private void Awake()
+        {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(this);
+                return;
+            }
+
+            Instance = this;
+        }
+
+        private void Start()
+        {
+            GameEvents events = Race.Events;
+            if (events == null) return;
+            events.RaceStartedEvent.AddListener(ResetForRace);
+            events.RestartRaceEvent.AddListener(ResetForRace);
+        }
+
+        private void OnDestroy()
+        {
+            GameEvents events = Race.Events;
+            if (events != null)
+            {
+                events.RaceStartedEvent.RemoveListener(ResetForRace);
+                events.RestartRaceEvent.RemoveListener(ResetForRace);
+            }
+
+            if (Instance == this) Instance = null;
+        }
+
+        public bool TryFinish(RaceFinishType result)
+        {
+            if (HasResult) return false;
+
+            HasResult = true;
+            Result = result;
+            GameEvents events = Race.Events;
+            if (events != null) events.RaceFinishedEvent.Invoke(result);
+            return true;
+        }
+
+        private void ResetForRace()
+        {
+            HasResult = false;
+            Result = default;
         }
     }
 }

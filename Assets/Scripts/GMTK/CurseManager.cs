@@ -351,7 +351,14 @@ namespace GMTK
             }
 
             if (quiz != null)
+            {
+                QuizSettings settings = GameBalance.Current.quiz;
+                quiz.ConfigureQuestionRules(
+                    settings.answerTimeSeconds,
+                    settings.minimumAnswerCount,
+                    settings.maximumAnswerCount);
                 quiz.AnswerEvaluated += OnHumanQuizEvaluated;
+            }
         }
 
         private void EnsureCooldownSlider()

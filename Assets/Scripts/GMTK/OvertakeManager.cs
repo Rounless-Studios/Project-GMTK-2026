@@ -43,7 +43,17 @@ namespace GMTK
         }
 
         private void Awake() => Instance = this;
-        private void OnDestroy() { if (Instance == this) Instance = null; }
+        private void OnDestroy()
+        {
+            SpinMotion.GameEvents e = Race.Events;
+            if (e != null)
+            {
+                e.RaceStartedEvent.RemoveListener(OnRaceStarted);
+                e.RestartRaceEvent.RemoveListener(OnRaceStarted);
+                e.RaceFinishedEvent.RemoveListener(OnRaceFinished);
+            }
+            if (Instance == this) Instance = null;
+        }
 
         private void Start()
         {
@@ -51,8 +61,10 @@ namespace GMTK
             if (e == null) return;
             e.RaceStartedEvent.AddListener(OnRaceStarted);
             e.RestartRaceEvent.AddListener(OnRaceStarted);
-            e.RaceFinishedEvent.AddListener(_ => armed = false);
+            e.RaceFinishedEvent.AddListener(OnRaceFinished);
         }
+
+        private void OnRaceFinished(SpinMotion.RaceFinishType _) => armed = false;
 
         private void OnRaceStarted()
         {

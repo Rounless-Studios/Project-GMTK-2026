@@ -28,6 +28,9 @@ namespace Gmtk2026.Quiz
         private float feedbackEndsAt;
         private float previousTimeScale = 1f;
         private bool initialized;
+        private float? configuredTimeLimitSeconds;
+        private int configuredMinimumAnswers = 2;
+        private int configuredMaximumAnswers = 4;
         private readonly HashSet<QuizKind> presentedKinds = new HashSet<QuizKind>();
         private QuizKind? previousPresentedKind;
 
@@ -65,7 +68,10 @@ namespace Gmtk2026.Quiz
 
             selector = new QuizQuestionSelector(
                 authored,
-                new ProceduralQuizQuestionSource(),
+                new ProceduralQuizQuestionSource(
+                    configuredTimeLimitSeconds,
+                    configuredMinimumAnswers,
+                    configuredMaximumAnswers),
                 randomSeed);
 
             presentedKinds.Clear();
@@ -155,6 +161,15 @@ namespace Gmtk2026.Quiz
         public void ConfigureFeedbackDuration(float feedbackDuration)
         {
             feedbackDurationSeconds = Mathf.Max(0.1f, feedbackDuration);
+        }
+
+        /// <summary>Applies the active race preset to subsequently generated questions.</summary>
+        public void ConfigureQuestionRules(float timeLimitSeconds, int minimumAnswers, int maximumAnswers)
+        {
+            configuredTimeLimitSeconds = Mathf.Max(0.1f, timeLimitSeconds);
+            configuredMinimumAnswers = Mathf.Max(2, minimumAnswers);
+            configuredMaximumAnswers = Mathf.Max(configuredMinimumAnswers, maximumAnswers);
+            Initialize();
         }
 
         private void BeginNextQuestion()

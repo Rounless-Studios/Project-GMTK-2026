@@ -1,6 +1,8 @@
+using System.Collections;
 using UnityEngine;
 using SpinMotion;
 using Gmtk2026.GameBalance;
+using GMTK.Rccp;
 
 namespace GMTK
 {
@@ -158,6 +160,15 @@ namespace GMTK
                     var dur = target.GetComponent<DurabilityController>();
                     if (dur == null) return false;
                     dur.ApplyDamage(C.ruptureDurabilityDamage);
+                    GmtkVehicleAdapter targetAdapter = target.GetComponent<GmtkVehicleAdapter>();
+                    if (targetAdapter != null)
+                    {
+                        Vector3 away = target.transform.position - transform.position;
+                        away.y = 0f;
+                        if (away.sqrMagnitude < 0.01f) away = target.transform.right;
+                        targetAdapter.ApplyWorldImpulse(
+                            away.normalized * C.ruptureKnockbackForce);
+                    }
                     return true;
 
                 case CurseType.EngineSeal:
@@ -218,6 +229,35 @@ namespace GMTK
             Vector3 targetVelocity = targetBody != null ? targetBody.linearVelocity : Vector3.zero;
             Vector3 targetAngularVelocity = targetBody != null ? targetBody.angularVelocity : Vector3.zero;
 
+            // Resolve both destinations onto the authored driving path. This preserves the swap's
+            // race-progress meaning while preventing a raw pose from landing inside a barrier,
+            // off-track, or facing backward after the quiz delay.
+            GmtkRccpWaypointPath path = GmtkRccpWaypointPath.GetOrCreate();
+            if (path != null)
+            {
+                float height = GameBalance.Current.vehicleRecovery.respawnHeightAboveWaypoint;
+                if (path.TryGetRespawnPose(
+                        targetPos,
+                        height,
+                        out _,
+                        out Vector3 safeTargetPos,
+                        out Quaternion safeTargetRot))
+                {
+                    targetPos = safeTargetPos;
+                    targetRot = safeTargetRot;
+                }
+                if (path.TryGetRespawnPose(
+                        selfPos,
+                        height,
+                        out _,
+                        out Vector3 safeSelfPos,
+                        out Quaternion safeSelfRot))
+                {
+                    selfPos = safeSelfPos;
+                    selfRot = safeSelfRot;
+                }
+            }
+
             TeleportVehicle(
                 selfCar,
                 selfBody,
@@ -232,8 +272,32 @@ namespace GMTK
                 selfRot,
                 selfVelocity,
                 selfAngularVelocity);
+            StartCoroutine(IgnoreMutualCollision(
+                selfCar,
+                targetCar,
+                C.soulSwapCollisionIgnoreSeconds));
             Physics.SyncTransforms();
             return true;
+        }
+
+        private static IEnumerator IgnoreMutualCollision(
+            GameObject first,
+            GameObject second,
+            float duration)
+        {
+            if (duration <= 0f) yield break;
+
+            Collider[] firstColliders = first.GetComponentsInChildren<Collider>(true);
+            Collider[] secondColliders = second.GetComponentsInChildren<Collider>(true);
+            foreach (Collider a in firstColliders)
+                foreach (Collider b in secondColliders)
+                    if (a != null && b != null) Physics.IgnoreCollision(a, b, true);
+
+            yield return new WaitForSeconds(duration);
+
+            foreach (Collider a in firstColliders)
+                foreach (Collider b in secondColliders)
+                    if (a != null && b != null) Physics.IgnoreCollision(a, b, false);
         }
 
         private static Rigidbody FindVehicleBody(GameObject car)

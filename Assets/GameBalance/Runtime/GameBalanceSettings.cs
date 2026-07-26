@@ -22,7 +22,6 @@ namespace Gmtk2026.GameBalance
         [Min(1)] public int finalDuelRacerCount = 2;
         [Min(0)] public float targetRaceDurationMinSeconds = 180f;
         [Min(0)] public float targetRaceDurationMaxSeconds = 300f;
-
         // Player count is a structural invariant of single-player, not a tunable.
         public int TotalRacerCount => 1 + aiCount;
     }
@@ -122,6 +121,17 @@ namespace Gmtk2026.GameBalance
     }
 
     [System.Serializable]
+    public class VehicleSettings
+    {
+        [Min(0)] public float boostAcceleration = 18f;
+        [Min(0)] public float lateralGripRecovery = 2.2f;
+        [Min(0)] public float yawDamping = 1.8f;
+        [Min(0)] public float maximumYawRadiansPerSecond = 2.8f;
+        [Min(0)] public float bindingDeceleration = 14f;
+        [Min(0)] public float stabilizationMinimumSpeedKph = 25f;
+    }
+
+    [System.Serializable]
     public class OvertakeSettings
     {
         [Min(0)] public float checkIntervalSeconds = 20f;
@@ -140,7 +150,7 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float sideBySideActivationSeconds = 0.6f;
         // Execution CCTV inset; the player's camera remains in its original main viewport.
         [FormerlySerializedAs("executionPlayerViewportRect")]
-        public Rect executionCctvViewportRect = new Rect(0.66f, 0f, 0.34f, 0.34f);
+        public Rect executionCctvViewportRect = new Rect(0.67f, 0.35f, 0.32f, 0.30f);
         [Min(0)] public float executionTransitionSeconds = 0.2f;
         [Min(0)] public float executionReturnSeconds = 0.25f;
     }
@@ -305,6 +315,14 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float stuckSpeedKph = 1.5f;
         [Min(0)] public float stuckDelaySeconds = 2.5f;
         [Min(0)] public float reverseDurationSeconds = 1.25f;
+
+        [Header("Tactics")]
+        [Min(0.1f)] public float boostDecisionIntervalSeconds = 1f;
+        [Min(0)] public float boostStraightMaximumDegrees = 8f;
+        [Min(1)] public float catchupGapMetres = 35f;
+        [Min(0)] public float eliminationUrgencyScale = 1.12f;
+        [Min(1)] public float obstacleProbeMetres = 12f;
+        [Range(0f, 1f)] public float obstacleAvoidanceStrength = 0.65f;
     }
 
     [System.Serializable]
@@ -359,6 +377,40 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public int minimumExternalTesterCount = 3;
     }
 
+    [System.Serializable]
+    public class SpecialEventSettings
+    {
+        public bool enabled = true;
+        [Min(0)] public float initialDelaySeconds = 15f;
+        [Min(0)] public float minimumIntervalSeconds = 25f;
+        [Min(0)] public float maximumIntervalSeconds = 40f;
+        [Min(0)] public float warningLeadSeconds = 2f;
+        [Min(1)] public int maximumSimultaneousEvents = 1;
+        [Min(1)] public int maximumEventsPerRace = 4;
+        public bool blockDuringExecutionWarning = true;
+        public bool blockDuringQuiz = true;
+        public bool blockDuringOvertakeChallenge = true;
+        public bool blockDuringFinalDuel = true;
+        public bool preventImmediateRepeat = true;
+
+        [Header("Dump Truck")]
+        [Min(1)] public float dumpTruckSpeed = 22f;
+        [Min(0)] public float dumpTruckDamage = 20f;
+        [Min(0)] public float dumpTruckKnockback = 6f;
+        [Min(0.1f)] public float dumpTruckLifetimeSeconds = 12f;
+
+        [Header("Earthquake")]
+        [Min(0.1f)] public float earthquakeDurationSeconds = 3f;
+        [Min(0)] public float earthquakeLateralVelocityChange = 2f;
+
+        [Header("Meteor")]
+        [Min(0)] public float meteorWarningSeconds = 2f;
+        [Min(0.1f)] public float meteorImpactRadius = 5f;
+        [Min(0)] public float meteorDamage = 25f;
+        [Min(0)] public float meteorKnockback = 5f;
+        [Min(0.1f)] public float meteorDebrisLifetimeSeconds = 3f;
+    }
+
     /// <summary>
     /// Single root of every runtime/balance/presentation number in the game. Documented
     /// GDD numbers live here as preset defaults, never as code literals. Concrete presets
@@ -376,12 +428,14 @@ namespace Gmtk2026.GameBalance
         public BoostSettings boost = new();
         public DamageSettings damage = new();
         public VehicleRecoverySettings vehicleRecovery = new();
+        public VehicleSettings vehicle = new();
         public OvertakeSettings overtake = new();
         public CameraSettings camera = new();
         public AISettings ai = new();
         public TrackValidationSettings trackValidation = new();
         public PresentationSettings presentation = new();
         public PlaytestSettings playtest = new();
+        public SpecialEventSettings specialEvents = new();
 
         /// <summary>Returns a list of specific validation errors; empty when valid.</summary>
         public List<string> Validate()
@@ -395,6 +449,12 @@ namespace Gmtk2026.GameBalance
                 errors.Add($"race.finalDuelRacerCount ({race.finalDuelRacerCount}) must be < total racers ({race.TotalRacerCount})");
             if (race.targetRaceDurationMinSeconds > race.targetRaceDurationMaxSeconds)
                 errors.Add("race.targetRaceDurationMinSeconds must be <= targetRaceDurationMaxSeconds");
+            if (specialEvents.minimumIntervalSeconds > specialEvents.maximumIntervalSeconds)
+                errors.Add("specialEvents.minimumIntervalSeconds must be <= maximumIntervalSeconds");
+            if (specialEvents.maximumSimultaneousEvents < 1)
+                errors.Add("specialEvents.maximumSimultaneousEvents must be >= 1");
+            if (specialEvents.maximumEventsPerRace < 1)
+                errors.Add("specialEvents.maximumEventsPerRace must be >= 1");
 
             // all elimination warnings must fit inside the interval
             if (elimination.warningSeconds >= elimination.intervalSeconds)

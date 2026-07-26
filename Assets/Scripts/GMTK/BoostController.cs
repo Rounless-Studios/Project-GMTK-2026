@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using SpinMotion;
 using Gmtk2026.GameBalance;
 
@@ -62,9 +63,11 @@ namespace GMTK
             if (State == null) return;
             State.Tick(Time.deltaTime);
 
-            if (IsPlayer && (Input.GetKeyDown(KeyCode.Space)
-                             || Input.GetKeyDown(KeyCode.LeftShift)
-                             || Input.GetKeyDown(KeyCode.RightShift)))
+            Keyboard keyboard = Keyboard.current;
+            if (IsPlayer && keyboard != null &&
+                (keyboard.spaceKey.wasPressedThisFrame ||
+                 keyboard.leftShiftKey.wasPressedThisFrame ||
+                 keyboard.rightShiftKey.wasPressedThisFrame))
                 State.TryActivate();
 
         }

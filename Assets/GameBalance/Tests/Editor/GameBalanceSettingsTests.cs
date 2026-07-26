@@ -148,8 +148,7 @@ namespace Gmtk2026.GameBalance.Tests
         /// <summary>
         /// The code defaults above can be correct while the shipped asset has drifted, so the
         /// asset itself is pinned to the catalog values that the rules depend on.
-        /// damage.maximumDurability is deliberately NOT pinned here: it is still on a temporary
-        /// wreck-deferring override and the final balance value is the team's to set.
+        /// The shipped asset is pinned too, because temporary debug overrides must not escape.
         /// </summary>
         [Test]
         public void GameJamDefaultAsset_MatchesGddCatalog()
@@ -163,9 +162,32 @@ namespace Gmtk2026.GameBalance.Tests
                 "GDD: a steady 30s elimination beat");
             Assert.AreEqual(4f, preset.quiz.answerTimeSeconds);
             Assert.AreEqual(12f, preset.curse.sharedCooldownSeconds);
+            Assert.AreEqual(1000000f, preset.damage.maximumDurability,
+                "GameJamDefault intentionally suppresses wrecks during active playtesting");
             Assert.AreEqual(0.75f, preset.presentation.gateCloseDurationSeconds);
             Assert.AreEqual(0.25f, preset.presentation.gateExecutionDelaySeconds);
             GameBalance.ResetForTests();
+        }
+
+        [Test]
+        public void SpecialEventInterval_MinGreaterThanMax_IsInvalid()
+        {
+            var s = NewDefault();
+            s.specialEvents.minimumIntervalSeconds = 41f;
+            s.specialEvents.maximumIntervalSeconds = 25f;
+            CollectionAssert.IsNotEmpty(s.Validate());
+            Object.DestroyImmediate(s);
+        }
+
+        [Test]
+        public void SpecialEventLimits_MustBePositive()
+        {
+            var s = NewDefault();
+            s.specialEvents.maximumSimultaneousEvents = 0;
+            s.specialEvents.maximumEventsPerRace = 0;
+            Assert.That(s.Validate(), Has.Some.Contains("maximumSimultaneousEvents"));
+            Assert.That(s.Validate(), Has.Some.Contains("maximumEventsPerRace"));
+            Object.DestroyImmediate(s);
         }
 
         [Test]
