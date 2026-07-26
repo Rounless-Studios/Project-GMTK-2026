@@ -38,6 +38,7 @@ namespace GMTK
         private GmtkVehicleAdapter vehicleAdapter;
         private RCCP_Exhaust[] boostExhausts;
         private Light[] boostFlameLights;
+        private float[] boostFlameEmissionRemainders;
         private int lastCharges;
         private bool boostFlamesActive;
 
@@ -137,6 +138,7 @@ namespace GMTK
         {
             boostExhausts = GetComponentsInChildren<RCCP_Exhaust>(true);
             boostFlameLights = new Light[boostExhausts.Length];
+            boostFlameEmissionRemainders = new float[boostExhausts.Length];
 
             for (int i = 0; i < boostExhausts.Length; i++)
             {
@@ -162,11 +164,11 @@ namespace GMTK
                     continue;
 
                 ParticleSystem.EmissionModule emission = flame.emission;
-                emission.enabled = active;
 
                 Light flameLight = boostFlameLights[i];
                 if (!active)
                 {
+                    boostFlameEmissionRemainders[i] = 0f;
                     if (flameLight != null)
                         flameLight.intensity = 0f;
                     continue;
@@ -176,6 +178,19 @@ namespace GMTK
                 main.startColor = exhaust.boostFlameColor;
                 if (!flame.isPlaying)
                     flame.Play(true);
+
+                // RCCP_Exhaust owns this emission module and disables it whenever its
+                // built-in NOS input is idle. Our boost deliberately does not drive that
+                // NOS input, so emit the same flame particles directly instead of racing
+                // RCCP over emission.enabled every frame.
+                float particlesPerSecond = Mathf.Max(1f, emission.rateOverTime.constantMax);
+                boostFlameEmissionRemainders[i] += particlesPerSecond * Time.deltaTime;
+                int emitCount = Mathf.FloorToInt(boostFlameEmissionRemainders[i]);
+                if (emitCount > 0)
+                {
+                    flame.Emit(emitCount);
+                    boostFlameEmissionRemainders[i] -= emitCount;
+                }
 
                 if (flameLight != null)
                 {
