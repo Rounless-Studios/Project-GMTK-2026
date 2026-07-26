@@ -36,10 +36,19 @@ namespace Gmtk2026.GameBalance
         /// <summary>Fired when the wreck timer elapses and the car is restored.</summary>
         public event System.Action Recovered;
 
-        public DurabilityState(DamageSettings settings)
+        /// <summary>Full durability for this car: the preset maximum plus any per-car bonus.</summary>
+        public float MaximumDurability { get; }
+
+        /// <summary>
+        /// <paramref name="extraDurability"/> raises this car's ceiling without moving the damage
+        /// thresholds, so a tougher car simply takes more hits before it reads as damaged. The stages
+        /// stay where the preset put them, which keeps the HUD and the VFX honest.
+        /// </summary>
+        public DurabilityState(DamageSettings settings, float extraDurability = 0f)
         {
             s = settings;
-            Durability = s.maximumDurability;
+            MaximumDurability = s.maximumDurability + Mathf.Max(0f, extraDurability);
+            Durability = MaximumDurability;
             Stage = DamageStage.Pristine;
         }
 
@@ -87,7 +96,7 @@ namespace Gmtk2026.GameBalance
         private void Recover()
         {
             wreckTimer = 0f;
-            Durability = Mathf.Min(s.recoveryDurability, s.maximumDurability);
+            Durability = Mathf.Min(s.recoveryDurability, MaximumDurability);
             protectionTimer = s.recoveryProtectionSeconds;
             RecomputeStage();          // 50 durability -> Damaged, not Pristine
             Recovered?.Invoke();

@@ -24,6 +24,48 @@ namespace Gmtk2026.GameBalance.Tests
         };
 
         [Test]
+        public void AnAiCarStartsWithItsBonusOnTop()
+        {
+            var s = new DamageSettings();
+            var player = new DurabilityState(s);
+            var ai = new DurabilityState(s, s.aiExtraDurability);
+
+            Assert.AreEqual(s.maximumDurability, player.MaximumDurability, 0.001f);
+            Assert.AreEqual(s.maximumDurability + s.aiExtraDurability, ai.MaximumDurability, 0.001f);
+            Assert.AreEqual(ai.MaximumDurability, ai.Durability, 0.001f, "and it starts full");
+            Assert.AreEqual(DamageStage.Pristine, ai.Stage);
+        }
+
+        [Test]
+        public void TheBonusBuysHitsWithoutMovingTheStages()
+        {
+            var s = new DamageSettings();
+            var player = new DurabilityState(s);
+            var ai = new DurabilityState(s, 50f);
+
+            // the damage that drops the player to the first stage leaves the tougher car pristine
+            float toDamaged = s.maximumDurability - s.damagedThreshold;
+            player.ApplyDamage(toDamaged);
+            ai.ApplyDamage(toDamaged);
+
+            Assert.AreEqual(DamageStage.Damaged, player.Stage);
+            Assert.AreEqual(DamageStage.Pristine, ai.Stage,
+                "the thresholds stay where the preset put them, so the bonus is extra hits");
+
+            ai.ApplyDamage(50f);
+            Assert.AreEqual(DamageStage.Damaged, ai.Stage, "one more hit and it reads the same as the player");
+        }
+
+        [Test]
+        public void ANegativeBonusIsIgnored()
+        {
+            var s = new DamageSettings();
+            var state = new DurabilityState(s, -80f);
+
+            Assert.AreEqual(s.maximumDurability, state.MaximumDurability, 0.001f);
+        }
+
+        [Test]
         public void StartsPristineAtMaxDurability()
         {
             var d = new DurabilityState(Settings());

@@ -71,7 +71,9 @@ namespace GMTK
 
         private void Build()
         {
-            State = new DurabilityState(D);
+            // AI cars carry the bonus: the player is the one taking hits from five rivals at once
+            bool isAi = vehicleAdapter != null && !vehicleAdapter.IsPlayer;
+            State = new DurabilityState(D, isAi ? D.aiExtraDurability : 0f);
             State.StageChanged += s => StageChanged?.Invoke(this, s);
             State.Wrecked += OnWrecked;
             State.Recovered += OnRecovered;

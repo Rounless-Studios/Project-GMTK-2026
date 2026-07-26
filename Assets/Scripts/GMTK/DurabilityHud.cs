@@ -35,7 +35,10 @@ namespace GMTK
             }
 
             if (target == null || fillImage == null) return;
-            float maximum = Mathf.Max(1f, GameBalance.Current.damage.maximumDurability);
+            // the car's own ceiling, so an AI bonus cannot push the bar past full
+            float maximum = Mathf.Max(1f, target.State != null
+                ? target.State.MaximumDurability
+                : GameBalance.Current.damage.maximumDurability);
             float ratio = Mathf.Clamp01(target.Durability / maximum);
             fillImage.fillAmount = ratio;
 

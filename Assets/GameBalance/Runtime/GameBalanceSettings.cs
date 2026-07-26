@@ -108,6 +108,9 @@ namespace Gmtk2026.GameBalance
         // a collision only hurts above this relative impulse; light bumps are free
         [Min(0)] public float strongCollisionImpulse = 8f;    // TBD by playtest
         [Min(0)] public float strongCollisionDamage = 25f;    // ~8 strong hits from full
+        [Tooltip("Extra durability an AI car starts with. The player takes the hits from five "
+                 + "rivals at once, so the field is given a little more to lose than it is.")]
+        [Min(0)] public float aiExtraDurability = 50f;
 
         [Header("Wreck Launch")]
         [Tooltip("A wreck takes the controls away instead of freezing the car: the impact that " +
