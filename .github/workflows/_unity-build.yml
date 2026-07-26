@@ -128,11 +128,16 @@ jobs:
           persist-credentials: false
       - name: Pull and verify LFS objects
         run: bash scripts/ci/repository-preflight.sh
+      # Same reasoning as the build job: keep the incremental artifacts, drop *.cs from the key.
       - name: Restore isolated test Library cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: Library
-          key: unity-${{ runner.os }}-${{ needs.preflight.outputs.unity_version }}-test-${{ matrix.mode }}-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/**', 'Assets/**/*.asmdef', 'Assets/**/*.cs') }}
+          path: |
+            Library/Bee
+            Library/Artifacts
+            Library/ArtifactDB
+            Library/ScriptAssemblies
+          key: unity-${{ runner.os }}-${{ needs.preflight.outputs.unity_version }}-test-${{ matrix.mode }}-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/**', 'Assets/**/*.asmdef') }}
           restore-keys: |
             unity-${{ runner.os }}-${{ needs.preflight.outputs.unity_version }}-test-${{ matrix.mode }}-
       - name: Run ${{ matrix.label }} tests
@@ -181,11 +186,21 @@ jobs:
           persist-credentials: false
       - name: Pull and verify LFS objects
         run: bash scripts/ci/repository-preflight.sh
+      # A full Library is 9.4 GB here, and the GitHub cache is 10 GB per repository: caching all of it
+      # meant the Windows and WebGL entries evicted each other, so almost every build started cold.
+      # These four hold what makes a rebuild incremental (IL2CPP/Bee artifacts, imported assets,
+      # compiled assemblies); everything else Unity regenerates cheaply.
+      # The key also no longer hashes *.cs — one edited script used to miss the exact key every time.
       - name: Restore target-isolated Library cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: Library
-          key: unity-${{ runner.os }}-${{ needs.preflight.outputs.unity_version }}-${{ matrix.target }}-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/**', 'Assets/**/*.asmdef', 'Assets/**/*.cs') }}
+          path: |
+            Library/Bee
+            Library/Artifacts
+            Library/ArtifactDB
+            Library/PlayerDataCache
+            Library/ScriptAssemblies
+          key: unity-${{ runner.os }}-${{ needs.preflight.outputs.unity_version }}-${{ matrix.target }}-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/**', 'Assets/**/*.asmdef') }}
           restore-keys: |
             unity-${{ runner.os }}-${{ needs.preflight.outputs.unity_version }}-${{ matrix.target }}-
       - name: Build non-development player
