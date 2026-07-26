@@ -25,8 +25,8 @@ RenderSettings:
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1.7
   m_AmbientMode: 3
-  m_SubtractiveShadowColor: {r: 0.41960785, g: 0.53327096, b: 0.627451, a: 1}
-  m_SkyboxMaterial: {fileID: 2100000, guid: e46fd2830b2c646ac919ac18d9e8a003, type: 2}
+  m_SubtractiveShadowColor: {r: 0.627451, g: 0.455028, b: 0.41960785, a: 1}
+  m_SkyboxMaterial: {fileID: 2100000, guid: e391f00234292cc4f935308c11cf0e54, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -37,7 +37,7 @@ RenderSettings:
   m_ReflectionBounces: 1
   m_ReflectionIntensity: 0.5
   m_CustomReflection: {fileID: 0}
-  m_Sun: {fileID: 0}
+  m_Sun: {fileID: 668482593723379953}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -198381,6 +198381,12 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 8d93e0d5c592a44b4b1da5302cce344e, type: 3}
+--- !u!108 &668482593723379953 stripped
+Light:
+  m_CorrespondingSourceObject: {fileID: 8974405590909261122, guid: 8d93e0d5c592a44b4b1da5302cce344e,
+    type: 3}
+  m_PrefabInstance: {fileID: 668482593723379952}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1881321465098534243
 PrefabInstance:
   m_ObjectHideFlags: 0

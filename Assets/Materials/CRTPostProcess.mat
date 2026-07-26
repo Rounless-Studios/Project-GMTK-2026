@@ -105,7 +105,7 @@ Material:
     - _BumpScale: 1
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
-    - _ColorDepth: 4
+    - _ColorDepth: 6
     - _Cull: 2
     - _CurvatureX: 10
     - _CurvatureY: 10
