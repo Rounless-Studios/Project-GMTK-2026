@@ -117,6 +117,10 @@ namespace Gmtk2026.GameBalance
         [Min(0f)] public float respawnHeightAboveWaypoint = 2f;
         [Tooltip("Largest horizontal waypoint distance still considered part of the track.")]
         [Min(1f)] public float maximumTrackDistanceFromWaypoint = 20f;
+        [Tooltip("Largest height difference from the nearest waypoint that still counts as being on the track. Without it a hillside below the road counts as support, and the safe position slides downhill with the falling car so the fall is never measured.")]
+        [Min(0.5f)] public float maximumTrackHeightDifference = 4f;
+        [Tooltip("Seconds with nothing under the car before it is respawned anyway. Catches a car launched off the map, which can stay above its last safe height for a long time.")]
+        [Min(0.1f)] public float maximumAirborneSeconds = 3f;
         [Tooltip("Downward ray length used to confirm static track geometry below the car.")]
         [Min(0.1f)] public float groundProbeDistance = 5f;
         [Tooltip("How often each car refreshes its last supported track position.")]

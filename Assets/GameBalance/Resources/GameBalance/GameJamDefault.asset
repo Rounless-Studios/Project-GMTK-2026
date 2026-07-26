@@ -53,7 +53,7 @@ MonoBehaviour:
     overtakeRewardCharges: 1
     boostSpeedMultiplier: 1.5
   damage:
-    maximumDurability: 1000000
+    maximumDurability: 100
     damagedThreshold: 60
     criticalThreshold: 30
     wreckedThreshold: 0
@@ -66,6 +66,8 @@ MonoBehaviour:
     fallDistanceBelowTrack: 8
     respawnHeightAboveWaypoint: 2
     maximumTrackDistanceFromWaypoint: 20
+    maximumTrackHeightDifference: 4
+    maximumAirborneSeconds: 3
     groundProbeDistance: 5
     trackSampleIntervalSeconds: 0.1
   vehicle:

@@ -19,6 +19,7 @@ namespace GMTK.Rccp
         private GmtkRccpWaypointPath path;
         private float sampleTimer;
         private bool initialized;
+        private bool supported = true;
 
         public Vector3 LastTrackPosition => state.LastTrackPosition;
         public int RespawnCount { get; private set; }
@@ -62,12 +63,19 @@ namespace GMTK.Rccp
             if (sampleTimer <= 0f)
             {
                 sampleTimer = settings.trackSampleIntervalSeconds;
+                supported = IsSupportedByTrack(transform.position, settings);
 
-                if (IsSupportedByTrack(transform.position, settings))
+                if (supported)
                     state.RecordTrackPosition(transform.position);
             }
 
-            if (state.ShouldRespawn(transform.position, settings.fallDistanceBelowTrack))
+            if (!supported)
+                state.TickAirborne(Time.fixedDeltaTime);
+
+            if (state.ShouldRespawn(
+                    transform.position,
+                    settings.fallDistanceBelowTrack,
+                    settings.maximumAirborneSeconds))
                 RespawnAtLastTrackWaypoint(settings);
         }
 
@@ -75,6 +83,7 @@ namespace GMTK.Rccp
         {
             int waypointIndex = path.FindClosestIndex(position);
             Vector3 toWaypoint = path[waypointIndex].position - position;
+            float heightDifference = Mathf.Abs(toWaypoint.y);
             toWaypoint.y = 0f;
 
             if (toWaypoint.sqrMagnitude >
@@ -83,6 +92,12 @@ namespace GMTK.Rccp
             {
                 return false;
             }
+
+            // A hillside or the terrain below the road is static ground too. Counting it as support
+            // would drag the safe position downhill with the falling car, and the drop would then
+            // be measured against a reference that keeps moving away.
+            if (heightDifference > settings.maximumTrackHeightDifference)
+                return false;
 
             Vector3 rayOrigin = position + Vector3.up * 0.5f;
             int hitCount = Physics.RaycastNonAlloc(
@@ -131,6 +146,7 @@ namespace GMTK.Rccp
 
             aiDriver?.ResetAfterRespawn(waypointIndex);
             state.RecordTrackPosition(position);
+            supported = true;
             sampleTimer = settings.trackSampleIntervalSeconds;
             RespawnCount++;
 
