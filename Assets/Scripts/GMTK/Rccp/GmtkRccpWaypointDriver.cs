@@ -161,6 +161,18 @@ namespace GMTK.Rccp
             if (path == null || path.Count == 0 || inputReceiver == null)
                 return;
 
+            // The vehicle exists throughout the prologue and countdown while its rigidbody is
+            // frozen. Treating that intentional standstill as a blockage primes reverse recovery
+            // before the lights go out, so keep both the inputs and recovery state neutral here.
+            if (!Race.IsRaceInProgress)
+            {
+                stuckTimer = 0f;
+                reverseTimer = 0f;
+                inputs.Clear();
+                inputReceiver.OverrideInputs(inputs);
+                return;
+            }
+
             float speedKph = carRigidbody != null ? carRigidbody.linearVelocity.magnitude * 3.6f : 0f;
             currentSpeedKph = speedKph;
             mergeTravelled += speedKph / 3.6f * Time.fixedDeltaTime;
@@ -177,7 +189,42 @@ namespace GMTK.Rccp
             Vector3 localTarget = transform.InverseTransformPoint(aimPoint);
             float targetAngle = Mathf.Atan2(localTarget.x, Mathf.Max(1f, localTarget.z)) * Mathf.Rad2Deg;
 
-            UpdateRecovery(speedKph);
+            // Corner and traffic speed are resolved before stuck recovery. A car deliberately
+            // waiting behind a slow rival must not be mistaken for one lodged against scenery.
+            float scan = AiDriving.CornerScanMetres(speedKph, S);
+            float headingChange = path.HeadingChangeAhead(waypointIndex, scan, out float arc);
+            float targetSpeed = AiDriving.SmoothTargetSpeedKph(
+                lastTargetSpeed,
+                AiDriving.CornerSpeedKph(
+                    headingChange,
+                    arc,
+                    throttleScale,
+                    S,
+                    profile != null ? profile.brakingConfidence : 1f),
+                Time.fixedDeltaTime,
+                S);
+            targetSpeed *= TacticalPaceScale();
+
+            // Settle behind the car ahead instead of driving through it - unless this personality
+            // keeps no gap at all, which is what a rammer does.
+            targetSpeed = AiDriving.FollowSpeedKph(
+                targetSpeed,
+                gapAheadMetres,
+                aheadSpeedKph,
+                profile != null ? profile.contactToleranceMetres : S.followGapMetres,
+                S);
+
+            // A burning boost raises the target on a straight, so the car stops braking against
+            // its own boost; at a corner the target is left alone and the boost simply runs out.
+            if (boost != null && boost.State != null && boost.State.IsBoosting)
+                targetSpeed = AiDriving.BoostedTargetKph(
+                    targetSpeed,
+                    boost.State.CurrentSpeedMultiplier,
+                    headingChange,
+                    S);
+
+            lastTargetSpeed = targetSpeed;
+            UpdateRecovery(speedKph, targetSpeed);
 
             if (reverseTimer > 0f)
             {
@@ -188,47 +235,9 @@ namespace GMTK.Rccp
             }
             else
             {
-                // corner speed comes from the path shape over the braking distance, so the car is
-                // already slowing when it reaches the corner
-                float scan = AiDriving.CornerScanMetres(speedKph, S);
-                float headingChange = path.HeadingChangeAhead(waypointIndex, scan, out float arc);
-                float targetSpeed = AiDriving.SmoothTargetSpeedKph(
-                    lastTargetSpeed,
-                    AiDriving.CornerSpeedKph(
-                        headingChange,
-                        arc,
-                        throttleScale,
-                        S,
-                        profile != null ? profile.brakingConfidence : 1f),
-                    Time.fixedDeltaTime,
-                    S);
-                targetSpeed *= TacticalPaceScale();
-
-                // settle behind the car ahead instead of driving through it - unless this personality
-                // keeps no gap at all, which is what a rammer does
-                targetSpeed = AiDriving.FollowSpeedKph(
-                    targetSpeed,
-                    gapAheadMetres,
-                    aheadSpeedKph,
-                    profile != null ? profile.contactToleranceMetres : S.followGapMetres,
-                    S);
-
-                // a burning boost raises the target on a straight, so the car stops braking against
-                // its own boost; at a corner the target is left alone and the boost simply runs out
-                if (boost != null && boost.State != null && boost.State.IsBoosting)
-                    targetSpeed = AiDriving.BoostedTargetKph(
-                        targetSpeed,
-                        boost.State.CurrentSpeedMultiplier,
-                        headingChange,
-                        S);
-
-                lastTargetSpeed = targetSpeed;
-
                 AiDriving.SpeedInputs(targetSpeed, speedKph, out float throttle, out float brake);
                 inputs.throttleInput = throttle;
                 inputs.brakeInput = brake;
-
-                LogTelemetry(speedKph, targetSpeed, arc, headingChange);
 
                 float angleRate = (targetAngle - previousSteerAngle) / Time.fixedDeltaTime;
                 inputs.steerInput = Mathf.Clamp(
@@ -239,6 +248,8 @@ namespace GMTK.Rccp
                 ApplyObstacleAvoidance(ref inputs.steerInput);
                 TryUseBoost(headingChange);
             }
+
+            LogTelemetry(speedKph, targetSpeed, arc, headingChange);
 
             previousSteerAngle = targetAngle;
 
@@ -549,12 +560,20 @@ namespace GMTK.Rccp
             }
         }
 
-        private void UpdateRecovery(float speedKph)
+        private void UpdateRecovery(float speedKph, float targetSpeedKph)
         {
-            if (speedKph <= S.stuckSpeedKph)
-                stuckTimer += Time.fixedDeltaTime;
-            else
+            // A low actual speed is only a blockage when the driver is still asking to move.
+            // Intentional stops (traffic following) produce a low target and must clear the timer.
+            // Do not build another stuck interval while the current recovery is already running.
+            if (reverseTimer > 0f ||
+                speedKph > S.stuckSpeedKph ||
+                targetSpeedKph <= S.stuckSpeedKph)
+            {
                 stuckTimer = 0f;
+                return;
+            }
+
+            stuckTimer += Time.fixedDeltaTime;
 
             if (stuckTimer < S.stuckDelaySeconds)
                 return;
