@@ -166,6 +166,8 @@ namespace Gmtk2026.GameBalance.Tests
             Assert.AreEqual(4, preset.quiz.minimumAnswerCount);
             Assert.AreEqual(4, preset.quiz.maximumAnswerCount);
             Assert.AreEqual(12f, preset.curse.sharedCooldownSeconds);
+            Assert.AreEqual(1.25f, preset.curse.aiQuizResolutionDelayMinimumSeconds);
+            Assert.AreEqual(3f, preset.curse.aiQuizResolutionDelayMaximumSeconds);
             Assert.AreEqual(1000000f, preset.damage.maximumDurability,
                 "GameJamDefault intentionally suppresses wrecks during active playtesting");
             Assert.AreEqual(0.75f, preset.presentation.gateCloseDurationSeconds);
@@ -204,7 +206,23 @@ namespace Gmtk2026.GameBalance.Tests
                 "the fast preset exists so automated tests need not wait a full beat");
             Assert.AreEqual(4, preset.quiz.minimumAnswerCount);
             Assert.AreEqual(4, preset.quiz.maximumAnswerCount);
+            Assert.Less(
+                preset.curse.aiQuizResolutionDelayMaximumSeconds,
+                1f,
+                "FastTest must resolve invisible AI quizzes quickly");
             GameBalance.ResetForTests();
+        }
+
+        [Test]
+        public void AiQuizResolutionDelay_MinGreaterThanMax_IsInvalid()
+        {
+            var s = NewDefault();
+            s.curse.aiQuizResolutionDelayMinimumSeconds = 3f;
+            s.curse.aiQuizResolutionDelayMaximumSeconds = 1f;
+            Assert.That(
+                s.Validate(),
+                Has.Some.Contains("aiQuizResolutionDelayMinimumSeconds"));
+            Object.DestroyImmediate(s);
         }
 
         [TestCase("GameJamDefault")]
@@ -223,6 +241,23 @@ namespace Gmtk2026.GameBalance.Tests
             GameBalance.ResetForTests();
         }
 
+        [TestCase("GameJamDefault")]
+        [TestCase("FastTest")]
+        public void ShippedPreset_AssignsCurseAppliedEffect(string presetName)
+        {
+            GameBalance.ResetForTests();
+            var preset = GameBalance.Load(presetName);
+            Assert.IsNotNull(preset);
+            Assert.IsNotNull(
+                preset.presentation.curseAppliedEffectPrefab,
+                $"{presetName} must assign the curse-applied effect");
+            Assert.AreEqual(
+                "FX_Cursed",
+                preset.presentation.curseAppliedEffectPrefab.name);
+            Assert.Greater(preset.presentation.curseAppliedEffectScale, 0f);
+            GameBalance.ResetForTests();
+        }
+
         [Test]
         public void FinalGateDefaults_MatchGddCatalog()
         {
@@ -232,6 +267,16 @@ namespace Gmtk2026.GameBalance.Tests
             Assert.Greater(s.presentation.gateOpenDurationSeconds, 0f);
             Assert.Greater(s.presentation.gateWidthMeters, 0f);
             Assert.Greater(s.presentation.gateHeightMeters, 0f);
+            Object.DestroyImmediate(s);
+        }
+
+        [Test]
+        public void ExecutionCctvDefault_IsOnLeftSide()
+        {
+            var s = NewDefault();
+            Assert.LessOrEqual(
+                s.camera.executionCctvViewportRect.xMax,
+                0.5f);
             Object.DestroyImmediate(s);
         }
 

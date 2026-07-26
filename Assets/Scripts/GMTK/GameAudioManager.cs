@@ -41,7 +41,9 @@ namespace GMTK
         [SerializeField, Range(0f, 1f)] private float sfxVolume = 1f;
         [SerializeField] private AudioSource musicSource;
         [SerializeField] private AudioSource sfxSource;
+        [SerializeField] private AudioSource uiSfxSource;
         [SerializeField] private AudioSource loopSource;
+        [SerializeField, Range(1f, 3f)] private float curseHitGain = 2f;
 
         [Header("Cue Library")]
         [Tooltip("Clips are auto-linked from Assets/Sound by event name. Empty entries are ignored safely.")]
@@ -441,6 +443,7 @@ namespace GMTK
             EliminationManager.EliminationTargetLocked += OnEliminationTargetLocked;
             BoostController.Changed += OnBoostChanged;
             CurseController.CurseCast += OnCurseCast;
+            CurseManager.CurseApplied += OnCurseApplied;
             OvertakeManager.ChallengeStarted += OnOvertakeStarted;
             OvertakeManager.ChallengeSucceeded += OnOvertakeSucceeded;
             OvertakeManager.ChallengeFailed += OnOvertakeFailed;
@@ -455,6 +458,7 @@ namespace GMTK
             EliminationManager.EliminationTargetLocked -= OnEliminationTargetLocked;
             BoostController.Changed -= OnBoostChanged;
             CurseController.CurseCast -= OnCurseCast;
+            CurseManager.CurseApplied -= OnCurseApplied;
             OvertakeManager.ChallengeStarted -= OnOvertakeStarted;
             OvertakeManager.ChallengeSucceeded -= OnOvertakeSucceeded;
             OvertakeManager.ChallengeFailed -= OnOvertakeFailed;
@@ -483,6 +487,13 @@ namespace GMTK
                 sfxSource = child.AddComponent<AudioSource>();
             }
 
+            if (uiSfxSource == null)
+            {
+                var child = new GameObject("UiSfxSource");
+                child.transform.SetParent(transform, false);
+                uiSfxSource = child.AddComponent<AudioSource>();
+            }
+
             if (loopSource == null)
             {
                 var child = new GameObject("LoopSource");
@@ -494,6 +505,10 @@ namespace GMTK
             musicSource.loop = true;
             sfxSource.playOnAwake = false;
             sfxSource.loop = false;
+            uiSfxSource.playOnAwake = false;
+            uiSfxSource.loop = false;
+            uiSfxSource.spatialBlend = 0f;
+            uiSfxSource.priority = 0;
             loopSource.playOnAwake = false;
             loopSource.loop = true;
         }
@@ -504,6 +519,7 @@ namespace GMTK
                 musicSource.volume = musicVolume * currentMusicVolumeScale;
             float master = GameBalance.Current.presentation.masterSfxVolume;
             if (sfxSource != null) sfxSource.volume = sfxVolume * master;
+            if (uiSfxSource != null) uiSfxSource.volume = sfxVolume * master;
             if (loopSource != null)
                 loopSource.volume = sfxVolume * master * currentLoopVolumeScale;
         }
@@ -560,6 +576,12 @@ namespace GMTK
             PlayCue(target == 0 ? "SFX_CURSE_INCOMING" : "SFX_CURSE_CAST");
         }
 
+        private void OnCurseApplied(CurseController caster, CurseType type, int target)
+        {
+            if (target == 0)
+                PlayUiCue("SFX_HUD_CURSE_HIT", curseHitGain);
+        }
+
         private void OnOvertakeStarted(int _) => PlayCue("SFX_OVERTAKE_START");
         private void OnOvertakeSucceeded(int _) => PlayCue("SFX_OVERTAKE_SUCCESS");
         private void OnOvertakeFailed(int _) => PlayCue("SFX_OVERTAKE_FAIL");
@@ -609,11 +631,7 @@ namespace GMTK
             if (string.IsNullOrWhiteSpace(eventId)) return;
             AudioCue cue = FindCue(eventId);
             if (cue == null) return;
-            AudioClip clip = cue.clip;
-            if (cue.variations != null && cue.variations.Length > 0)
-                clip = cue.variations[UnityEngine.Random.Range(0, cue.variations.Length)];
-            if (clip == null)
-                clip = Resources.Load<AudioClip>(eventId);
+            AudioClip clip = ResolveCueClip(cue, eventId);
             if (clip == null) return;
             float scaledVolume = Mathf.Clamp01(volume * cue.volume);
             bool loop = loopOverride ?? cue.loop;
@@ -630,6 +648,38 @@ namespace GMTK
             }
 
             PlaySfx(clip, scaledVolume);
+        }
+
+        private void PlayUiCue(string eventId, float gain)
+        {
+            if (uiSfxSource == null || string.IsNullOrWhiteSpace(eventId)) return;
+            AudioCue cue = FindCue(eventId);
+            if (cue == null) return;
+            AudioClip clip = ResolveCueClip(cue, eventId);
+            if (clip == null) return;
+
+            // UI feedback must remain legible over the continuously playing vehicle engine.
+            // PlayOneShot accepts a gain above one; keep the cap modest to avoid hard clipping.
+            uiSfxSource.PlayOneShot(
+                clip,
+                Mathf.Clamp(gain * cue.volume, 0f, 2f));
+        }
+
+        private static AudioClip ResolveCueClip(AudioCue cue, string eventId)
+        {
+            AudioClip clip = cue.clip;
+            if (cue.variations != null && cue.variations.Length > 0)
+            {
+                int baseClipCount = cue.clip != null ? 1 : 0;
+                int choice = UnityEngine.Random.Range(
+                    0,
+                    baseClipCount + cue.variations.Length);
+                clip = baseClipCount == 1 && choice == 0
+                    ? cue.clip
+                    : cue.variations[choice - baseClipCount];
+            }
+
+            return clip != null ? clip : Resources.Load<AudioClip>(eventId);
         }
 
         private AudioCue FindCue(string eventId)

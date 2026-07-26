@@ -25,9 +25,18 @@ namespace GMTK
             public int TargetIndex;
         }
 
+        private sealed class PendingAiCurse
+        {
+            public CurseController Caster;
+            public CurseType Type;
+            public int TargetIndex;
+            public Coroutine Routine;
+        }
+
         public static CurseManager Instance { get; private set; }
 
         public static event System.Action<CurseController, CurseType, int> CurseActivated;
+        public static event System.Action<CurseController, CurseType, int> CurseApplied;
         public static event System.Action<CurseController, CurseType, int, bool> CurseResolved;
 
         private GameEvents gameEvents;
@@ -38,6 +47,9 @@ namespace GMTK
         private TMP_Text penaltyFeedbackText;
         private Coroutine penaltyFeedbackRoutine;
         private readonly List<CurseController> aiCurses = new List<CurseController>();
+        private readonly List<PendingAiCurse> pendingAiCurses =
+            new List<PendingAiCurse>();
+        private readonly List<GameObject> activeCurseEffects = new List<GameObject>();
         private readonly Dictionary<CurseController, float> aiNextCastAttemptAt =
             new Dictionary<CurseController, float>();
 
@@ -79,6 +91,8 @@ namespace GMTK
             if (quiz != null)
                 quiz.AnswerEvaluated -= OnHumanQuizEvaluated;
 
+            ClearPendingAiCurses();
+            ClearCurseEffects();
             if (Instance == this)
                 Instance = null;
         }
@@ -124,23 +138,78 @@ namespace GMTK
 
             CurseActivated?.Invoke(caster, type, targetIndex);
             LogCurseActivated(caster, type, targetIndex);
+            BeginAiQuizResolution(caster, type, targetIndex);
+            return true;
+        }
+
+        private void BeginAiQuizResolution(
+            CurseController caster,
+            CurseType type,
+            int targetIndex)
+        {
+            var pending = new PendingAiCurse
+            {
+                Caster = caster,
+                Type = type,
+                TargetIndex = targetIndex,
+            };
+            pendingAiCurses.Add(pending);
+            pending.Routine = StartCoroutine(ResolveAiCurseAfterDelay(pending));
+        }
+
+        private IEnumerator ResolveAiCurseAfterDelay(PendingAiCurse pending)
+        {
+            float minimumDelay = Mathf.Min(
+                Settings.aiQuizResolutionDelayMinimumSeconds,
+                Settings.aiQuizResolutionDelayMaximumSeconds);
+            float maximumDelay = Mathf.Max(
+                Settings.aiQuizResolutionDelayMinimumSeconds,
+                Settings.aiQuizResolutionDelayMaximumSeconds);
+            float delay = Random.Range(
+                minimumDelay,
+                maximumDelay);
+            if (delay > 0f)
+                yield return new WaitForSeconds(delay);
+
+            pendingAiCurses.Remove(pending);
+            if (!Race.IsRaceInProgress || pending.Caster == null)
+                yield break;
+
+            GameObject targetCar = Race.CarByIndex(pending.TargetIndex);
+            if (targetCar == null || !targetCar.activeInHierarchy)
+                yield break;
+
             float successChance = GetAiQuizSuccessChance(targetCar);
             bool succeeded = CurseCooldownState.ResolveAiQuiz(
                 successChance,
                 Random.value);
             bool penaltyApplied = false;
             if (!succeeded)
-                penaltyApplied = caster.ApplyPenalty(type, targetIndex);
+            {
+                penaltyApplied = pending.Caster.ApplyPenalty(
+                    pending.Type,
+                    pending.TargetIndex);
+            }
+            if (penaltyApplied)
+            {
+                NotifyCurseApplied(
+                    pending.Caster,
+                    pending.Type,
+                    pending.TargetIndex);
+            }
 
             LogCurseResolved(
-                caster,
-                type,
-                targetIndex,
+                pending.Caster,
+                pending.Type,
+                pending.TargetIndex,
                 succeeded,
                 penaltyApplied,
-                "AI ability roll");
-            CurseResolved?.Invoke(caster, type, targetIndex, succeeded);
-            return true;
+                $"AI ability roll after {delay:0.00}s");
+            CurseResolved?.Invoke(
+                pending.Caster,
+                pending.Type,
+                pending.TargetIndex,
+                succeeded);
         }
 
         private bool BeginHumanQuiz(
@@ -180,7 +249,13 @@ namespace GMTK
                     pending.Type,
                     pending.TargetIndex);
                 if (penaltyApplied)
+                {
+                    NotifyCurseApplied(
+                        pending.Caster,
+                        pending.Type,
+                        pending.TargetIndex);
                     ShowPenaltyFeedback(pending.Type);
+                }
             }
 
             LogCurseResolved(
@@ -280,6 +355,8 @@ namespace GMTK
 
         private void EnsureControllers()
         {
+            ClearPendingAiCurses();
+            ClearCurseEffects();
             pendingHumanCurse = null;
             playerCurse = null;
             aiCurses.Clear();
@@ -310,6 +387,79 @@ namespace GMTK
 
             EnsureCooldownSlider();
             EnsurePenaltyFeedback();
+        }
+
+        private void ClearPendingAiCurses()
+        {
+            foreach (PendingAiCurse pending in pendingAiCurses)
+            {
+                if (pending?.Routine != null)
+                    StopCoroutine(pending.Routine);
+            }
+            pendingAiCurses.Clear();
+        }
+
+        private void NotifyCurseApplied(
+            CurseController caster,
+            CurseType type,
+            int targetIndex)
+        {
+            SpawnCurseEffect(targetIndex);
+            CurseApplied?.Invoke(caster, type, targetIndex);
+        }
+
+        private void SpawnCurseEffect(int targetIndex)
+        {
+            GameObject target = Race.CarByIndex(targetIndex);
+            GameObject prefab = GameBalance.Current.presentation.curseAppliedEffectPrefab;
+            if (target == null || prefab == null)
+                return;
+
+            activeCurseEffects.RemoveAll(effect => effect == null);
+            Vector3 center = FindVehicleVisualCenter(target);
+            GameObject effect = Instantiate(prefab, center, Quaternion.identity);
+            effect.name = $"FX_Cursed_{target.name}";
+            effect.transform.localScale *=
+                GameBalance.Current.presentation.curseAppliedEffectScale;
+            effect.transform.SetParent(target.transform, true);
+            activeCurseEffects.Add(effect);
+        }
+
+        private static Vector3 FindVehicleVisualCenter(GameObject vehicle)
+        {
+            Renderer[] renderers = vehicle.GetComponentsInChildren<Renderer>(true);
+            bool hasBounds = false;
+            Bounds combined = default;
+            foreach (Renderer renderer in renderers)
+            {
+                if (renderer == null ||
+                    renderer is ParticleSystemRenderer ||
+                    renderer is TrailRenderer ||
+                    renderer is LineRenderer)
+                {
+                    continue;
+                }
+
+                if (!hasBounds)
+                {
+                    combined = renderer.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    combined.Encapsulate(renderer.bounds);
+                }
+            }
+
+            return hasBounds ? combined.center : vehicle.transform.position;
+        }
+
+        private void ClearCurseEffects()
+        {
+            foreach (GameObject effect in activeCurseEffects)
+                if (effect != null)
+                    Destroy(effect);
+            activeCurseEffects.Clear();
         }
 
         private void UpdateAiCasters()
