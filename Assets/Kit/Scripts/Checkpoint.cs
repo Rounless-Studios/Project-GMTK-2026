@@ -12,6 +12,29 @@ namespace GMTK.Kit
         public RaceManagerItem raceManager;
         public RealTimeRacePositionsItem realTimeRacePositions;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void HideGameplayVisuals()
+        {
+            foreach (Checkpoint checkpoint in FindObjectsByType<Checkpoint>(
+                         FindObjectsInactive.Include,
+                         FindObjectsSortMode.None))
+            {
+                Transform visualRoot = checkpoint.transform.parent != null
+                    ? checkpoint.transform.parent
+                    : checkpoint.transform;
+
+                // Keep trigger colliders and checkpoint logic active. Only hide the marker mesh
+                // and world-space label that are useful while authoring the track.
+                foreach (Renderer renderer in visualRoot.GetComponentsInChildren<Renderer>(true))
+                    if (renderer.gameObject.activeInHierarchy)
+                        renderer.enabled = false;
+
+                foreach (Canvas markerCanvas in visualRoot.GetComponentsInChildren<Canvas>(true))
+                    if (markerCanvas.gameObject.activeInHierarchy)
+                        markerCanvas.enabled = false;
+            }
+        }
+
         private int checkpointNumber;
         public int GetNumber() { return checkpointNumber; }
         public void SetCheckpointNumber(int checkpointNumber) { this.checkpointNumber = checkpointNumber; }
