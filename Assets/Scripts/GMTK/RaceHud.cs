@@ -22,7 +22,10 @@ namespace GMTK
         [SerializeField] private Text finalGateText;
         [SerializeField] private Text objectiveText;
         [SerializeField] private Text resultText;
+        [SerializeField] private GameObject gameOverPanel;
+        [SerializeField] private Button retryButton;
         private EliminationManager elimination;
+        private RaceFinishGUI raceFinishGui;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttach()
@@ -78,6 +81,104 @@ namespace GMTK
             if (durabilityPanel != null && hudCanvas != null)
                 durabilityPanel.SetParent(hudCanvas.transform, false);
             elimination = FindFirstObjectByType<EliminationManager>(FindObjectsInactive.Include);
+            if (!Application.isPlaying) return;
+            BindGameOverUi();
+            SetGameOverVisible(false);
+        }
+
+        private void Start()
+        {
+            if (!Application.isPlaying) return;
+            GameEvents events = Race.Events;
+            if (events == null) return;
+
+            events.RaceFinishedEvent.RemoveListener(OnRaceFinished);
+            events.RaceFinishedEvent.AddListener(OnRaceFinished);
+            events.RestartRaceEvent.RemoveListener(OnRestartRace);
+            events.RestartRaceEvent.AddListener(OnRestartRace);
+        }
+
+        private void OnDestroy()
+        {
+            if (retryButton != null)
+                retryButton.onClick.RemoveListener(OnClickRetry);
+
+            GameEvents events = Race.Events;
+            if (events == null) return;
+            events.RaceFinishedEvent.RemoveListener(OnRaceFinished);
+            events.RestartRaceEvent.RemoveListener(OnRestartRace);
+        }
+
+        private void BindGameOverUi()
+        {
+            if (gameOverPanel == null)
+            {
+                foreach (Canvas canvas in FindObjectsByType<Canvas>(
+                             FindObjectsInactive.Include,
+                             FindObjectsSortMode.None))
+                {
+                    if (canvas.gameObject.name != "Main UI") continue;
+                    Transform panel = canvas.transform.Find("GameOver");
+                    if (panel != null)
+                    {
+                        gameOverPanel = panel.gameObject;
+                        break;
+                    }
+                }
+            }
+
+            if (gameOverPanel != null && retryButton == null)
+                retryButton = gameOverPanel.GetComponentInChildren<Button>(true);
+
+            if (retryButton != null)
+            {
+                retryButton.onClick.RemoveListener(OnClickRetry);
+                retryButton.onClick.AddListener(OnClickRetry);
+            }
+
+            raceFinishGui = FindFirstObjectByType<RaceFinishGUI>(FindObjectsInactive.Include);
+        }
+
+        private void OnRaceFinished(RaceFinishType finishType)
+        {
+            if (finishType == RaceFinishType.Win)
+            {
+                SetGameOverVisible(false);
+                return;
+            }
+
+            // RaceFinishGUI receives the same event first and opens the starter-kit result
+            // panel. A GMTK loss uses the authored Main UI/GameOver screen instead.
+            if (raceFinishGui != null && raceFinishGui.raceFinishPanel != null)
+                raceFinishGui.raceFinishPanel.SetActive(false);
+            SetGameOverVisible(true);
+        }
+
+        private void OnRestartRace()
+        {
+            SetGameOverVisible(false);
+        }
+
+        private void OnClickRetry()
+        {
+            SetGameOverVisible(false);
+            if (raceFinishGui != null)
+            {
+                if (raceFinishGui.raceFinishPanel != null)
+                    raceFinishGui.raceFinishPanel.SetActive(false);
+                if (raceFinishGui.raceUI != null)
+                    raceFinishGui.raceUI.SetActive(true);
+            }
+
+            // RaceManager converts this UI request into RestartRaceEvent. RaceFlow listens
+            // to that event and owns the READY -> 3 -> 2 -> 1 -> GO restart countdown.
+            Race.Events?.OnClickRestartRaceEvent.Invoke();
+        }
+
+        private void SetGameOverVisible(bool visible)
+        {
+            if (gameOverPanel != null)
+                gameOverPanel.SetActive(visible);
         }
 
         [ContextMenu("Build HUD UI")]
@@ -182,16 +283,9 @@ namespace GMTK
                 : (Race.IsRaceInProgress ? RacePhase.Racing : RacePhase.Boot);
             bool raceStarted = phase == RacePhase.Racing || phase == RacePhase.FinalDuel;
             Canvas canvas = hudCanvas != null ? hudCanvas.GetComponent<Canvas>() : null;
-            if (canvas != null) canvas.enabled = raceStarted || phase == RacePhase.Finished;
+            if (canvas != null) canvas.enabled = raceStarted;
             if (resultText != null)
-            {
-                resultText.gameObject.SetActive(phase == RacePhase.Finished);
-                if (phase == RacePhase.Finished)
-                    resultText.text = GMTKRaceState.Instance != null &&
-                                      GMTKRaceState.Instance.LastResult == SpinMotion.RaceFinishType.Win
-                        ? "ESCAPED HELL\nPRESS RESTART TO RACE AGAIN"
-                        : "CONDEMNED\nPRESS RESTART TO TRY AGAIN";
-            }
+                resultText.gameObject.SetActive(false);
             if (!raceStarted) return;
 
             var player = Race.CarByIndex(0);

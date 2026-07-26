@@ -48,8 +48,8 @@ namespace Gmtk2026.GameBalance
     {
         // GDD is inconsistent (3 vs 4); 4 chosen as the default, confirm before playtest.
         [Min(0)] public float answerTimeSeconds = 4f;
-        [Min(1)] public int minimumAnswerCount = 2;
-        [Min(1)] public int maximumAnswerCount = 3;
+        [Min(1)] public int minimumAnswerCount = 4;
+        [Min(1)] public int maximumAnswerCount = 4;
     }
 
     [System.Serializable]
@@ -363,6 +363,8 @@ namespace Gmtk2026.GameBalance
         [Tooltip("Pause after the gate is shut before the racers locked outside are executed.")]
         [Min(0)] public float gateExecutionDelaySeconds = 0.25f;
         [Header("Explosion / Wreck")]
+        [Tooltip("Breakable vehicle spawned in place of an executed racer.")]
+        public GameObject executionBreakableVehiclePrefab;
         [Min(0)] public float explosionVfxDurationSeconds = 0.45f;
         [Min(0)] public float wreckLingerSeconds = 2.5f;
         [Header("Audio")]

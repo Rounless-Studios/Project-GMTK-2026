@@ -38,6 +38,7 @@ namespace GMTK
         private StartMenuCanvas sceneMenu;
         private GameEvents gameEvents;
         private bool started;
+        private Coroutine gameEventsPreRaceRoutine;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttach()
@@ -99,8 +100,12 @@ namespace GMTK
         private void SubscribeToGameEvents()
         {
             if (gameEvents == null) return;
+            // ScriptableObject UnityEvents survive Play sessions when domain reload is disabled.
+            // Keep this target idempotent and include the restart path owned by this flow.
+            UnsubscribeFromGameEvents();
             gameEvents.OnClickPlayRaceEvent.AddListener(OnGameEventsPlayRace);
             gameEvents.RaceStartedEvent.AddListener(OnGameEventsRaceStarted);
+            gameEvents.RestartRaceEvent.AddListener(OnGameEventsRestartRace);
         }
 
         private void UnsubscribeFromGameEvents()
@@ -108,13 +113,14 @@ namespace GMTK
             if (gameEvents == null) return;
             gameEvents.OnClickPlayRaceEvent.RemoveListener(OnGameEventsPlayRace);
             gameEvents.RaceStartedEvent.RemoveListener(OnGameEventsRaceStarted);
+            gameEvents.RestartRaceEvent.RemoveListener(OnGameEventsRestartRace);
         }
 
         private void OnGameEventsPlayRace()
         {
             if (started) return;
             started = true;
-            StartCoroutine(RunGameEventsPreRace());
+            gameEventsPreRaceRoutine = StartCoroutine(RunGameEventsPreRace(true));
         }
 
         private void OnGameEventsRaceStarted()
@@ -123,10 +129,32 @@ namespace GMTK
             SetPhase(Phase.Racing);
         }
 
-        private IEnumerator RunGameEventsPreRace()
+        private void OnGameEventsRestartRace()
         {
-            SetPhase(Phase.Prologue);
-            yield return PrologueCutscenePlayer.Play();
+            if (!OwnsGameEventsStart) return;
+
+            if (gameEventsPreRaceRoutine != null)
+                StopCoroutine(gameEventsPreRaceRoutine);
+
+            started = true;
+            if (quiz != null)
+            {
+                quiz.ResetForRace();
+                quiz.enabled = false;
+            }
+
+            // RestartRaceEvent has already restored the grid and gameplay systems. Re-enter the
+            // authored countdown directly; the prologue only belongs to the first race.
+            gameEventsPreRaceRoutine = StartCoroutine(RunGameEventsPreRace(false));
+        }
+
+        private IEnumerator RunGameEventsPreRace(bool playPrologue)
+        {
+            if (playPrologue)
+            {
+                SetPhase(Phase.Prologue);
+                yield return PrologueCutscenePlayer.Play();
+            }
 
             SetPhase(Phase.Countdown);
             gameEvents.ToggleCarFreezeEvent.Invoke(true);
@@ -166,6 +194,7 @@ namespace GMTK
             }
             yield return new WaitForSecondsRealtime(0.45f);
             if (countdownPanel != null) countdownPanel.SetActive(false);
+            gameEventsPreRaceRoutine = null;
         }
 
         private void HideSceneUi()

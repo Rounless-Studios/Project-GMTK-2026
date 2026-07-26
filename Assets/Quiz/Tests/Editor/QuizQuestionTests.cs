@@ -50,6 +50,9 @@ namespace Gmtk2026.Quiz.Tests
                 Assert.That(question.IsValid(out string reason), Is.True, reason);
                 Assert.That(question.Choices.Count, Is.InRange(2, 6));
                 Assert.That(question.TimeLimitSeconds, Is.GreaterThan(0f));
+                if (question.Kind == QuizKind.Text ||
+                    question.Kind == QuizKind.MultipleChoice)
+                    Assert.That(question.Choices.Count, Is.EqualTo(4));
                 kinds.Add(question.Kind);
             }
 

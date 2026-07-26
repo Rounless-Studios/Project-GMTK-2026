@@ -438,6 +438,7 @@ namespace GMTK
             RaceFlow.PhaseChanged += OnPhaseChanged;
             EliminationManager.FinalDuelStarted += OnFinalDuelStarted;
             EliminationManager.WarningChanged += OnEliminationWarning;
+            EliminationManager.EliminationTargetLocked += OnEliminationTargetLocked;
             BoostController.Changed += OnBoostChanged;
             CurseController.CurseCast += OnCurseCast;
             OvertakeManager.ChallengeStarted += OnOvertakeStarted;
@@ -451,6 +452,7 @@ namespace GMTK
             RaceFlow.PhaseChanged -= OnPhaseChanged;
             EliminationManager.FinalDuelStarted -= OnFinalDuelStarted;
             EliminationManager.WarningChanged -= OnEliminationWarning;
+            EliminationManager.EliminationTargetLocked -= OnEliminationTargetLocked;
             BoostController.Changed -= OnBoostChanged;
             CurseController.CurseCast -= OnCurseCast;
             OvertakeManager.ChallengeStarted -= OnOvertakeStarted;
@@ -539,6 +541,12 @@ namespace GMTK
                 PlayCue("SFX_ELIM_WARN_PLAYER_LAST");
         }
 
+        private void OnEliminationTargetLocked(int target)
+        {
+            if (target == 0)
+                PlayCue("VO_ANNOUNCER_CHALLENGE_FAILED");
+        }
+
         private void OnBoostChanged(BoostController boost)
         {
             if (boost == null || !boost.IsPlayer) return;
@@ -555,7 +563,12 @@ namespace GMTK
         private void OnOvertakeStarted(int _) => PlayCue("SFX_OVERTAKE_START");
         private void OnOvertakeSucceeded(int _) => PlayCue("SFX_OVERTAKE_SUCCESS");
         private void OnOvertakeFailed(int _) => PlayCue("SFX_OVERTAKE_FAIL");
-        private void OnGateSlamming(int _) => PlayCue("SFX_GATE_CLOSE");
+        private void OnGateSlamming(int winner)
+        {
+            PlayCue("SFX_GATE_CLOSE");
+            if (winner != 0)
+                PlayCue("VO_ANNOUNCER_CHALLENGE_FAILED");
+        }
 
         private void PlayContinuous(
             AudioSource source,
