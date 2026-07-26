@@ -19375,7 +19375,7 @@ MonoBehaviour:
     type: 3}
   aiWaypoints: {fileID: 3548593187380293814}
   checkpoints: {fileID: 702475497765013076}
-  playersSpawner: {fileID: 0}
+  playersSpawner: {fileID: 7641709933944771391}
 --- !u!1 &752171551801540667
 GameObject:
   m_ObjectHideFlags: 0

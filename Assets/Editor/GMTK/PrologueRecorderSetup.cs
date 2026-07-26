@@ -36,7 +36,9 @@ namespace GMTK.Editor
             controller.FrameRatePlayback = FrameRatePlayback.Constant;
             controller.CapFrameRate = true;
             controller.ExitPlayMode = true;
-            controller.SetRecordModeToTimeInterval(0f, 5f);
+            controller.SetRecordModeToTimeInterval(
+                0f,
+                GMTK.PrologueCrashCutscene.DurationSeconds);
 
             movie.name = "GMTK Prologue MP4";
             movie.Enabled = true;
@@ -71,7 +73,8 @@ namespace GMTK.Editor
             window.Focus();
 
             Debug.Log(
-                "[Prologue Recorder] Ready: 1920x1080, 30 FPS, H.264 MP4, 5 seconds. " +
+                $"[Prologue Recorder] Ready: 1920x1080, 30 FPS, H.264 MP4, " +
+                $"{GMTK.PrologueCrashCutscene.DurationSeconds:0.0} seconds. " +
                 "Press START RECORDING in the Recorder window.");
         }
 
