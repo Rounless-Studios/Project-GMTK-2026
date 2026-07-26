@@ -118,6 +118,32 @@ namespace Gmtk2026.GameBalance.Tests
         private static float ScanAt(AiDrivingSettings s, float speedKph) => AiDriving.CornerScanMetres(speedKph, s);
 
         [Test]
+        public void NormalCorneringSlipIsLeftAlone()
+        {
+            var s = Settings();
+
+            Assert.AreEqual(180f, AiDriving.SlipCorrectedTargetKph(180f, 0f, s), 0.001f);
+            Assert.AreEqual(180f, AiDriving.SlipCorrectedTargetKph(180f, s.slipToleranceKph, s), 0.001f,
+                "a car settled in a corner slides a little and must not be slowed for it");
+        }
+
+        [Test]
+        public void SlidingSidewaysCutsTheSpeedTargetWhicheverWayItSlides()
+        {
+            var s = Settings();
+            float slipping = s.slipToleranceKph + 20f;
+
+            float corrected = AiDriving.SlipCorrectedTargetKph(180f, slipping, s);
+            Assert.Less(corrected, 180f, "the assumed grip was optimistic, so the target has to come down");
+            Assert.AreEqual(corrected, AiDriving.SlipCorrectedTargetKph(180f, -slipping, s), 0.001f,
+                "sliding left is the same problem as sliding right");
+            Assert.LessOrEqual(
+                AiDriving.SlipCorrectedTargetKph(180f, 500f, s),
+                s.minCornerSpeedKph + 0.001f,
+                "but it never demands less than the slowest corner speed");
+        }
+
+        [Test]
         public void ADistantOrUncatchableRivalIsIgnored()
         {
             var s = Settings();

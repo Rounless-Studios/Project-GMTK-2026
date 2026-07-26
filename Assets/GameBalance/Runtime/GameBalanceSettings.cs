@@ -117,6 +117,10 @@ namespace Gmtk2026.GameBalance
         [Min(0f)] public float respawnHeightAboveWaypoint = 2f;
         [Tooltip("Largest horizontal waypoint distance still considered part of the track.")]
         [Min(1f)] public float maximumTrackDistanceFromWaypoint = 20f;
+        [Tooltip("Largest height difference from the nearest waypoint that still counts as being on the track. Without it a hillside below the road counts as support, and the safe position slides downhill with the falling car so the fall is never measured.")]
+        [Min(0.5f)] public float maximumTrackHeightDifference = 4f;
+        [Tooltip("Seconds with nothing under the car before it is respawned anyway. Catches a car launched off the map, which can stay above its last safe height for a long time.")]
+        [Min(0.1f)] public float maximumAirborneSeconds = 3f;
         [Tooltip("Downward ray length used to confirm static track geometry below the car.")]
         [Min(0.1f)] public float groundProbeDistance = 5f;
         [Tooltip("How often each car refreshes its last supported track position.")]
@@ -306,6 +310,10 @@ namespace Gmtk2026.GameBalance
         [Tooltip("How fast the corner speed target may rise again (kph/s). Prevents brake-release " +
                  "hunting as a corner enters and leaves the speed-dependent scan window.")]
         [Min(1)] public float targetSpeedRiseKphPerSecond = 50f;
+        [Tooltip("Sideways speed the AI treats as normal cornering. Above this the car is sliding, whatever grip the settings assume it has.")]
+        [Min(0)] public float slipToleranceKph = 12f;
+        [Tooltip("Kph cut from the speed target per kph of slip beyond the tolerance. This is what stops the AI running off the outside of a corner it entered too fast.")]
+        [Min(0)] public float slipSpeedPenalty = 2.5f;
         [Min(1)] public float straightSpeedKph = 200f;
         [Tooltip("Slowest an AI will take any corner.")]
         [Min(1)] public float minCornerSpeedKph = 60f;
@@ -460,6 +468,13 @@ namespace Gmtk2026.GameBalance
         public bool blockDuringFinalDuel = true;
         public bool preventImmediateRepeat = true;
 
+        [Header("Placement")]
+        [Tooltip("Build hazards on the waypoint loop ahead of the player instead of anywhere on " +
+                 "the track. The track is long enough that a random waypoint is never seen.")]
+        public bool spawnAheadOfPlayer = true;
+        [Min(0)] public float spawnAheadMinimumMetres = 60f;
+        [Min(0)] public float spawnAheadMaximumMetres = 140f;
+
         [Header("Dump Truck")]
         [Min(1)] public float dumpTruckSpeed = 22f;
         [Min(0)] public float dumpTruckDamage = 20f;
@@ -476,6 +491,50 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float meteorDamage = 25f;
         [Min(0)] public float meteorKnockback = 5f;
         [Min(0.1f)] public float meteorDebrisLifetimeSeconds = 3f;
+
+        [Header("Construction Zone")]
+        [Tooltip("Barriers across the track; one of them is always left out as a gap to aim for.")]
+        [Min(2)] public int constructionBarrierCount = 5;
+        [Min(0.5f)] public float constructionSpacingMetres = 2.4f;
+        [Min(0)] public float constructionDamage = 10f;
+        [Min(0)] public float constructionKnockback = 2f;
+        [Min(0.1f)] public float constructionLifetimeSeconds = 14f;
+
+        [Header("Livestock Crossing")]
+        [Min(1)] public int cowCount = 3;
+        [Min(0)] public float cowSpeed = 7f;
+        [Tooltip("How far off to the side the herd starts, so it walks in rather than popping in.")]
+        [Min(0)] public float cowStartSideOffsetMetres = 16f;
+        [Min(0)] public float cowSpacingMetres = 4f;
+        [Min(0)] public float cowDamage = 12f;
+        [Min(0)] public float cowKnockback = 4f;
+        [Min(0.1f)] public float cowLifetimeSeconds = 12f;
+
+        [Header("Beach Ball")]
+        [Min(0.1f)] public float ballDiameterMetres = 6f;
+        [Min(0.1f)] public float ballMass = 3f;
+        [Range(0f, 1f)] public float ballBounciness = 0.85f;
+        [Min(0)] public float ballDropHeightMetres = 14f;
+        [Min(0)] public float ballDamage = 8f;
+        [Min(0)] public float ballKnockback = 5f;
+        [Min(0.1f)] public float ballLifetimeSeconds = 14f;
+
+        [Header("Crate Shower")]
+        [Min(1)] public int crateMinimumCount = 5;
+        [Min(1)] public int crateMaximumCount = 9;
+        [Min(0)] public float crateScatterRadiusMetres = 7f;
+        [Min(0)] public float crateDropHeightMetres = 18f;
+        [Min(0.1f)] public float crateMass = 15f;
+        [Min(0)] public float crateDamage = 6f;
+        [Min(0)] public float crateKnockback = 2f;
+        [Min(0.1f)] public float crateLifetimeSeconds = 10f;
+
+        [Header("Boost Pad")]
+        [Tooltip("The one hazard that helps: a pad that shoves whoever drives over it forward.")]
+        [Min(0)] public float boostPadForce = 25f;
+        [Min(0.1f)] public float boostPadLengthMetres = 8f;
+        [Min(0.1f)] public float boostPadWidthMetres = 4f;
+        [Min(0.1f)] public float boostPadLifetimeSeconds = 16f;
     }
 
     /// <summary>
@@ -522,6 +581,12 @@ namespace Gmtk2026.GameBalance
                 errors.Add("specialEvents.maximumSimultaneousEvents must be >= 1");
             if (specialEvents.maximumEventsPerRace < 1)
                 errors.Add("specialEvents.maximumEventsPerRace must be >= 1");
+            if (specialEvents.spawnAheadMinimumMetres > specialEvents.spawnAheadMaximumMetres)
+                errors.Add("specialEvents.spawnAheadMinimumMetres must be <= spawnAheadMaximumMetres");
+            if (specialEvents.crateMinimumCount > specialEvents.crateMaximumCount)
+                errors.Add("specialEvents.crateMinimumCount must be <= crateMaximumCount");
+            if (specialEvents.constructionBarrierCount < 2)
+                errors.Add("specialEvents.constructionBarrierCount must be >= 2 (one is the gap)");
 
             // all elimination warnings must fit inside the interval
             if (elimination.warningSeconds >= elimination.intervalSeconds)

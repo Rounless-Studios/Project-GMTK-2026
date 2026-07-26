@@ -95,12 +95,13 @@ namespace GMTK.EditorTools
         }
 
         /// <summary>
-        /// Durability stays on the temporary wreck-deferring override; the final balance value
-        /// is the team's call, so this tool must not decide it. Remove this once it is set.
+        /// The team settled on a visible 0-100 durability range (the HUD and the damage thresholds read
+        /// it that way, and GameBalanceSettingsTests pins it), so the old wreck-deferring override of a
+        /// million is gone.
         /// </summary>
         private static void RestoreDurabilityOverride(GameBalanceSettings settings)
         {
-            settings.damage.maximumDurability = 1000000f;
+            settings.damage.maximumDurability = 100f;
         }
 
         /// <summary>
