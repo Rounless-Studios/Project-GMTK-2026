@@ -19,6 +19,19 @@ namespace GMTK
         private static int plannedForCarCount = -1;
 
         /// <summary>
+        /// Hands over the personality each AI slot will drive. The spawner publishes this because it
+        /// picks the car body at the same time, from the same roster entry: computing the shuffle twice
+        /// would pair a red car with someone else's personality.
+        /// </summary>
+        public static void PublishPlan(IReadOnlyList<AIPersonalityType> personalities, int seed)
+        {
+            plan.Clear();
+            if (personalities != null) plan.AddRange(personalities);
+            plannedForCarCount = plan.Count;
+            plannedSeed = seed;
+        }
+
+        /// <summary>
         /// The personality each AI car will get, in race-index order (index 0 is race index 1).
         /// <para>
         /// The spawner needs this before it instantiates anything, because the car a personality

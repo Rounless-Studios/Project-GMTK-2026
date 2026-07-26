@@ -60,6 +60,13 @@ namespace GMTK.EditorTools
         /// </summary>
         private static void NormalizeAiRacecraft(GameBalanceSettings settings)
         {
+            // The cars top out at 260 kph, so the old 160 target left every AI a hundred kph slower
+            // than the player could go. Grip rises with it: a high straight target with the old grip
+            // only means harder braking at every corner, which reads as slower, not faster.
+            settings.ai.driving.straightSpeedKph = 200f;
+            settings.ai.driving.cornerGrip = 18f;
+            settings.ai.driving.minCornerSpeedKph = 60f;
+
             SetRacecraft(settings, AIPersonalityType.Reckless, 1.2f, 1.4f, 0f, 2.5f);
             SetRacecraft(settings, AIPersonalityType.Rammer, 1.05f, 1f, 0.2f, 0f);
             SetRacecraft(settings, AIPersonalityType.Blocker, 0.95f, 0.3f, 1f, 5f);

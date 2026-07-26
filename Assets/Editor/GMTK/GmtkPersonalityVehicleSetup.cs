@@ -21,13 +21,18 @@ namespace GMTK.EditorTools
         private const string VehicleFolder =
             "Assets/Realistic Car Controller Pro/Prefabs/Prototype/Model_Skyline by BUMSTRUM(3DMaesen) (Prototype)";
 
-        /// <summary>폭주광 red, 난폭자 black, 봉쇄자 blue, 생존자 white. The player keeps the base car.</summary>
-        private static readonly (AIPersonalityType personality, string suffix)[] Mapping =
+        /// <summary>
+        /// One row per AI car, matching the confirmed grid (폭주광 2 · 난폭자 1 · 봉쇄자 1 · 생존자 1).
+        /// The five prototype cars are colour variants of the same vehicle, so the second 폭주광 takes
+        /// the base body: there is no sixth variant and the player also drives the base one.
+        /// </summary>
+        private static readonly (AIPersonalityType personality, string suffix)[] Roster =
         {
             (AIPersonalityType.Reckless, " R"),
             (AIPersonalityType.Rammer, " K"),
             (AIPersonalityType.Blocker, " B"),
             (AIPersonalityType.CleanRacer, " W"),
+            (AIPersonalityType.Reckless, ""),
         };
 
         [MenuItem("GMTK/Vehicles/Assign Personality Cars")]
@@ -50,19 +55,19 @@ namespace GMTK.EditorTools
                 }
 
                 var so = new SerializedObject(spawner);
-                SerializedProperty list = so.FindProperty("personalityVehicles");
+                SerializedProperty list = so.FindProperty("aiCars");
                 if (list == null)
                 {
-                    Debug.LogError("[PersonalityCars] the spawner has no personalityVehicles field.");
+                    Debug.LogError("[PersonalityCars] the spawner has no aiCars field.");
                     return;
                 }
 
                 var report = new List<string>();
-                list.arraySize = Mapping.Length;
+                list.arraySize = Roster.Length;
 
-                for (int i = 0; i < Mapping.Length; i++)
+                for (int i = 0; i < Roster.Length; i++)
                 {
-                    (AIPersonalityType personality, string suffix) = Mapping[i];
+                    (AIPersonalityType personality, string suffix) = Roster[i];
                     string path = $"{VehicleFolder}{suffix}.prefab";
                     var car = AssetDatabase.LoadAssetAtPath<GameObject>(path);
                     var controller = car != null ? car.GetComponent<RCCP_CarController>() : null;
@@ -76,7 +81,7 @@ namespace GMTK.EditorTools
                     SerializedProperty entry = list.GetArrayElementAtIndex(i);
                     entry.FindPropertyRelative("personality").enumValueIndex = (int)personality;
                     entry.FindPropertyRelative("prefab").objectReferenceValue = controller;
-                    report.Add($"{personality} -> {car.name}");
+                    report.Add($"AI {i + 1}: {personality} -> {car.name}");
                 }
 
                 so.ApplyModifiedPropertiesWithoutUndo();
