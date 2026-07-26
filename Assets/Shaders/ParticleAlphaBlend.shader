@@ -7,6 +7,7 @@ Shader "Custom/ParticleAlphaBlend"
         _FadeDistance("Soft Particle Fade Distance", Range(0.01, 10.0)) = 1.0
         _CameraOffset("Camera Offset", Range(-5.0, 5.0)) = 0.0
         [HDR] _EmissionColor("Emission Color", Color) = (0, 0, 0, 1)
+        [Toggle(_USE_R_CHANNEL_MASK)] _UseRChannelMask("Use Base Map R Channel as Mask", Float) = 0
     }
 
     SubShader
@@ -23,6 +24,7 @@ Shader "Custom/ParticleAlphaBlend"
 
             #pragma vertex vert
             #pragma fragment frag
+            #pragma shader_feature_local _USE_R_CHANNEL_MASK
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
@@ -76,6 +78,11 @@ Shader "Custom/ParticleAlphaBlend"
             half4 frag(Varyings IN) : SV_Target
             {
                 half4 texColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
+                #if defined(_USE_R_CHANNEL_MASK)
+                    // Treat the map as a single-channel mask (e.g. a soft grayscale
+                    // sprite) - R drives both color and alpha, tint comes from _BaseColor.
+                    texColor = texColor.rrrr;
+                #endif
                 half4 col = texColor * _BaseColor * IN.color;
 
                 // --- Soft particles: fade alpha out near intersections with scene geometry ---
