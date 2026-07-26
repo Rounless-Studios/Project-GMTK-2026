@@ -59,6 +59,25 @@ namespace Gmtk2026.Quiz.Tests
         }
 
         [Test]
+        public void ProceduralSource_UsesConfiguredTimeAndAnswerCount()
+        {
+            var source = new ProceduralQuizQuestionSource(
+                timeLimitSeconds: 2.5f,
+                minimumAnswers: 2,
+                maximumAnswers: 3);
+            var questions = new List<QuizQuestion>(
+                source.CreateQuestions(50, new Random(2026)));
+
+            foreach (QuizQuestion question in questions)
+            {
+                Assert.That(question.TimeLimitSeconds, Is.EqualTo(2.5f));
+                if (question.Kind == QuizKind.Text ||
+                    question.Kind == QuizKind.MultipleChoice)
+                    Assert.That(question.Choices.Count, Is.InRange(2, 3));
+            }
+        }
+
+        [Test]
         public void Selector_DoesNotRepeatGeneratedQuestionIdImmediately()
         {
             QuizQuestionSelector selector = new QuizQuestionSelector(

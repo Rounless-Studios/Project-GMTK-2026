@@ -5,6 +5,20 @@ namespace Gmtk2026.Quiz
 {
     public sealed class ProceduralQuizQuestionSource : IQuizQuestionSource
     {
+        private readonly float? configuredTimeLimitSeconds;
+        private readonly int configuredMinimumAnswers;
+        private readonly int configuredMaximumAnswers;
+
+        public ProceduralQuizQuestionSource(
+            float? timeLimitSeconds = null,
+            int minimumAnswers = 2,
+            int maximumAnswers = 4)
+        {
+            configuredTimeLimitSeconds = timeLimitSeconds;
+            configuredMinimumAnswers = Math.Max(2, minimumAnswers);
+            configuredMaximumAnswers = Math.Max(configuredMinimumAnswers, maximumAnswers);
+        }
+
         private static readonly CapitalFact[] CapitalFacts =
         {
             new CapitalFact("United States", "Washington, D.C.", new[] { "New York", "Los Angeles", "Chicago" }),
@@ -51,7 +65,7 @@ namespace Gmtk2026.Quiz
             }
         }
 
-        private static QuizQuestion CreateButtonMash(Random random)
+        private QuizQuestion CreateButtonMash(Random random)
         {
             int targetTaps = random.Next(18, 25);
             return new QuizQuestion(
@@ -61,10 +75,10 @@ namespace Gmtk2026.Quiz
                 new[] { targetTaps.ToString(), "Mash" },
                 0,
                 $"You filled the gauge with {targetTaps} taps.",
-                4f);
+                Limit(4f));
         }
 
-        private static QuizQuestion CreateNumberSequenceClick()
+        private QuizQuestion CreateNumberSequenceClick()
         {
             return new QuizQuestion(
                 $"number-click-{Guid.NewGuid():N}",
@@ -73,10 +87,10 @@ namespace Gmtk2026.Quiz
                 new[] { "1", "2", "3", "4", "5" },
                 0,
                 "You tapped every number from 1 to 5 in order.",
-                4f);
+                Limit(4f));
         }
 
-        private static QuizQuestion CreateRhythmTap(Random random)
+        private QuizQuestion CreateRhythmTap(Random random)
         {
             string[] lanes = new string[6];
             for (int i = 0; i < lanes.Length; i++)
@@ -91,17 +105,20 @@ namespace Gmtk2026.Quiz
                 lanes,
                 0,
                 "You played the rhythm successfully.",
-                5f);
+                Limit(5f));
         }
 
-        private static QuizQuestion CreateArithmetic(Random random)
+        private QuizQuestion CreateArithmetic(Random random)
         {
             int left = random.Next(2, 13);
             int right = random.Next(2, 13);
             bool multiply = random.NextDouble() < 0.55;
             int answer = multiply ? left * right : left + right;
             string op = multiply ? "×" : "+";
-            List<string> choices = BuildNumberChoices(answer, random);
+            List<string> choices = BuildNumberChoices(
+                answer,
+                random,
+                Math.Clamp(configuredMaximumAnswers, configuredMinimumAnswers, 4));
             int correctIndex = choices.IndexOf(answer.ToString());
 
             return new QuizQuestion(
@@ -111,14 +128,19 @@ namespace Gmtk2026.Quiz
                 choices,
                 correctIndex,
                 $"{left} {op} {right} = {answer}",
-                3f);
+                Limit(3f));
         }
 
-        private static QuizQuestion CreateCapital(Random random)
+        private QuizQuestion CreateCapital(Random random)
         {
             CapitalFact fact = CapitalFacts[random.Next(CapitalFacts.Length)];
             List<string> choices = new List<string> { fact.Capital };
-            choices.AddRange(fact.Distractors);
+            int answerCount = Math.Clamp(
+                configuredMaximumAnswers,
+                configuredMinimumAnswers,
+                1 + fact.Distractors.Length);
+            for (int i = 0; i < answerCount - 1; i++)
+                choices.Add(fact.Distractors[i]);
             Shuffle(choices, random);
 
             return new QuizQuestion(
@@ -128,15 +150,15 @@ namespace Gmtk2026.Quiz
                 choices,
                 choices.IndexOf(fact.Capital),
                 $"The capital of {fact.Country} is {fact.Capital}.",
-                4f);
+                Limit(4f));
         }
 
-        private static List<string> BuildNumberChoices(int answer, Random random)
+        private static List<string> BuildNumberChoices(int answer, Random random, int answerCount)
         {
             HashSet<int> values = new HashSet<int> { answer };
             int spread = Math.Max(3, Math.Abs(answer) / 4);
 
-            while (values.Count < 4)
+            while (values.Count < answerCount)
             {
                 int offset = random.Next(1, spread + 1);
                 int candidate = random.NextDouble() < 0.5 ? answer - offset : answer + offset;
@@ -146,7 +168,7 @@ namespace Gmtk2026.Quiz
                 }
             }
 
-            List<string> choices = new List<string>(4);
+            List<string> choices = new List<string>(answerCount);
             foreach (int value in values)
             {
                 choices.Add(value.ToString());
@@ -155,6 +177,11 @@ namespace Gmtk2026.Quiz
             Shuffle(choices, random);
             return choices;
         }
+
+        private float Limit(float fallback) =>
+            configuredTimeLimitSeconds.HasValue
+                ? Math.Max(0.1f, configuredTimeLimitSeconds.Value)
+                : fallback;
 
         private static void Shuffle<T>(IList<T> items, Random random)
         {

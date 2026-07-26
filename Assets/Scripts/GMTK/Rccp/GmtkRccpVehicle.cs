@@ -10,8 +10,6 @@ namespace GMTK.Rccp
     [RequireComponent(typeof(RCCP_CarController))]
     public sealed class GmtkRccpVehicle : GmtkVehicleAdapter
     {
-        [SerializeField] private float boostAcceleration = 18f;
-
         private RCCP_CarController carController;
         private GmtkRccpWaypointDriver aiDriver;
         private GmtkRccpFallRespawner fallRespawner;
@@ -173,14 +171,61 @@ namespace GMTK.Rccp
             if (!controlsEnabled || carRigidbody == null || speedMultiplier <= 1f)
                 return;
 
-            float acceleration = (speedMultiplier - 1f) * boostAcceleration;
+            float acceleration =
+                (speedMultiplier - 1f) * GameBalance.Current.vehicle.boostAcceleration;
             carRigidbody.AddForce(transform.forward * acceleration, ForceMode.Acceleration);
+        }
+
+        private void FixedUpdate()
+        {
+            if (carRigidbody == null || !controlsEnabled || frozen) return;
+
+            VehicleSettings settings = GameBalance.Current.vehicle;
+            float speedKph = carRigidbody.linearVelocity.magnitude * 3.6f;
+            if (speedKph >= settings.stabilizationMinimumSpeedKph)
+            {
+                Vector3 localVelocity = transform.InverseTransformDirection(
+                    carRigidbody.linearVelocity);
+                carRigidbody.AddForce(
+                    -transform.right * localVelocity.x * settings.lateralGripRecovery,
+                    ForceMode.Acceleration);
+
+                Vector3 angular = carRigidbody.angularVelocity;
+                angular.y = Mathf.Clamp(
+                    angular.y,
+                    -settings.maximumYawRadiansPerSecond,
+                    settings.maximumYawRadiansPerSecond);
+                carRigidbody.angularVelocity = angular;
+                carRigidbody.AddTorque(
+                    -Vector3.up * angular.y * settings.yawDamping,
+                    ForceMode.Acceleration);
+            }
+
+            if (isPlayer && OvertakeManager.Instance != null &&
+                OvertakeManager.Instance.IsBound)
+            {
+                float forwardSpeed = Vector3.Dot(
+                    carRigidbody.linearVelocity,
+                    transform.forward);
+                if (forwardSpeed > 0f)
+                    carRigidbody.AddForce(
+                        -transform.forward *
+                        settings.bindingDeceleration *
+                        (1f - OvertakeManager.Instance.BindSpeedMultiplier),
+                        ForceMode.Acceleration);
+            }
         }
 
         public override void ApplyForwardImpulse(float force)
         {
             if (carRigidbody != null)
                 carRigidbody.AddForce(transform.forward * force, ForceMode.VelocityChange);
+        }
+
+        public override void ApplyWorldImpulse(Vector3 impulse)
+        {
+            if (carRigidbody != null)
+                carRigidbody.AddForce(impulse, ForceMode.VelocityChange);
         }
 
         public override void ConfigureAiPersonality(AIPersonalityType type)

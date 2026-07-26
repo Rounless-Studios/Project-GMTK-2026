@@ -1,5 +1,6 @@
 using System.Collections;
 using Gmtk2026.GameBalance;
+using Gmtk2026.Quiz;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,9 +20,9 @@ namespace GMTK
         private const float HideBeforeWreckVanishes = 0.1f;
 
         [Header("Execution shot")]
-        [SerializeField] private Vector3 followOffset = new(4.8f, 2.8f, -8.5f);
+        [SerializeField] private Vector3 followOffset = new(0f, 2.4f, -6.2f);
         [SerializeField] private Vector3 targetOffset = new(0f, 1.1f, 0f);
-        [SerializeField, Range(20f, 90f)] private float fieldOfView = 52f;
+        [SerializeField, Range(20f, 90f)] private float fieldOfView = 45f;
 
         private Camera executionCamera;
         private CinemachineCamera virtualCamera;
@@ -39,6 +40,8 @@ namespace GMTK
         private Coroutine hideRoutine;
         private int shownRaceIndex = -1;
         private bool targetLocked;
+        private bool quizVisible;
+        private QuizSessionController quizSession;
 
         private CameraSettings CameraConfig => GameBalance.Current.camera;
 
@@ -67,11 +70,22 @@ namespace GMTK
 
         private void Start()
         {
-            if (Race.Events == null)
-                return;
+            quizSession =
+                FindFirstObjectByType<QuizSessionController>(FindObjectsInactive.Include);
+            if (quizSession != null)
+            {
+                quizSession.QuestionStarted += OnQuizStarted;
+                quizSession.QuizClosed += OnQuizClosed;
+                quizVisible = quizSession.State != QuizSessionState.Waiting;
+                if (quizVisible)
+                    SuspendPresentationForQuiz();
+            }
 
-            Race.Events.RaceStartedEvent.AddListener(HideImmediately);
-            Race.Events.RestartRaceEvent.AddListener(HideImmediately);
+            if (Race.Events != null)
+            {
+                Race.Events.RaceStartedEvent.AddListener(HideImmediately);
+                Race.Events.RestartRaceEvent.AddListener(HideImmediately);
+            }
         }
 
         private void OnDisable()
@@ -82,6 +96,13 @@ namespace GMTK
             EliminationManager.EliminationTargetLocked -= LockTarget;
             EliminationManager.CarEliminated -= OnCarEliminated;
             EliminationManager.FinalDuelStarted -= OnFinalDuelStarted;
+
+            if (quizSession != null)
+            {
+                quizSession.QuestionStarted -= OnQuizStarted;
+                quizSession.QuizClosed -= OnQuizClosed;
+                quizSession = null;
+            }
 
             if (Race.Events != null)
             {
@@ -95,7 +116,7 @@ namespace GMTK
             bool presentationWasHidden = shownRaceIndex < 0;
             bool targetChanged = shownRaceIndex != raceIndex;
 
-            if (presentationWasHidden)
+            if (presentationWasHidden && !quizVisible)
                 BeginExecutionPresentation();
 
             if (targetChanged)
@@ -108,7 +129,7 @@ namespace GMTK
 
         private void LockTarget(int raceIndex)
         {
-            if (shownRaceIndex < 0)
+            if (shownRaceIndex < 0 && !quizVisible)
                 BeginExecutionPresentation();
 
             if (shownRaceIndex != raceIndex)
@@ -142,6 +163,9 @@ namespace GMTK
 
         private void BeginExecutionPresentation()
         {
+            if (quizVisible)
+                return;
+
             if (hideRoutine != null)
             {
                 StopCoroutine(hideRoutine);
@@ -171,6 +195,42 @@ namespace GMTK
                 cctvViewport,
                 CameraConfig.executionTransitionSeconds,
                 false);
+        }
+
+        private void OnQuizStarted(QuizQuestion _)
+        {
+            quizVisible = true;
+            SuspendPresentationForQuiz();
+        }
+
+        private void OnQuizClosed()
+        {
+            quizVisible = false;
+
+            // The purge countdown keeps running during the driving quiz. If its target is still
+            // active when the phone closes, restore the CCTV with its latest target.
+            if (shownRaceIndex < 0)
+                return;
+
+            BeginExecutionPresentation();
+            SetCinemachineTarget(shownRaceIndex);
+            UpdateTargetLabel();
+        }
+
+        private void SuspendPresentationForQuiz()
+        {
+            if (cctvViewportRoutine != null)
+            {
+                StopCoroutine(cctvViewportRoutine);
+                cctvViewportRoutine = null;
+            }
+
+            if (overlay != null)
+                overlay.SetActive(false);
+            if (executionCamera != null)
+                executionCamera.enabled = false;
+            if (virtualCamera != null)
+                virtualCamera.enabled = false;
         }
 
         private void SetCinemachineTarget(int raceIndex)

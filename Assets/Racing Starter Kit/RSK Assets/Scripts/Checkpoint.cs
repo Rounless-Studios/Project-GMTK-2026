@@ -20,6 +20,8 @@ namespace SpinMotion
 
         private void Update()
         {
+            if (raceManager == null) return;
+            if (raceManager.Item == null) return;
             if (!raceManager.Item.IsRaceInProgress()) return;
             if (realTimeRacePositions.Item.CarCheckpointTrackers.Count == 0) return;
 

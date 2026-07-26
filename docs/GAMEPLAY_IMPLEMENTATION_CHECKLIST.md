@@ -28,6 +28,22 @@ EditMode 테스트 실행 결과와 Play Mode 동작은 **이번 리뷰에서 �
 "코드 구현 확인"이라고 적은 항목은 소스·에셋 근거가 있다는 뜻이며, 체크 규칙에 따라 `[x]`로
 올리지 않았다. 테스트·Play Mode 확인은 사용자가 직접 실행한 뒤 반영한다.
 
+### 2026-07-26 `feature/improvements` 구현 패스
+
+다음 항목은 코드·정적 컴파일까지 구현했으며, 체크 규칙에 따라 Play Mode 확인 전에는 기존
+체크박스를 완료로 올리지 않는다.
+
+- 킷 `RaceFinish`를 런타임에서 제거하고 `RaceResultAuthority`가 레이스당 결과를 한 번만 발행
+- `GmtkRccpPlayersSpawner`가 `race.aiCount`를 직접 사용
+- `GameJamDefault.maximumDurability`는 반복 대파를 막는 플레이테스트 의도에 따라 `1000000` 유지
+- 절차형 퀴즈가 `QuizSettings`의 제한 시간과 텍스트 답안 수를 사용
+- `RaceHud` 자동 생성, 최하위·처형·목표·최종 결투·결과 피드백 추가
+- 파열 밀침, 영혼 교환 상호 충돌 무시 시간, 추월 실패 감속을 실제 차량 물리에 연결
+- `VehicleSettings` 및 `SpecialEventSettings` 추가
+- 특수 이벤트를 덤프트럭·지진·운석 3종으로 제한하고 횟수·간격·중복·보호 페이즈 규칙 연결
+- AI 장애물 회피, 성격별 부스트 사용, 최하위 긴급 반응, 뒤처짐 보정 연결
+- `GMTK.GameBalance.Runtime`, `GMTK.Quiz.Runtime`, `Assembly-CSharp` 정적 컴파일 성공
+
 ---
 
 ## 0. GDD 기준 확정 목표
@@ -190,7 +206,7 @@ GDD의 네 유형과 1:1로 대응하되 명칭과 행동 정의는 프로젝트
 | AI | `personalityProfiles[].quizAvoidChance` | 생존자 0.8 / 봉쇄자 0.65 / 난폭자 0.35 / 폭주광 0.3 | 동일 | 사용. **`CurseSettings` → `AISettings` 이전 완료** (`AISettings.QuizAvoidChanceOf`) |
 | AI | `defaultQuizAvoidChance` | (문서 없음) | 0.5 | 사용 — 성격 컴포넌트가 없는 차량용 폴백 |
 | Camera | `sideBySideActivationSeconds` | 0.6 | 0.6 | **선언만** (투샷 미구현) |
-| Camera | `executionCctvViewportRect` | 처형 CCTV를 오른쪽 아래 약 1/3 Rect로 설정 | x .66 / y 0 / w .34 / h .34 | 사용 (`ExecutionCctvDirector`) |
+| Camera | `executionCctvViewportRect` | 처형 CCTV를 속도계와 겹치지 않는 오른쪽 중앙 Rect로 설정 | x .67 / y .35 / w .32 / h .30 | 사용 (`ExecutionCctvDirector`) |
 | Camera | `executionTransitionSeconds` | 0.2 | 0.2 | 사용 |
 | Camera | `executionReturnSeconds` | 0.25 | 0.25 | 사용 |
 | Gate | `closeDurationSeconds` | 0.75 | — | **미구현** (`presentation.gateCloseSpeed 2` / `gateCloseDelaySeconds 0.2`가 **선언만**) |
@@ -333,13 +349,16 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 1. **레이스 시작 직후 여러 대가 추락 리스폰된다** — `RCCP fall respawn: GMTK_RCCP_Player -> waypoint 41`,
    `AI_1 -> 37`, `AI_3 -> 36`처럼 출발 몇 초 안에 다발로 찍힌다. 도로 콜라이더인지 그리드 높이(도로면 +0.35m)인지
    **원인 미확인**이며 화면 확인이 필요하다.
-2. **킷 `RaceFinish`의 승리 조건이 랩 수와 어긋난다** — 랩이 이제 사실대로(주행 거리 기준) 기록되므로
+2. **킷 `RaceFinish`의 승리 조건이 랩 수와 어긋난다** — `feature/improvements`에서
+   `RaceResultAuthority`가 씬 로드 시 해당 컴포넌트를 비활성화·제거하도록 코드 수정. Play Mode 확인 대기.
+   랩이 이제 사실대로(주행 거리 기준) 기록되므로
    `LapScores > LapsSelected`는 선택한 랩 수 **+1랩**을 요구한다. 예전 킷 카운터는 출발선 유령 랩을 전제로 해서
    선택한 랩 수에 끝났다. 우리 승패는 탈락·최종 관문이 결정하고 `RaceFinish` 제거가 이미 미해결 항목이므로,
    제거하거나 조건을 조정해야 한다.
 3. **씬에 `AudioListener`가 2개** — 플레이 중 매 프레임 "There are 2 audio listeners in the scene" 로그가
    찍혀 콘솔 버퍼(800줄)를 6초마다 밀어낸다. 실제 에러가 콘솔에서 사라지므로 진단을 방해한다.
-4. **킷 `RaceFinish`가 `GMTK_Race`에 남아 있다.** 랩 완주 시 중앙 관리자를 우회해 승패를 확정한다.
+4. **킷 `RaceFinish`가 `GMTK_Race` YAML에는 남아 있다.** `feature/improvements` 런타임 권한 계층이
+   씬 로드 시 제거하므로 더 이상 승패를 발행하지 않게 수정했으나 Play Mode 확인 대기.
    추가로 `RaceFinish.finishTrigger`는 **어디에서도 대입되지 않는데** `OnRestartRace()`에서
    `finishTrigger.enabled = false`를 호출하므로 **재시작 시 NullReferenceException이 난다.**
    서드파티 폴더라 직접 수정 금지 대상 — 컴포넌트를 씬에서 제거하거나 GMTK 어댑터로 대체해야 한다.

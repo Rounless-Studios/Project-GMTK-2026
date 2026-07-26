@@ -54,6 +54,8 @@ namespace GMTK
         private void OnDestroy()
         {
             EliminationManager.FinalDuelStarted -= OnFinalDuel;
+            GameEvents e = Race.Events;
+            if (e != null) e.RestartRaceEvent.RemoveListener(ResetGate);
             if (Instance == this) Instance = null;
         }
 
@@ -135,9 +137,9 @@ namespace GMTK
                 ex.Explode();
             }
 
-            var e = Race.Events;
-            if (e != null)
-                e.RaceFinishedEvent.Invoke(winner == 0 ? RaceFinishType.Win : RaceFinishType.Lose);
+            RaceResultAuthority authority = RaceResultAuthority.Instance;
+            if (authority != null)
+                authority.TryFinish(winner == 0 ? RaceFinishType.Win : RaceFinishType.Lose);
 
             sequence = null;
         }

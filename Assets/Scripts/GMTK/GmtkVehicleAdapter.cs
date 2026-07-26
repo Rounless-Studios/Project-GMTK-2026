@@ -17,6 +17,12 @@ namespace GMTK
 
         public abstract void ApplyForwardImpulse(float force);
 
+        public virtual void ApplyWorldImpulse(Vector3 impulse)
+        {
+            Rigidbody body = GetComponent<Rigidbody>();
+            if (body != null) body.AddForce(impulse, ForceMode.VelocityChange);
+        }
+
         public virtual void ConfigureAiPersonality(AIPersonalityType type)
         {
         }

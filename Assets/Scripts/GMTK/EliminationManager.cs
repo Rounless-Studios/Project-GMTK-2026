@@ -18,6 +18,7 @@ namespace GMTK
     /// </summary>
     public class EliminationManager : MonoBehaviour
     {
+        public static EliminationManager Instance { get; private set; }
         [Header("Explosion (presentation tuning)")]
         public float explosionForce = 1600f;
         public float upwardForce = 9f;
@@ -48,6 +49,20 @@ namespace GMTK
 
         private EliminationSettings E => GameBalance.Current.elimination;
         private int FinalDuelCount => GameBalance.Current.race.finalDuelRacerCount;
+
+        private void Awake() => Instance = this;
+
+        private void OnDestroy()
+        {
+            GameEvents events = Race.Events;
+            if (events != null)
+            {
+                events.RaceStartedEvent.RemoveListener(OnRaceStarted);
+                events.RestartRaceEvent.RemoveListener(OnRestartRace);
+                events.RaceFinishedEvent.RemoveListener(OnRaceFinished);
+            }
+            if (Instance == this) Instance = null;
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttach()
@@ -177,11 +192,23 @@ namespace GMTK
             int carCount = Race.CarCount;
             int lastIndex = -1;
             double lowest = double.MaxValue;
+            const double tieToleranceMetres = 0.01d;
             for (int i = 0; i < carCount; i++)
             {
                 if (eliminated.Contains(i)) continue;
                 double score = Race.ScoreOf(i);
-                if (score < lowest) { lowest = score; lastIndex = i; }
+                if (score < lowest - tieToleranceMetres)
+                {
+                    lowest = score;
+                    lastIndex = i;
+                }
+                else if (System.Math.Abs(score - lowest) <= tieToleranceMetres &&
+                         i == CurrentLastPlaceIndex)
+                {
+                    // Exact progress ties keep the previous order, preventing a frame-to-frame
+                    // execution-target flicker while two cars overlap on the racing line.
+                    lastIndex = i;
+                }
             }
             return lastIndex;
         }
@@ -256,8 +283,8 @@ namespace GMTK
             if (finished) return;
             finished = true;
             armed = false;
-            var events = Race.Events;
-            if (events != null) events.RaceFinishedEvent.Invoke(type);
+            RaceResultAuthority authority = RaceResultAuthority.Instance;
+            if (authority != null) authority.TryFinish(type);
         }
     }
 }
