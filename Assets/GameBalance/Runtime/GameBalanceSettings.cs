@@ -30,10 +30,32 @@ namespace Gmtk2026.GameBalance
     public class EliminationSettings
     {
         [Min(0)] public float intervalSeconds = 30f;
+        [Tooltip("Extra breathing room before the first purge. Ignored by short test presets.")]
+        [Min(0)] public float firstIntervalBonusSeconds = 15f;
+        [Tooltip("Seconds removed from each purge interval after an execution.")]
+        [Min(0)] public float intervalReductionSeconds = 10f;
+        [Tooltip("Shortest purge interval after escalation.")]
+        [Min(1)] public float minimumIntervalSeconds = 15f;
         [Min(0)] public float warningSeconds = 10f;
         [Min(0)] public float intenseWarningSeconds = 5f;
         [Min(0)] public float executionCameraLeadSeconds = 3f;
         [Min(0)] public float executeAtRemainingSeconds = 0f;
+
+        [Header("Devil's Bargain")]
+        [Min(0)] public float bargainTimeCostSeconds = 3f;
+        [Min(0)] public float bargainAvailableBelowSeconds = 10f;
+
+        /// <summary>The next purge interval after the given number of completed executions.</summary>
+        public float IntervalAfterExecutions(int completedExecutions)
+        {
+            float firstInterval = intervalSeconds <= minimumIntervalSeconds
+                ? intervalSeconds
+                : intervalSeconds + firstIntervalBonusSeconds;
+            float reduced = firstInterval -
+                            Mathf.Max(0, completedExecutions) * intervalReductionSeconds;
+            float floor = Mathf.Min(intervalSeconds, minimumIntervalSeconds);
+            return Mathf.Max(floor, reduced);
+        }
     }
 
     [System.Serializable]
@@ -141,9 +163,12 @@ namespace Gmtk2026.GameBalance
     [System.Serializable]
     public class OvertakeSettings
     {
+        [Tooltip("Legacy directed challenge. Disabled by default: ordinary overtakes now reward racecraft.")]
+        public bool enableDirectedChallenges;
         [Min(0)] public float checkIntervalSeconds = 20f;
         [Min(0)] public float challengeDurationSeconds = 8f;
         [Min(0)] public float requiredLeadHoldSeconds = 0.5f;
+        [Min(0)] public float passiveRewardCooldownSeconds = 4f;
         public OvertakeCooldownRewardMode cooldownRewardMode = OvertakeCooldownRewardMode.Reset;
         [Min(0)] public float cooldownReductionSeconds = 6f; // only used in Reduce mode
         // failure penalty: "referee's chains" — a hard slowdown for a short time
@@ -420,8 +445,6 @@ namespace Gmtk2026.GameBalance
     public class PresentationSettings
     {
         [Header("Final Gate")]
-        [Tooltip("Duel time limit; when it runs out the racer furthest along the track wins.")]
-        [Min(0)] public float gateOpenDurationSeconds = 20f;
         [Tooltip("Drivable width the two closing leaves span together.")]
         [Min(1)] public float gateWidthMeters = 16f;
         [Min(1)] public float gateHeightMeters = 7f;
@@ -463,6 +486,8 @@ namespace Gmtk2026.GameBalance
         [Min(1)] public int maximumSimultaneousEvents = 1;
         [Min(1)] public int maximumEventsPerRace = 4;
         public bool blockDuringExecutionWarning = true;
+        [Tooltip("No new hazard may begin this many seconds before a purge.")]
+        [Min(0)] public float blockBeforeEliminationSeconds = 10f;
         public bool blockDuringQuiz = true;
         public bool blockDuringOvertakeChallenge = true;
         public bool blockDuringFinalDuel = true;
@@ -588,16 +613,21 @@ namespace Gmtk2026.GameBalance
             if (specialEvents.constructionBarrierCount < 2)
                 errors.Add("specialEvents.constructionBarrierCount must be >= 2 (one is the gap)");
 
-            // all elimination warnings must fit inside the interval
-            if (elimination.warningSeconds >= elimination.intervalSeconds)
-                errors.Add("elimination.warningSeconds must be < elimination.intervalSeconds");
-            if (elimination.intenseWarningSeconds >= elimination.intervalSeconds)
-                errors.Add("elimination.intenseWarningSeconds must be < elimination.intervalSeconds");
-            if (elimination.executionCameraLeadSeconds >= elimination.intervalSeconds)
-                errors.Add("elimination.executionCameraLeadSeconds must be < elimination.intervalSeconds");
+            // all warnings must fit even after the purge cadence reaches its shortest interval
+            float shortestEliminationInterval =
+                elimination.IntervalAfterExecutions(int.MaxValue);
+            if (elimination.warningSeconds >= shortestEliminationInterval)
+                errors.Add("elimination.warningSeconds must be < the shortest elimination interval");
+            if (elimination.intenseWarningSeconds >= shortestEliminationInterval)
+                errors.Add("elimination.intenseWarningSeconds must be < the shortest elimination interval");
+            if (elimination.executionCameraLeadSeconds >= shortestEliminationInterval)
+                errors.Add("elimination.executionCameraLeadSeconds must be < the shortest elimination interval");
             if (elimination.intenseWarningSeconds > elimination.warningSeconds)
                 errors.Add("elimination.intenseWarningSeconds should be <= elimination.warningSeconds");
-
+            if (elimination.intervalSeconds <= 0f)
+                errors.Add("elimination.intervalSeconds must be > 0");
+            if (elimination.minimumIntervalSeconds <= 0f)
+                errors.Add("elimination.minimumIntervalSeconds must be > 0");
             if (quiz.minimumAnswerCount > quiz.maximumAnswerCount)
                 errors.Add("quiz.minimumAnswerCount must be <= quiz.maximumAnswerCount");
 
@@ -684,9 +714,7 @@ namespace Gmtk2026.GameBalance
                 errors.Add("camera.executionCctvViewportRect must have positive size and remain within the 0..1 viewport");
             }
 
-            // the final gate must have a real opening and a real duel window to be crossable
-            if (presentation.gateOpenDurationSeconds <= 0f)
-                errors.Add("presentation.gateOpenDurationSeconds must be > 0");
+            // the final gate remains open until a surviving racer crosses it
             if (presentation.gateWidthMeters <= 0f)
                 errors.Add("presentation.gateWidthMeters must be > 0");
             if (presentation.gateHeightMeters <= 0f)

@@ -171,22 +171,7 @@ namespace GMTK
 
             if (countdownText != null) countdownText.text = "GO!";
             GameAudioManager.Instance?.PlayRaceStart();
-            gameEvents.ToggleCarFreezeEvent.Invoke(false);
-            gameEvents.ChangeToRaceCamerasEvent.Invoke();
-            try
-            {
-                // The kit initializes RaceManager before its HUD and pause controls
-                // are allowed to observe the Racing phase.
-                gameEvents.RaceStartedEvent.Invoke();
-            }
-            finally
-            {
-                // Keep the UI transition deterministic even if another race-start
-                // listener fails before RaceFlow receives the event.
-                if (CurrentPhase != Phase.Racing)
-                    SetPhase(Phase.Racing);
-            }
-            gameEvents.PreRaceUpdateGuiEvent.Invoke();
+            CommitRaceStart();
             if (quiz != null)
             {
                 quiz.enabled = true;
@@ -353,14 +338,45 @@ namespace GMTK
             // so runtime-instantiated cars use the same locations.
             FindFirstObjectByType<TrackLayout>(FindObjectsInactive.Include)?.ApplyLayout();
 
-            Time.timeScale = 1f;
-            SetPhase(Phase.Racing);
+            // A RaceFlow authored in the menu scene survives scene loading. Previously this
+            // branch only changed the visible phase, leaving RaceManager, AI and all race clocks
+            // stopped. Resolve the live scene event bus and commit the same authoritative start
+            // used by the GMTK_Race branch.
+            gameEvents = Race.Events;
+            CommitRaceStart();
 
             if (quiz != null)
             {
                 quiz.enabled = true;
                 quiz.ConfigureFeedbackDuration(1.8f);
             }
+        }
+
+        private void CommitRaceStart()
+        {
+            // Countdown uses realtime so it can finish while the menu has gameplay paused.
+            // Restoring scaled time is part of the race transition, not a presentation detail.
+            Time.timeScale = 1f;
+
+            // Establish authority before any broad UnityEvent. A listener failure must not leave
+            // the HUD in Racing while physics, AI and scaled gameplay clocks remain stopped.
+            RaceManager raceManager = Race.RaceManagerInstance;
+            raceManager?.EnsureRaceStarted();
+            if (CurrentPhase != Phase.Racing)
+                SetPhase(Phase.Racing);
+
+            if (gameEvents == null)
+            {
+                Debug.LogError(
+                    "RaceFlow could not commit the race start because no GameEvents asset is available.",
+                    this);
+                return;
+            }
+
+            gameEvents.ToggleCarFreezeEvent.Invoke(false);
+            gameEvents.ChangeToRaceCamerasEvent.Invoke();
+            gameEvents.RaceStartedEvent.Invoke();
+            gameEvents.PreRaceUpdateGuiEvent.Invoke();
         }
 
         private void SetPhase(Phase phase)

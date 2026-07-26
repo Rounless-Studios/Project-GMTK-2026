@@ -187,7 +187,6 @@ MonoBehaviour:
     minimumBoostStraights: 2
     minimumParallelSections: 1
   presentation:
-    gateOpenDurationSeconds: 20
     gateWidthMeters: 16
     gateHeightMeters: 7
     gateCloseDelaySeconds: 0.2

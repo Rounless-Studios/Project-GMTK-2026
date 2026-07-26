@@ -66,6 +66,18 @@ namespace Gmtk2026.GameBalance
             return true;
         }
 
+        /// <summary>
+        /// Start a boost without spending a charge. Used by the last-place Devil's Bargain,
+        /// whose cost is paid in purge time instead.
+        /// </summary>
+        public bool TryActivateFree()
+        {
+            if (IsSealed || IsBoosting) return false;
+            boostTimer = s.durationSeconds;
+            BoostStarted?.Invoke();
+            return true;
+        }
+
         /// <summary>Refund charges (overtake reward), never above the maximum.</summary>
         public void AddCharges(int amount)
         {

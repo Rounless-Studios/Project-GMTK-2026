@@ -173,10 +173,15 @@ namespace GMTK
                 return true;
 
             EliminationManager elimination = FindFirstObjectByType<EliminationManager>();
-            if (Settings.blockDuringExecutionWarning &&
-                elimination != null &&
-                elimination.Level != EliminationWarningLevel.None)
-                return true;
+            if (elimination != null)
+            {
+                if (Settings.blockDuringExecutionWarning &&
+                    elimination.Level != EliminationWarningLevel.None)
+                    return true;
+                if (elimination.SecondsToElimination <=
+                    Settings.blockBeforeEliminationSeconds)
+                    return true;
+            }
 
             if (Settings.blockDuringOvertakeChallenge &&
                 OvertakeManager.Instance?.Challenge?.Status == OvertakeStatus.Active)

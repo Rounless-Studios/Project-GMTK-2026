@@ -338,15 +338,18 @@ namespace GMTK
             string challenge = overtake != null && overtake.Challenge != null && overtake.Challenge.Status == OvertakeStatus.Active
                 ? $"OVERTAKE: CAR {overtake.RivalIndex + 1} / {overtake.Challenge.TimeRemaining:0.0}s" : "OVERTAKE: STANDBY";
             string finalGate = FinalGate.Instance != null && FinalGate.Instance.IsOpen
-                ? $"FINAL GATE: {FinalGate.Instance.TimeRemaining:0.0}s" : "FINAL GATE: -";
+                ? "FINAL GATE — CROSS FIRST TO SURVIVE"
+                : "FINAL GATE: -";
             bool warningActive = elimination != null &&
                                  elimination.Level != EliminationWarningLevel.None;
-            string executionMessage = warningActive
-                ? $"PURGE IN {elimination.SecondsToElimination:0.0}s — " +
+            string executionMessage = elimination != null
+                ? $"NEXT PURGE {elimination.SecondsToElimination:0.0}s" +
                   (elimination.CurrentLastPlaceIndex == 0
-                      ? "YOU ARE MARKED"
-                      : $"CAR {elimination.CurrentLastPlaceIndex + 1} IS MARKED")
-                : string.Empty;
+                      ? " — YOU ARE MARKED"
+                      : elimination.CurrentLastPlaceIndex >= 0
+                          ? $" — CAR {elimination.CurrentLastPlaceIndex + 1} IS MARKED"
+                          : string.Empty)
+                : "NEXT PURGE --";
             bool playerLast = elimination != null && elimination.CurrentLastPlaceIndex == 0;
             Color executionColor = elimination != null &&
                                    elimination.Level >= EliminationWarningLevel.Intense
@@ -355,20 +358,27 @@ namespace GMTK
             bool finalDuel = phase == RacePhase.FinalDuel;
             bool activeChallenge = overtake != null && overtake.Challenge != null &&
                                    overtake.Challenge.Status == OvertakeStatus.Active;
-            string overtakeMessage = finalDuel ? finalGate : challenge;
+            bool bargainAvailable = elimination != null &&
+                                    elimination.CanUseDevilsBargain;
+            string overtakeMessage = finalDuel
+                ? finalGate
+                : bargainAvailable
+                    ? $"PRESS X: DEVIL'S BARGAIN — BOOST NOW, LOSE {GameBalance.Current.elimination.bargainTimeCostSeconds:0}s"
+                    : challenge;
             string objectiveMessage = phase == RacePhase.FinalDuel
                 ? "FINAL DUEL — REACH THE GATE FIRST"
                 : playerLast
                     ? "ESCAPE LAST PLACE BEFORE THE TIMER HITS ZERO"
-                    : "STAY AHEAD — THE LAST RACER DIES EVERY 30 SECONDS";
+                    : "STAY AHEAD — LAST PLACE DIES WHEN THE CLOCK HITS ZERO";
 
             if (HasAuthoredAlertUi)
             {
                 objectiveTmp.text = objectiveMessage;
-                executionTmp.gameObject.SetActive(warningActive);
+                executionTmp.gameObject.SetActive(true);
                 executionTmp.text = executionMessage;
                 executionTmp.color = executionColor;
-                overtakeTmp.gameObject.SetActive(activeChallenge || finalDuel);
+                overtakeTmp.gameObject.SetActive(activeChallenge || finalDuel ||
+                                                 bargainAvailable);
                 overtakeTmp.text = overtakeMessage;
             }
 
@@ -376,7 +386,7 @@ namespace GMTK
                 return;
 
             positionText.text = $"{rank}/{Mathf.Max(0, total)}";
-            executionText.gameObject.SetActive(warningActive);
+            executionText.gameObject.SetActive(true);
             executionText.text = executionMessage;
             lastPlaceText.text =
                 $"{last}  {(elimination != null ? elimination.Level.ToString() : "-")}";
@@ -387,7 +397,8 @@ namespace GMTK
             boostText.text =
                 $"BOOST  {(boost != null ? $"{boost.Charges}/{GameBalance.Current.boost.maximumCharges}" : "-")}";
             curseText.text = curseLine;
-            overtakeText.gameObject.SetActive(activeChallenge || finalDuel);
+            overtakeText.gameObject.SetActive(activeChallenge || finalDuel ||
+                                              bargainAvailable);
             overtakeText.text = overtakeMessage;
             finalGateText.text = finalGate;
             objectiveText.text = objectiveMessage;

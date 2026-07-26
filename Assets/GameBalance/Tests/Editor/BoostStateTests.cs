@@ -48,6 +48,27 @@ namespace Gmtk2026.GameBalance.Tests
         }
 
         [Test]
+        public void BargainBoostStartsWithoutSpendingCharge()
+        {
+            var b = new BoostState(Settings());
+            Assert.IsTrue(b.TryActivateFree());
+            Assert.IsTrue(b.IsBoosting);
+            Assert.AreEqual(2, b.Charges);
+        }
+
+        [Test]
+        public void BargainBoostStillRespectsSealAndActiveBoost()
+        {
+            var sealedBoost = new BoostState(Settings());
+            sealedBoost.ApplySeal(1f);
+            Assert.IsFalse(sealedBoost.TryActivateFree());
+
+            var activeBoost = new BoostState(Settings());
+            Assert.IsTrue(activeBoost.TryActivate());
+            Assert.IsFalse(activeBoost.TryActivateFree());
+        }
+
+        [Test]
         public void BoostEndsAfterDuration()
         {
             var b = new BoostState(Settings());

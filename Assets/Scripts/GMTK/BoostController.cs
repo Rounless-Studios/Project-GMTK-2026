@@ -90,6 +90,9 @@ namespace GMTK
         /// <summary>Request a boost (AI or scripted). Returns true if one started.</summary>
         public bool TryBoost() => State != null && State.TryActivate();
 
+        /// <summary>Start the last-place bargain boost without consuming a charge.</summary>
+        public bool TryBargainBoost() => State != null && State.TryActivateFree();
+
         /// <summary>Engine-seal curse: block boost and recharge for a time.</summary>
         public void ApplySeal(float seconds) => State?.ApplySeal(seconds);
 
@@ -109,6 +112,10 @@ namespace GMTK
                  keyboard.rightShiftKey.wasPressedThisFrame))
                 State.TryActivate();
 
+            // B is RCCP's hold-to-look-back camera control. X is intentionally unbound in the
+            // shipped vehicle action map, so the bargain never steals a driving/camera action.
+            if (IsPlayer && keyboard != null && keyboard.xKey.wasPressedThisFrame)
+                EliminationManager.Instance?.TryDevilsBargain(this);
         }
 
         private void FixedUpdate()

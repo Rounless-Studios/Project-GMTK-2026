@@ -44,6 +44,24 @@ EditMode 테스트 실행 결과와 Play Mode 동작은 **이번 리뷰에서 �
 - AI 장애물 회피, 성격별 부스트 사용, 최하위 긴급 반응, 뒤처짐 보정 연결
 - `GMTK.GameBalance.Runtime`, `GMTK.Quiz.Runtime`, `Assembly-CSharp` 정적 컴파일 성공
 
+### 2026-07-26 카운트다운 중심 재미 개선 패스
+
+정적 구현과 `GMTK.GameBalance.Runtime` / `Assembly-CSharp` 빌드는 통과했다. Unity
+EditMode 테스트와 Play Mode 체감 검증 전이므로 아래 항목은 완료 체크하지 않는다.
+
+- 처형 시계를 레이스 내내 `NEXT PURGE`로 표시하고 현재 표적을 함께 표시
+- 처형 간격을 45 → 35 → 25 → 15초로 가속 (`intervalSeconds` 30초 +
+  첫 주기 보너스 15초, 처형마다 10초 감소, 최소 15초)
+- 최하위 플레이어가 마지막 10초에 주기당 한 번 `B`로 3초를 희생하고 무료 부스트를
+  받는 `DEVIL'S BARGAIN` 추가
+- 별도 무작위 추월 퀘스트는 기본 비활성화하고 실제 주행 중 추월에 부스트 충전과
+  저주 쿨다운 보상을 지급
+- 특수 이벤트는 처형 경고 단계뿐 아니라 처형 10초 전부터 새로 시작하지 않도록 차단
+- `BoostState.TryActivateFree`와 처형 간격 계산 EditMode 테스트 추가
+- 카운트다운 후 차량만 움직이고 레이스 상태·처형 시계가 0에 멈추는 부분 시작 상태를
+  방지하기 위해 `RaceManager` 권위 상태를 `RaceStartedEvent` 팬아웃보다 먼저 확정하고,
+  `EliminationManager`가 Racing 단계에서 누락된 시작 이벤트를 한 번 복구하도록 보강
+
 ---
 
 ## 0. GDD 기준 확정 목표
@@ -53,14 +71,14 @@ EditMode 테스트 실행 결과와 Play Mode 동작은 **이번 리뷰에서 �
 | 코스 | 목표 지점까지 달리는 1랩 레이스 |
 | 참가 차량 | 플레이어 1대 + AI 5대, 총 6대 |
 | 설정 | 차량 수, 탈락 간격 등 주요 수치를 설정으로 분리 |
-| 탈락 | 30초마다 현재 최하위 차량 처형 |
+| 탈락 | 45→35→25→15초로 가속되는 시계가 0이 될 때 현재 최하위 차량 처형 |
 | 탈락 종료 | 두 대가 남으면 탈락 중단 |
 | 최종 단계 | 남은 두 대가 닫히는 관문을 향해 질주 |
 | 승리 | 관문을 먼저 통과한 차량 |
 | 차량 조작 | 가속·제동·조향·충돌·부스트·기본 드리프트 |
 | 스킬 | 파열, 엔진 봉인, 영혼 교환 |
 | 퀴즈 | 레이스를 멈추지 않고 마우스로 답 선택. **시전자가 저주를 걸고 대상이 퀴즈로 방어한다** |
-| 추월 도전 | 20초 주기 후보 판정, 8초 안에 추월 후 0.5초 유지 |
+| 추월 보상 | 실제로 경쟁자를 추월하면 부스트 충전과 저주 쿨다운 보상 |
 | 특수 이벤트 | 덤프트럭 습격, 지진, 운석 낙하 |
 | 처형 화면 | 플레이어 주행 화면을 메인으로 유지하고 처형 차량은 오른쪽 아래 약 1/3 CCTV로 표시 |
 | 결과 | 빠른 승리·패배 표시와 재시작 |
@@ -642,7 +660,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 > 주행으로 승리가 성립한다. 두 스크립트가 **같은 `PresentationSettings` 필드**를 읽어 애니메이션과 판정이
 > 어긋날 수 없다. 화면 구도(관문 위치·방향·폭 16m가 트랙에 맞는지)와 시퀀스 체감은 Play Mode 확인 필요.
 
-- [x] 관문 폐쇄 속도·지연·처형 지연·애니메이션 시간을 `PresentationSettings`에서 읽음 — `gateOpenDurationSeconds`·`gateWidthMeters`·`gateHeightMeters`·`gateCloseDelaySeconds`·`gateCloseDurationSeconds`(0.75)·`gateExecutionDelaySeconds`(0.25) 신설, 검증 6줄 추가. 아무도 읽지 않던 `gateCloseSpeed`는 제거하고 컴포넌트의 `gateDurationSeconds = 20f` 리터럴도 제거
+- [x] 관문 폐쇄 속도·지연·처형 지연·애니메이션 시간을 `PresentationSettings`에서 읽음 — `gateWidthMeters`·`gateHeightMeters`·`gateCloseDelaySeconds`·`gateCloseDurationSeconds`(0.75)·`gateExecutionDelaySeconds`(0.25) 사용. 폐기된 관문 제한 시간 설정은 제거
 - [ ] 닫히는 탈출문 오브젝트 — `FinalGateDoors.BuildGate`가 2엽 문짝 + 하우징을 런타임 생성. 방향은 직전 체크포인트→결승선 벡터로 산출해 체크포인트 프리팹 회전에 의존하지 않는다. **화면상 배치 미검증**
 - [x] 최종 두 대에서 관문 단계 활성화 — `EliminationManager.FinalDuelStarted` → `FinalGate.OnFinalDuel`이 생존자 목록을 만들고 `IsOpen = true`, `GateOpened` 발행
 - [x] 첫 번째 관문 통과 차량 판정과 승리 — `FinalGateCrossingTrigger`가 차량 루트를 raceIndex로 해석해 `ReportGateCrossing` 호출. 호출자가 `GMTKAutoPlaytest`뿐이던 문제 해소
@@ -650,7 +668,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [x] 패자 처형 — `CloseGateThenExecute`가 문이 닫힌 뒤 `gateExecutionDelaySeconds`(0.25초) 후 처형. GDD 지연 규정 반영
 - [ ] 관문 애니메이션과 충돌 판정 동기화 — 문짝이 콜라이더를 항상 갖고 이동하므로 보이는 것과 막히는 것이 같은 지오메트리. **다만 Rigidbody 없이 transform 이동이라 밀착 시 관통 가능, Play Mode 확인 필요**
 - [ ] 승리 관문 시퀀스 — 폐쇄 → 처형 → 결과 보고 순서로 구성. 플레이어가 패자면 자기 차량 파괴를 `wreckLingerSeconds` 동안 보여준 뒤 결과를 보고한다. 전용 카메라 프레이밍과 승리 연출은 3.13 범위로 남음
-- [x] 20초 타임아웃 시 `duelCars[0]` 자동 승리 규칙 제거 또는 정당화 — 타임아웃 시 `LeadingDuelCar()`로 실제 선두(`Race.ScoreOf` 최대)를 승자로 판정. 낮은 인덱스가 무조건 이기던 버그 수정
+- [x] 폐기된 최종 관문 카운트다운 제거 — 제한 시간과 자동 승자 판정을 모두 제거. 생존 차량이 관문을 실제 통과할 때만 결투가 종료됨
 - [ ] 관문 슬램 SFX — `Assets/Sound`에 음원이 없어 `SFX_VEH_COLLISION_`을 플레이스홀더로 인스펙터 노출 (3.14 범위)
 
 ### 3.5 핵심 HUD와 전용 씬
@@ -661,13 +679,13 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 > `Race Timer TMP`, `Durability` 슬라이더, `Curse Skill` 슬라이더를 제공한다.
 
 - [x] 현재 순위와 생존 레이서 수 표시 — `RacePositionGUI`가 `Position TMP`에 순위 숫자, `nd TMP`에 `/생존수` 출력
-- [ ] 30초 처형 카운트다운 상시 표시 — `Execution TMP`가 경고 단계에서는 남은 시간을 표시하지만 평상시에는 숨김
+- [ ] 처형 카운트다운 상시 표시 — `Execution TMP`가 레이스 내내 `NEXT PURGE`와 현재 표적을 표시하도록 코드 구현, Play Mode 미검증
 - [ ] 최하위 경고와 월드 마커 — 중앙 `Execution TMP` 경고는 구현, 차량 위 월드 마커는 없음
 - [x] 플레이어 최하위 바이탈 경고 — `ESCAPE LAST PLACE BEFORE THE TIMER HITS ZERO` 및 `YOU ARE MARKED`
 - [ ] 부스트·내구도·저주·쿨다운 표시 — 내구도(`DurabilityHud` → `RaceUI/Durability`)와 저주 쿨다운(`CurseManager` → `RaceUI/Curse Skill` 슬라이더)은 배치 확인. **부스트 충전량은 표시 수단 없음**
 - [ ] 저주 대상 마커 — 없음
 - [x] 퀴즈 문제와 마우스 답 입력 — `QuizUiPresenter` + 월드 스페이스 휴대폰
-- [x] 추월 도전 대상과 타이머 — `RaceAlertPanel/Overtake TMP`에 대상 차량과 남은 시간 표시
+- [ ] 추월/위기 행동 표시 — 별도 추월 도전은 기본 비활성화. `Overtake TMP`는 최하위 마지막 10초에 `DEVIL'S BARGAIN`의 `X` 입력과 3초 비용을 표시, Play Mode 미검증
 - [ ] 처형 경고 → 추월 도전 → 퀴즈 → 쿨다운 순서로 강조 — 우선순위 로직 없음
 - [ ] 시작 직후 기본 조작 키 가이드 — `RaceFlow` 프롤로그 텍스트는 규칙 설명만 하고 조작 키는 안내하지 않는다
 - [x] 1랩·6대·최종 관문을 포함한 게임 전용 씬 — `Assets/Scenes/GMTK_Race.unity`. 단 관문 오브젝트는 아직 없음(3.4)
@@ -755,16 +773,17 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 ### 3.12 추월 도전
 
-> 상태: 구현 (`OvertakeManager`/`OvertakeChallengeState`, 20초 주기·8초 제한·0.5초 유지).
-> **실패 페널티는 타이머만 돌고 실제 감속이 걸리지 않는다.**
+> 상태: 레거시 규칙은 보존하지만 `enableDirectedChallenges=false`가 기본이다.
+> 실제 주행에서 플레이어 점수가 경쟁자를 뒤에서 앞으로 통과할 때 보상을 지급하며,
+> 같은 경쟁자를 반복 추월할 때는 4초 보상 유예를 적용한다.
 
-- [ ] 판정 주기·제한 시간·유지 시간·보상·속박 강도를 `OvertakeSettings`에서 읽음 — 부분. 주기·제한·유지·보상 모드·속박 시간은 읽지만 **`bindSpeedMultiplier`를 소비하는 코드가 없다**
+- [ ] 실제 추월 보상 — 코드 구현, Play Mode에서 그리드 시작 직후 오보상·재추월·탈락 차량 제외 확인 필요
 - [x] 20초 간격으로 경쟁자 한 대 무작위 선택 — `PickRivalAhead()`가 앞선 활성 차량 중 무작위 1대
 - [x] 이미 플레이어가 앞선 차량이면 해당 도전 무시 — 앞선 차량만 후보에 넣고, 후보가 없으면 이번 판정을 건너뛴다
 - [ ] 대상 차량 카메라와 UI 표시 — 없음 (`RaceHud` 라벨만 있고 미배치)
 - [x] 8초 안에 추월하고 0.5초 유지하면 성공 — `OvertakeChallengeState.Tick(dt, playerAhead)`
-- [x] 성공 시 부스트 한 칸 회복 — `BoostController.RewardOvertake`
-- [x] 성공 시 저주 쿨다운 즉시 초기화 — `cooldownRewardMode == Reset`이면 `CurseController.ResetCooldown`, `Reduce`면 `ReduceCooldown`
+- [ ] 실제 추월 시 부스트 한 칸 회복 — `BoostController.RewardOvertake` 연결, Play Mode 미검증
+- [ ] 실제 추월 시 저주 쿨다운 즉시 초기화 — `Reset`/`Reduce` 모드 연결, Play Mode 미검증
 - [ ] 실패 시 심판의 사슬과 강한 감속 — **미완.** `IsBound = true`와 `BindSpeedMultiplier`만 노출되고 차량 쪽 소비자가 없어 주행에 영향이 없다. 사슬 연출도 없다
 - [x] 플레이어가 최하위가 되면 즉시 속박 해제 — `PlayerIsLast()`면 `ReleaseBind()` + 진행 중 도전 취소
 - [ ] 대상·남은 시간·앞섬 여부·실패 결과 표시 — 표시 수단 없음
@@ -1248,9 +1267,9 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 ### 단계 10 — 추월 도전
 
-**목표:** 20초 주기의 추월 퀘스트와 심판의 사슬을 완성한다.
+**목표:** 별도 퀘스트 없이 실제 추월 자체가 자원 회복으로 이어지게 한다.
 
-**진행률: 규칙·보상 완료. 실패 페널티의 실제 감속과 UI가 없다.**
+**진행률: 패시브 추월 감지와 보상 코드 완료, Play Mode 미검증. 레거시 도전은 설정으로만 유지.**
 
 - [x] 무작위 경쟁자 선택과 이미 앞선 차량 무시 — `PickRivalAhead()`
 - [ ] 대상·제한 시간·앞섬 여부 HUD — `RaceAlertPanel/Overtake TMP`에 대상·제한 시간은 표시하지만 앞섬 유지 상태는 별도 표시하지 않음

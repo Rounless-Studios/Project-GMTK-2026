@@ -31,8 +31,15 @@ namespace GMTK
         public float SecondsToElimination { get; private set; }
         public EliminationWarningLevel Level { get; private set; }
         public bool InFinalDuel { get; private set; }
+        public int CompletedExecutions { get; private set; }
+        public bool BargainUsedThisCycle { get; private set; }
         public int ActiveCarCount => Mathf.Max(0, Race.CarCount - eliminated.Count);
         public bool IsEliminated(int raceIndex) => eliminated.Contains(raceIndex);
+        public bool CanUseDevilsBargain =>
+            armed && !finished && !InFinalDuel && !BargainUsedThisCycle &&
+            CurrentLastPlaceIndex == 0 &&
+            SecondsToElimination <= E.bargainAvailableBelowSeconds &&
+            SecondsToElimination > E.executeAtRemainingSeconds;
 
         // ---- events for HUD / camera / other systems ----
         public static event System.Action<int, EliminationWarningLevel> WarningChanged; // (lastPlaceIndex, level)
@@ -92,9 +99,10 @@ namespace GMTK
             CurrentLastPlaceIndex = -1;
             LockedEliminationIndex = -1;
             lastExecutionTargetIndex = -1;
+            CompletedExecutions = 0;
+            BargainUsedThisCycle = false;
             armed = true;
-            // first elimination also fires after a full interval (GDD: 30s consistently)
-            nextEliminationTime = Time.time + E.intervalSeconds;
+            nextEliminationTime = Time.time + E.IntervalAfterExecutions(CompletedExecutions);
         }
 
         private void OnRestartRace()
@@ -110,6 +118,26 @@ namespace GMTK
             CurrentLastPlaceIndex = -1;
             LockedEliminationIndex = -1;
             lastExecutionTargetIndex = -1;
+            CompletedExecutions = 0;
+            BargainUsedThisCycle = false;
+        }
+
+        /// <summary>
+        /// Last place may trade three seconds of the live purge clock for a free boost once per
+        /// cycle. The boost must start successfully before the irreversible time cost is paid.
+        /// </summary>
+        public bool TryDevilsBargain(BoostController playerBoost)
+        {
+            if (!CanUseDevilsBargain || playerBoost == null ||
+                !playerBoost.TryBargainBoost())
+                return false;
+
+            BargainUsedThisCycle = true;
+            nextEliminationTime = Mathf.Max(
+                Time.time + 0.1f,
+                nextEliminationTime - E.bargainTimeCostSeconds);
+            SecondsToElimination = Mathf.Max(0f, nextEliminationTime - Time.time);
+            return true;
         }
 
         /// <summary>
@@ -140,6 +168,19 @@ namespace GMTK
 
         private void Update()
         {
+            if (!armed && !finished && !InFinalDuel &&
+                Race.IsRaceInProgress &&
+                ((GMTKRaceState.Instance != null &&
+                  GMTKRaceState.Instance.CurrentPhase == RacePhase.Racing) ||
+                 (RaceFlow.Instance != null &&
+                  RaceFlow.Instance.CurrentPhase == RaceFlow.Phase.Racing)))
+            {
+                // Recover a partial start if RaceStartedEvent fan-out was interrupted by a stale
+                // listener. OnRaceStarted is idempotent before the first execution and restores
+                // the same state the missed event would have established.
+                OnRaceStarted();
+            }
+
             if (!armed || finished || !Race.IsRaceInProgress) return;
             if (ActiveCarCount <= FinalDuelCount)
             {
@@ -151,7 +192,6 @@ namespace GMTK
 
             if (Time.time >= nextEliminationTime)
             {
-                nextEliminationTime = Time.time + E.intervalSeconds;
                 EliminateLastPlace();
             }
         }
@@ -240,6 +280,7 @@ namespace GMTK
             eliminated.Add(last);
             CarEliminated?.Invoke(last);
             ExplodeCar(last);
+            CompletedExecutions++;
 
             // reset the warning cycle for the next countdown
             Level = EliminationWarningLevel.None;
@@ -247,6 +288,7 @@ namespace GMTK
             CurrentLastPlaceIndex = -1;
             LockedEliminationIndex = -1;
             lastExecutionTargetIndex = -1;
+            BargainUsedThisCycle = false;
 
             if (last == 0)
             {
@@ -259,6 +301,9 @@ namespace GMTK
 
             if (ActiveCarCount <= FinalDuelCount)
                 EnterFinalDuel();
+            else
+                nextEliminationTime =
+                    Time.time + E.IntervalAfterExecutions(CompletedExecutions);
         }
 
         // Elimination stops here; the final gate (stage 6) decides the winner.

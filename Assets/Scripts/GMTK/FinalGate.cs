@@ -10,7 +10,8 @@ namespace GMTK
     /// Final-gate win rule (checklist stage 6). Once the final duel begins, the first of the
     /// surviving racers to cross the gate wins, the gate slams shut behind them and the racers
     /// locked outside are executed. The player winning is a Win; an AI winning is a Lose.
-    /// This component owns the rule and the whole gate sequence timing (all read from
+    /// There is no duel timeout: the race resolves only when a survivor crosses.
+    /// This component owns the rule and the gate-closing sequence timing (all read from
     /// <see cref="PresentationSettings"/>); <see cref="FinalGateDoors"/> only listens to the
     /// events below and animates. Crossings arrive via <see cref="ReportGateCrossing"/>
     /// (from the gate trigger or a test).
@@ -22,7 +23,6 @@ namespace GMTK
 
         public bool IsOpen { get; private set; }      // duel active, awaiting a crossing
         public int WinnerIndex { get; private set; } = -1;
-        public float TimeRemaining { get; private set; }
 
         // ---- events for the gate presentation ----
         public static event System.Action GateOpened;          // duel started, gate awaits a crossing
@@ -70,29 +70,7 @@ namespace GMTK
             resolved = false;
             WinnerIndex = -1;
             IsOpen = true;
-            TimeRemaining = Presentation.gateOpenDurationSeconds;
             GateOpened?.Invoke();
-        }
-
-        private void Update()
-        {
-            if (!IsOpen || resolved) return;
-            TimeRemaining = Mathf.Max(0f, TimeRemaining - Time.deltaTime);
-            if (TimeRemaining <= 0f && duelCars.Count > 0)
-                ResolveWinner(LeadingDuelCar());
-        }
-
-        /// <summary>Duel car furthest along the track; race scores grow with progress.</summary>
-        private int LeadingDuelCar()
-        {
-            int leader = duelCars[0];
-            double best = double.MinValue;
-            foreach (int idx in duelCars)
-            {
-                double score = Race.ScoreOf(idx);
-                if (score > best) { best = score; leader = idx; }
-            }
-            return leader;
         }
 
         /// <summary>Report that a surviving car crossed the gate (gate trigger or test).</summary>
@@ -108,7 +86,6 @@ namespace GMTK
             resolved = true;
             IsOpen = false;
             WinnerIndex = winner;
-            TimeRemaining = 0f;
 
             GateSlamming?.Invoke(winner);
             sequence = StartCoroutine(CloseGateThenExecute(winner));
@@ -156,7 +133,6 @@ namespace GMTK
             IsOpen = false;
             resolved = false;
             WinnerIndex = -1;
-            TimeRemaining = 0f;
             duelCars.Clear();
             GateReset?.Invoke();
         }

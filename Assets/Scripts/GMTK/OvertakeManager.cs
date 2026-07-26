@@ -5,13 +5,9 @@ using Gmtk2026.GameBalance;
 namespace GMTK
 {
     /// <summary>
-    /// Player overtake challenge (checklist stage 10). Every <c>checkIntervalSeconds</c> it picks
-    /// a random active rival the player is currently behind (skipping the challenge when the
-    /// player already leads them all), then runs an <see cref="OvertakeChallengeState"/>. Success
-    /// refunds a boost charge and resets/reduces the curse cooldown; failure binds the player with
-    /// a hard slowdown for <c>bindDurationSeconds</c>. Falling to last place immediately releases
-    /// the bind and cancels any active challenge. Self-attaches to the GMTK host. Camera / UI /
-    /// chain VFX and the slowdown actuation (via <see cref="BindSpeedMultiplier"/>) layer on top.
+    /// Rewards ordinary player overtakes with boost and curse recovery. The older directed
+    /// challenge can still be enabled in settings, but is off by default so the purge race itself
+    /// creates the objective instead of a parallel random mission.
     /// </summary>
     public class OvertakeManager : MonoBehaviour
     {
@@ -33,6 +29,9 @@ namespace GMTK
         private float nextCheckTime;
         private float bindEndTime;
         private bool armed;
+        private bool passiveTrackingReady;
+        private bool[] playerWasAhead;
+        private float[] lastPassiveRewardAt;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttach()
@@ -72,12 +71,22 @@ namespace GMTK
             RivalIndex = -1;
             IsBound = false;
             armed = true;
+            passiveTrackingReady = false;
+            int carCount = Mathf.Max(0, Race.CarCount);
+            playerWasAhead = new bool[carCount];
+            lastPassiveRewardAt = new float[carCount];
             nextCheckTime = Time.time + O.checkIntervalSeconds;
         }
 
         private void Update()
         {
             if (!armed || !Race.IsRaceInProgress || Challenge == null) return;
+
+            if (!O.enableDirectedChallenges)
+            {
+                UpdatePassiveOvertakes();
+                return;
+            }
 
             if (PlayerIsLast())
             {
@@ -111,7 +120,13 @@ namespace GMTK
 
         private void OnSuccess()
         {
-            var player = Race.CarByIndex(PlayerIndex);
+            RewardOvertake(RivalIndex);
+            RivalIndex = -1;
+        }
+
+        private void RewardOvertake(int rivalIndex)
+        {
+            GameObject player = Race.CarByIndex(PlayerIndex);
             if (player != null)
             {
                 player.GetComponent<BoostController>()?.RewardOvertake();
@@ -124,8 +139,7 @@ namespace GMTK
                         curse.ResetCooldown();
                 }
             }
-            ChallengeSucceeded?.Invoke(RivalIndex);
-            RivalIndex = -1;
+            ChallengeSucceeded?.Invoke(rivalIndex);
         }
 
         private void OnFail()
@@ -140,6 +154,37 @@ namespace GMTK
         {
             IsBound = false;
             BindReleased?.Invoke();
+        }
+
+        private void UpdatePassiveOvertakes()
+        {
+            int count = Race.CarCount;
+            if (playerWasAhead == null || playerWasAhead.Length != count)
+            {
+                playerWasAhead = new bool[count];
+                lastPassiveRewardAt = new float[count];
+                passiveTrackingReady = false;
+            }
+
+            double playerScore = Race.ScoreOf(PlayerIndex);
+            var elimination = EliminationManager.Instance;
+            for (int i = 0; i < count; i++)
+            {
+                if (i == PlayerIndex ||
+                    (elimination != null && elimination.IsEliminated(i)))
+                    continue;
+
+                bool isAhead = playerScore > Race.ScoreOf(i);
+                if (passiveTrackingReady && isAhead && !playerWasAhead[i] &&
+                    Time.time - lastPassiveRewardAt[i] >=
+                    O.passiveRewardCooldownSeconds)
+                {
+                    lastPassiveRewardAt[i] = Time.time;
+                    RewardOvertake(i);
+                }
+                playerWasAhead[i] = isAhead;
+            }
+            passiveTrackingReady = true;
         }
 
         // a random active rival the player is currently behind; -1 if the player leads them all

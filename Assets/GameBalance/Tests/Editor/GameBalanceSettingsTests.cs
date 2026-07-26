@@ -27,6 +27,9 @@ namespace Gmtk2026.GameBalance.Tests
             Assert.AreEqual(6, s.race.TotalRacerCount, "total = 1 + aiCount");
             Assert.AreEqual(2, s.race.finalDuelRacerCount);
             Assert.AreEqual(30f, s.elimination.intervalSeconds);
+            Assert.AreEqual(15f, s.elimination.firstIntervalBonusSeconds);
+            Assert.AreEqual(10f, s.elimination.intervalReductionSeconds);
+            Assert.AreEqual(15f, s.elimination.minimumIntervalSeconds);
             Assert.AreEqual(10f, s.elimination.warningSeconds);
             Assert.AreEqual(5f, s.elimination.intenseWarningSeconds);
             Assert.AreEqual(4, s.quiz.minimumAnswerCount);
@@ -85,6 +88,29 @@ namespace Gmtk2026.GameBalance.Tests
             s.elimination.warningSeconds = s.elimination.intervalSeconds; // must be <
             CollectionAssert.IsNotEmpty(s.Validate());
             Object.DestroyImmediate(s);
+        }
+
+        [Test]
+        public void EliminationIntervals_EscalateAndClampAtMinimum()
+        {
+            var s = NewDefault();
+            Assert.AreEqual(45f, s.elimination.IntervalAfterExecutions(0));
+            Assert.AreEqual(35f, s.elimination.IntervalAfterExecutions(1));
+            Assert.AreEqual(25f, s.elimination.IntervalAfterExecutions(2));
+            Assert.AreEqual(15f, s.elimination.IntervalAfterExecutions(3));
+            Assert.AreEqual(15f, s.elimination.IntervalAfterExecutions(99));
+            Object.DestroyImmediate(s);
+        }
+
+        [Test]
+        public void ShortFastPresetInterval_IsNotRaisedByDefaultMinimum()
+        {
+            var elimination = new EliminationSettings
+            {
+                intervalSeconds = 3f,
+                minimumIntervalSeconds = 15f,
+            };
+            Assert.AreEqual(3f, elimination.IntervalAfterExecutions(10));
         }
 
         [Test]
@@ -264,7 +290,6 @@ namespace Gmtk2026.GameBalance.Tests
             var s = NewDefault();
             Assert.AreEqual(0.75f, s.presentation.gateCloseDurationSeconds);
             Assert.AreEqual(0.25f, s.presentation.gateExecutionDelaySeconds);
-            Assert.Greater(s.presentation.gateOpenDurationSeconds, 0f);
             Assert.Greater(s.presentation.gateWidthMeters, 0f);
             Assert.Greater(s.presentation.gateHeightMeters, 0f);
             Object.DestroyImmediate(s);

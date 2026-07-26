@@ -63,6 +63,15 @@ namespace GMTK.Kit
         // 3,2,1 countdown ended:
         private void OnRaceStarted()
         {
+            EnsureRaceStarted();
+        }
+
+        /// <summary>
+        /// Establish the authoritative race state before the wider start-event fan-out.
+        /// Idempotent so RaceFlow may call it directly and the event listener may follow.
+        /// </summary>
+        public void EnsureRaceStarted()
+        {
             isRaceInProgress = true;
         }
 
