@@ -163,7 +163,10 @@ namespace GMTK
 
         private void BeginExecutionPresentation()
         {
-            if (quizVisible)
+            if (quizVisible ||
+                (PresentationCoordinator.Instance != null &&
+                 !PresentationCoordinator.Instance.Allows(
+                     PresentationPriority.ExecutionCctv)))
                 return;
 
             if (hideRoutine != null)
@@ -435,8 +438,11 @@ namespace GMTK
             executionCamera.rect = new Rect(0f, 0f, 1f, 1f);
             executionCamera.clearFlags = CameraClearFlags.Skybox;
             executionCamera.nearClipPlane = 0.1f;
-            executionCamera.farClipPlane = 2000f;
-            executionCamera.allowHDR = true;
+            // The inset never needs the full track draw distance or HDR. Keeping it lean matters
+            // on WebGL because it is a second complete scene render.
+            executionCamera.farClipPlane = 500f;
+            executionCamera.allowHDR = false;
+            executionCamera.allowMSAA = false;
             executionCamera.enabled = false;
 
             CinemachineBrain brain = cameraObject.GetComponent<CinemachineBrain>();
@@ -544,7 +550,10 @@ namespace GMTK
                 return;
 
             string state = targetLocked ? "LOCKED" : "CURRENT LAST";
-            targetLabel.text = $"{state}  {shownRaceIndex + 1:00}";
+            string identity = shownRaceIndex == 0
+                ? "YOU"
+                : RaceSessionStats.NameOf(shownRaceIndex);
+            targetLabel.text = $"{state}: {identity}";
         }
 
         private static Rect LerpRect(Rect from, Rect to, float t)

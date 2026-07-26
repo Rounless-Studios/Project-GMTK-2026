@@ -182,22 +182,31 @@ namespace GMTK.Rccp
 
             VehicleSettings settings = GameBalance.Current.vehicle;
             float speedKph = carRigidbody.linearVelocity.magnitude * 3.6f;
+            bool drifting = isPlayer
+                && speedKph >= settings.driftMinimumSpeedKph
+                && carController.handbrakeInput_V > 0.1f;
             if (speedKph >= settings.stabilizationMinimumSpeedKph)
             {
                 Vector3 localVelocity = transform.InverseTransformDirection(
                     carRigidbody.linearVelocity);
+                float grip = settings.lateralGripRecovery
+                    * (drifting ? settings.driftGripMultiplier : 1f);
                 carRigidbody.AddForce(
-                    -transform.right * localVelocity.x * settings.lateralGripRecovery,
+                    -transform.right * localVelocity.x * grip,
                     ForceMode.Acceleration);
 
                 Vector3 angular = carRigidbody.angularVelocity;
+                float maximumYaw = settings.maximumYawRadiansPerSecond
+                    * (drifting ? settings.driftMaximumYawMultiplier : 1f);
                 angular.y = Mathf.Clamp(
                     angular.y,
-                    -settings.maximumYawRadiansPerSecond,
-                    settings.maximumYawRadiansPerSecond);
+                    -maximumYaw,
+                    maximumYaw);
                 carRigidbody.angularVelocity = angular;
+                float yawDamping = settings.yawDamping
+                    * (drifting ? settings.driftYawDampingMultiplier : 1f);
                 carRigidbody.AddTorque(
-                    -Vector3.up * angular.y * settings.yawDamping,
+                    -Vector3.up * angular.y * yawDamping,
                     ForceMode.Acceleration);
             }
 

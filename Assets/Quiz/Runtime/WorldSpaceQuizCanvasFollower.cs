@@ -27,6 +27,7 @@ namespace Gmtk2026.Quiz
         private bool visualsEnabled;
         private bool visualStateInitialized;
         private float presentation;
+        private Vector3 baseScale;
 
         public Camera TargetCamera => targetCamera;
         public float Distance => distance;
@@ -35,6 +36,7 @@ namespace Gmtk2026.Quiz
         public void Configure(Canvas canvas)
         {
             targetCanvas = canvas;
+            baseScale = transform.localScale;
             phoneRenderers = GetComponentsInChildren<Renderer>(true);
             RefreshCamera();
             SnapToCamera();
@@ -117,10 +119,16 @@ namespace Gmtk2026.Quiz
 
             float easedPresentation = Mathf.SmoothStep(0f, 1f, presentation);
             Transform cameraTransform = targetCamera.transform;
+            float aspectScale = Mathf.Clamp(targetCamera.aspect / (16f / 9f), 0.72f, 1f);
+            float userScale = Mathf.Clamp(
+                PlayerPrefs.GetFloat("GMTK.Accessibility.QuizScale", 1f),
+                0.75f,
+                1.2f);
+            transform.localScale = baseScale * userScale;
             Vector3 shownPosition = GetTargetPosition(
                 cameraTransform,
                 distance,
-                horizontalOffset,
+                horizontalOffset * aspectScale,
                 verticalOffset);
             Vector3 hiddenPosition = GetTargetPosition(
                 cameraTransform,

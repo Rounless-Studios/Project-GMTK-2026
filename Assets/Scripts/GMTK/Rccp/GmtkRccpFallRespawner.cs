@@ -18,6 +18,10 @@ namespace GMTK.Rccp
         private GmtkRccpWaypointDriver aiDriver;
         private GmtkRccpWaypointPath path;
         private float sampleTimer;
+        private float unsupportedSeconds;
+        private float overturnedSeconds;
+        private float stuckSeconds;
+        private bool supportedByTrack = true;
         private bool initialized;
 
         public Vector3 LastTrackPosition => state.LastTrackPosition;
@@ -49,6 +53,10 @@ namespace GMTK.Rccp
         {
             state.RecordTrackPosition(transform.position);
             sampleTimer = 0f;
+            unsupportedSeconds = 0f;
+            overturnedSeconds = 0f;
+            stuckSeconds = 0f;
+            supportedByTrack = true;
         }
 
         private void FixedUpdate()
@@ -62,12 +70,34 @@ namespace GMTK.Rccp
             if (sampleTimer <= 0f)
             {
                 sampleTimer = settings.trackSampleIntervalSeconds;
+                supportedByTrack = IsSupportedByTrack(transform.position, settings);
 
-                if (IsSupportedByTrack(transform.position, settings))
+                if (supportedByTrack)
                     state.RecordTrackPosition(transform.position);
             }
 
-            if (state.ShouldRespawn(transform.position, settings.fallDistanceBelowTrack))
+            unsupportedSeconds = supportedByTrack
+                ? 0f
+                : unsupportedSeconds + Time.fixedDeltaTime;
+
+            bool overturned = Vector3.Dot(transform.up, Vector3.up) < 0.25f;
+            overturnedSeconds = overturned
+                ? overturnedSeconds + Time.fixedDeltaTime
+                : 0f;
+
+            // Players are allowed to stop deliberately. The stationary recovery is strictly an
+            // AI failsafe and only runs after the starting countdown has released the field.
+            bool aiStuck = aiDriver != null
+                && Race.IsRaceInProgress
+                && supportedByTrack
+                && carRigidbody.linearVelocity.sqrMagnitude
+                    <= Mathf.Pow(settings.stuckMaximumSpeedKph / 3.6f, 2f);
+            stuckSeconds = aiStuck ? stuckSeconds + Time.fixedDeltaTime : 0f;
+
+            if (state.ShouldRespawn(transform.position, settings.fallDistanceBelowTrack)
+                || unsupportedSeconds >= settings.offTrackRespawnDelaySeconds
+                || overturnedSeconds >= settings.overturnedRespawnDelaySeconds
+                || stuckSeconds >= settings.aiStuckRespawnDelaySeconds)
                 RespawnAtLastTrackWaypoint(settings);
         }
 
@@ -132,10 +162,14 @@ namespace GMTK.Rccp
             aiDriver?.ResetAfterRespawn(waypointIndex);
             state.RecordTrackPosition(position);
             sampleTimer = settings.trackSampleIntervalSeconds;
+            unsupportedSeconds = 0f;
+            overturnedSeconds = 0f;
+            stuckSeconds = 0f;
+            supportedByTrack = true;
             RespawnCount++;
 
             Debug.Log(
-                $"RCCP fall respawn: {name} -> waypoint {waypointIndex} at {position:F1}",
+                $"RCCP recovery: {name} -> waypoint {waypointIndex} at {position:F1}",
                 this);
         }
     }

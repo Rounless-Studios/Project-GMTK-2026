@@ -118,6 +118,14 @@ namespace Gmtk2026.GameBalance
         [Min(0.1f)] public float groundProbeDistance = 5f;
         [Tooltip("How often each car refreshes its last supported track position.")]
         [Min(0.02f)] public float trackSampleIntervalSeconds = 0.1f;
+        [Tooltip("Seconds continuously outside the supported track area before recovering.")]
+        [Min(0.1f)] public float offTrackRespawnDelaySeconds = 3f;
+        [Tooltip("Seconds continuously overturned before recovering.")]
+        [Min(0.1f)] public float overturnedRespawnDelaySeconds = 2.5f;
+        [Tooltip("Seconds an AI car may remain nearly stationary during a race before recovering.")]
+        [Min(0.1f)] public float aiStuckRespawnDelaySeconds = 6f;
+        [Tooltip("Maximum speed considered stuck. Player cars are never recovered by this rule.")]
+        [Min(0f)] public float stuckMaximumSpeedKph = 1.5f;
     }
 
     [System.Serializable]
@@ -129,6 +137,10 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float maximumYawRadiansPerSecond = 2.8f;
         [Min(0)] public float bindingDeceleration = 14f;
         [Min(0)] public float stabilizationMinimumSpeedKph = 25f;
+        [Min(0)] public float driftMinimumSpeedKph = 40f;
+        [Range(0f, 1f)] public float driftGripMultiplier = 0.28f;
+        [Range(0f, 1f)] public float driftYawDampingMultiplier = 0.2f;
+        [Min(1f)] public float driftMaximumYawMultiplier = 1.6f;
     }
 
     [System.Serializable]

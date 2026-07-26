@@ -152,6 +152,9 @@ namespace GMTK.Rccp
                     Time.fixedDeltaTime,
                     S);
                 targetSpeed *= TacticalPaceScale();
+                targetSpeed *= DifficultyManager.Instance != null
+                    ? DifficultyManager.Instance.AiPaceMultiplier
+                    : 1f;
                 lastTargetSpeed = targetSpeed;
 
                 AiDriving.SpeedInputs(targetSpeed, speedKph, out float throttle, out float brake);
@@ -228,8 +231,11 @@ namespace GMTK.Rccp
 
             Vector3 local = transform.InverseTransformPoint(hit.point);
             float direction = local.x >= 0f ? -1f : 1f;
+            float difficulty = DifficultyManager.Instance != null
+                ? DifficultyManager.Instance.AiAggressionMultiplier
+                : 1f;
             steer = Mathf.Clamp(
-                steer + direction * S.obstacleAvoidanceStrength,
+                steer + direction * S.obstacleAvoidanceStrength * (2f - difficulty),
                 -1f,
                 1f);
         }
@@ -399,11 +405,14 @@ namespace GMTK.Rccp
             if (lateralStrength <= 0f)
                 return Vector3.zero;
 
+            float difficulty = DifficultyManager.Instance != null
+                ? DifficultyManager.Instance.AiAggressionMultiplier
+                : 1f;
             return personalityType switch
             {
-                AIPersonalityType.Rammer => toTarget.normalized * lateralStrength,
+                AIPersonalityType.Rammer => toTarget.normalized * lateralStrength * difficulty,
                 AIPersonalityType.Blocker =>
-                    Vector3.Project(toTarget, transform.right).normalized * lateralStrength,
+                    Vector3.Project(toTarget, transform.right).normalized * lateralStrength * difficulty,
                 _ => Vector3.zero,
             };
         }

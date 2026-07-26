@@ -226,12 +226,8 @@ namespace GMTK
         {
             Quaternion rotation =
                 Quaternion.FromToRotation(Vector3.forward, normal);
-            GameObject effect = Instantiate(
-                collisionSparkPrefab,
-                point + normal * 0.02f,
-                rotation);
-            effect.transform.localScale *= scale;
-            ParticleSystem particles = effect.GetComponentInChildren<ParticleSystem>();
+            ParticleSystem particles =
+                collisionSparkPrefab.GetComponentInChildren<ParticleSystem>();
             float destroyDelay = 2f;
 
             if (particles != null)
@@ -242,7 +238,25 @@ namespace GMTK
                     main.startDelay.constantMax + main.startLifetime.constantMax + 0.5f);
             }
 
-            Destroy(effect, destroyDelay);
+            Vector3 effectScale = collisionSparkPrefab.transform.localScale * scale;
+            if (PooledEffectService.Instance != null)
+            {
+                PooledEffectService.Instance.Play(
+                    collisionSparkPrefab,
+                    point + normal * 0.02f,
+                    rotation,
+                    effectScale,
+                    destroyDelay);
+            }
+            else
+            {
+                GameObject effect = Instantiate(
+                    collisionSparkPrefab,
+                    point + normal * 0.02f,
+                    rotation);
+                effect.transform.localScale = effectScale;
+                Destroy(effect, destroyDelay);
+            }
         }
 
         private void OnWrecked()

@@ -29,6 +29,10 @@ namespace GMTK
         private TrackProgress.CarCursor[] cursors;
         private TrackProgress.CarCursor[] startCursors;
         private double[] scoreBonus;
+        private double[] rawScores;
+        private int[] stableOrder;
+        private int[] previousOrder;
+        private double[] tieOffsetBySlot;
         private RealTimeRacePositions standings;
         private bool ownsStandings;
 
@@ -107,6 +111,10 @@ namespace GMTK
             cursors = new TrackProgress.CarCursor[count];
             startCursors = new TrackProgress.CarCursor[count];
             scoreBonus = new double[count];
+            rawScores = new double[count];
+            stableOrder = new int[count];
+            previousOrder = new int[count];
+            tieOffsetBySlot = new double[count];
 
             int slot = 0;
             foreach (CheckpointTracker tracker in trackers)
@@ -115,6 +123,7 @@ namespace GMTK
                 // the kit parents a tracker under the vehicle root, whichever spawner built the car
                 carRoots[slot] = tracker.transform.root;
                 raceIndices[slot] = tracker.GetCarRacePositionIndex();
+                stableOrder[slot] = slot;
                 slot++;
             }
 
@@ -133,6 +142,7 @@ namespace GMTK
                 TrackProgress.Unplace(ref cursors[i]);
                 TrackProgress.Unplace(ref startCursors[i]);
                 scoreBonus[i] = 0d;
+                stableOrder[i] = i;
             }
 
             if (HasPath) TakeOverStandings();
@@ -225,12 +235,34 @@ namespace GMTK
             List<int> laps = standings.LapScores;
 
             for (int i = 0; i < raceIndices.Length; i++)
+                rawScores[i] =
+                    track.DistanceDriven(startCursors[i], cursors[i]) + scoreBonus[i];
+
+            // A few centimetres of projection noise must not make equal cars flicker between
+            // places. Sort real progress first, retain the previous order for a near-tie, then
+            // publish a microscopic offset so every HUD and elimination consumer agrees.
+            System.Array.Copy(stableOrder, previousOrder, stableOrder.Length);
+            System.Array.Sort(stableOrder, (a, b) =>
+            {
+                double difference = rawScores[b] - rawScores[a];
+                if (System.Math.Abs(difference) > 0.05d)
+                    return difference > 0d ? 1 : -1;
+                return System.Array.IndexOf(previousOrder, a)
+                    .CompareTo(System.Array.IndexOf(previousOrder, b));
+            });
+
+            for (int place = 0; place < stableOrder.Length; place++)
+                tieOffsetBySlot[stableOrder[place]] =
+                    (stableOrder.Length - place) * 0.000001d;
+
+            for (int i = 0; i < raceIndices.Length; i++)
             {
                 int raceIndex = raceIndices[i];
                 if (raceIndex < 0) continue;
 
                 double driven = track.DistanceDriven(startCursors[i], cursors[i]);
-                if (raceIndex < scores.Count) scores[raceIndex] = driven + scoreBonus[i];
+                if (raceIndex < scores.Count)
+                    scores[raceIndex] = rawScores[i] + tieOffsetBySlot[i];
                 if (raceIndex < laps.Count) laps[raceIndex] = driven <= 0d ? 0 : (int)(driven / track.Length);
             }
         }

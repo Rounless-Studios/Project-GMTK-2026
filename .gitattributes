@@ -16,6 +16,11 @@
 *.shadervariants text eol=lf merge=unityyamlmerge
 *.meta text eol=lf
 
+# Unity uses .asset for both YAML and native binary serialization. These project assets are
+# native binary files and must never pass through line-ending normalization.
+Assets/Terrain/TerrainData*.asset binary
+Assets/Racing?Starter?Kit/RSK?Assets/Scenes/SampleScene/LightingData.asset binary
+
 # Common Unity/C# text formats.
 *.cs text eol=lf diff=csharp
 *.asmdef text eol=lf

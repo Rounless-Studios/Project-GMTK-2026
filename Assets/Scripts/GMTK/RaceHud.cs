@@ -41,7 +41,8 @@ namespace GMTK
             canvas.sortingOrder = 80;
             CanvasScaler scaler = root.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            float hudScale = AccessibilityPreferences.HudScale;
+            scaler.referenceResolution = new Vector2(1920f, 1080f) / hudScale;
             scaler.matchWidthOrHeight = 0.5f;
 
             RaceHud hud = root.GetComponent<RaceHud>();
@@ -73,6 +74,10 @@ namespace GMTK
 
         private void Awake()
         {
+            CanvasScaler scaler = GetComponent<CanvasScaler>();
+            if (scaler != null)
+                scaler.referenceResolution =
+                    new Vector2(1920f, 1080f) / AccessibilityPreferences.HudScale;
             if (positionText == null) BuildUi();
             if (positionText != null) positionText.gameObject.SetActive(false);
             if (durabilityPanel != null && hudCanvas != null)
@@ -187,10 +192,17 @@ namespace GMTK
             {
                 resultText.gameObject.SetActive(phase == RacePhase.Finished);
                 if (phase == RacePhase.Finished)
-                    resultText.text = GMTKRaceState.Instance != null &&
-                                      GMTKRaceState.Instance.LastResult == SpinMotion.RaceFinishType.Win
-                        ? "ESCAPED HELL\nPRESS RESTART TO RACE AGAIN"
-                        : "CONDEMNED\nPRESS RESTART TO TRY AGAIN";
+                {
+                    bool won = GMTKRaceState.Instance != null &&
+                               GMTKRaceState.Instance.LastResult ==
+                               SpinMotion.RaceFinishType.Win;
+                    string stats = RaceSessionStats.Instance != null
+                        ? "\n\n" + RaceSessionStats.Instance.BuildResultSummary()
+                        : string.Empty;
+                    resultText.text = (won
+                        ? "ESCAPED HELL"
+                        : "CONDEMNED") + stats + "\n\nPRESS RESTART TO RACE AGAIN";
+                }
             }
             if (!raceStarted) return;
 
@@ -215,7 +227,7 @@ namespace GMTK
                 ? $"PURGE IN {elimination.SecondsToElimination:0.0}s — " +
                   (elimination.CurrentLastPlaceIndex == 0
                       ? "YOU ARE MARKED"
-                      : $"CAR {elimination.CurrentLastPlaceIndex + 1} IS MARKED")
+                      : $"{RaceSessionStats.NameOf(elimination.CurrentLastPlaceIndex)} IS MARKED")
                 : string.Empty;
             lastPlaceText.text = $"{last}  {(elimination != null ? elimination.Level.ToString() : "-")}";
             bool playerLast = elimination != null && elimination.CurrentLastPlaceIndex == 0;
