@@ -1188,7 +1188,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GMTK.DurabilityHud
   valueLabel: {fileID: 0}
   fill: {fileID: 7483372986271233523}
-  fillImage: {fileID: 0}
+  fillImage: {fileID: 2913021778180884543}
 --- !u!1 &2543204198732389387
 GameObject:
   m_ObjectHideFlags: 0
