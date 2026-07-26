@@ -7,6 +7,8 @@ namespace Gmtk2026.Quiz
 {
     public sealed class QuizUiPresenter : MonoBehaviour
     {
+        private const string CurseWarningTitle = "YOU'VE BEEN CURSED!";
+
         private static readonly Color PanelColor = new Color(0.035f, 0.055f, 0.10f, 0.96f);
         private static readonly Color NormalButtonColor = new Color(0.12f, 0.18f, 0.29f, 1f);
         private static readonly Color CorrectColor = new Color(0.16f, 0.65f, 0.35f, 1f);
@@ -77,7 +79,7 @@ namespace Gmtk2026.Quiz
         private void ShowQuestion(QuizQuestion question)
         {
             canvasFollower.SetVisible(true);
-            kindText.text = GetKindLabel(question.Kind);
+            kindText.text = CurseWarningTitle;
             promptText.text = question.Prompt;
             feedbackText.text = string.Empty;
             numberSequenceView.Hide();
@@ -240,7 +242,7 @@ namespace Gmtk2026.Quiz
 
             kindText = CreateText("Kind", panel.transform, 42, TextAlignmentOptions.MidlineLeft);
             SetRect(kindText.rectTransform, new Vector2(38f, -55f), new Vector2(500f, 54f), new Vector2(0f, 1f));
-            kindText.color = new Color(0.35f, 0.82f, 1f, 1f);
+            kindText.color = new Color(1f, 0.12f, 0.12f, 1f);
 
             timerText = CreateText("TimerText", panel.transform, 42, TextAlignmentOptions.MidlineRight);
             SetRect(timerText.rectTransform, new Vector2(-38f, -55f), new Vector2(180f, 54f), new Vector2(1f, 1f));
@@ -382,21 +384,5 @@ namespace Gmtk2026.Quiz
             rect.offsetMax = -inset;
         }
 
-        private static string GetKindLabel(QuizKind kind)
-        {
-            switch (kind)
-            {
-                case QuizKind.NumberSequenceClick:
-                    return "NUMBER ORDER";
-                case QuizKind.RhythmTap:
-                    return "RHYTHM TAP";
-                case QuizKind.ButtonMash:
-                    return "BUTTON MASH";
-                case QuizKind.MultipleChoice:
-                    return "TRIVIA";
-                default:
-                    return "QUICK QUIZ";
-            }
-        }
     }
 }

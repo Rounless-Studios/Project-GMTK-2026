@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Gmtk2026.GameBalance;
@@ -24,8 +25,18 @@ namespace GMTK
         [SerializeField] private Text resultText;
         [SerializeField] private GameObject gameOverPanel;
         [SerializeField] private Button retryButton;
+        [Header("Authored RaceUI Alerts")]
+        [SerializeField] private GameObject alertPanel;
+        [SerializeField] private TMP_Text objectiveTmp;
+        [SerializeField] private TMP_Text executionTmp;
+        [SerializeField] private TMP_Text overtakeTmp;
         private EliminationManager elimination;
         private RaceFinishGUI raceFinishGui;
+        private bool HasAuthoredAlertUi =>
+            alertPanel != null &&
+            objectiveTmp != null &&
+            executionTmp != null &&
+            overtakeTmp != null;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoAttach()
@@ -49,7 +60,6 @@ namespace GMTK
 
             RaceHud hud = root.GetComponent<RaceHud>();
             hud.hudCanvas = root;
-            hud.BuildUi();
         }
 
         private static void SuppressLegacyDuplicateHud()
@@ -76,7 +86,8 @@ namespace GMTK
 
         private void Awake()
         {
-            if (positionText == null) BuildUi();
+            BindAuthoredAlertUi();
+            if (!HasAuthoredAlertUi && positionText == null) BuildUi();
             if (positionText != null) positionText.gameObject.SetActive(false);
             if (durabilityPanel != null && hudCanvas != null)
                 durabilityPanel.SetParent(hudCanvas.transform, false);
@@ -84,6 +95,27 @@ namespace GMTK
             if (!Application.isPlaying) return;
             BindGameOverUi();
             SetGameOverVisible(false);
+        }
+
+        private void BindAuthoredAlertUi()
+        {
+            if (HasAuthoredAlertUi)
+                return;
+
+            StartMenuCanvas menu = FindFirstObjectByType<StartMenuCanvas>(
+                FindObjectsInactive.Include);
+            if (menu == null)
+                return;
+
+            menu.EnsureUi();
+            Transform panel = menu.RacePanel?.transform.Find("RaceAlertPanel");
+            if (panel == null)
+                return;
+
+            alertPanel = panel.gameObject;
+            objectiveTmp = panel.Find("Objective TMP")?.GetComponent<TMP_Text>();
+            executionTmp = panel.Find("Execution TMP")?.GetComponent<TMP_Text>();
+            overtakeTmp = panel.Find("Overtake TMP")?.GetComponent<TMP_Text>();
         }
 
         private void Start()
@@ -276,14 +308,20 @@ namespace GMTK
 
         private void Update()
         {
-            if (positionText == null) return;
             if (!Application.isPlaying) return;
+            if (!HasAuthoredAlertUi)
+                BindAuthoredAlertUi();
+            if (!HasAuthoredAlertUi && positionText == null) return;
+
             RacePhase phase = GMTKRaceState.Instance != null
                 ? GMTKRaceState.Instance.CurrentPhase
                 : (Race.IsRaceInProgress ? RacePhase.Racing : RacePhase.Boot);
             bool raceStarted = phase == RacePhase.Racing || phase == RacePhase.FinalDuel;
             Canvas canvas = hudCanvas != null ? hudCanvas.GetComponent<Canvas>() : null;
-            if (canvas != null) canvas.enabled = raceStarted;
+            if (canvas != null)
+                canvas.enabled = raceStarted && !HasAuthoredAlertUi;
+            if (alertPanel != null)
+                alertPanel.SetActive(raceStarted);
             if (resultText != null)
                 resultText.gameObject.SetActive(false);
             if (!raceStarted) return;
@@ -301,35 +339,58 @@ namespace GMTK
                 ? $"OVERTAKE: CAR {overtake.RivalIndex + 1} / {overtake.Challenge.TimeRemaining:0.0}s" : "OVERTAKE: STANDBY";
             string finalGate = FinalGate.Instance != null && FinalGate.Instance.IsOpen
                 ? $"FINAL GATE: {FinalGate.Instance.TimeRemaining:0.0}s" : "FINAL GATE: -";
-            positionText.text = $"{rank}/{Mathf.Max(0, total)}";
             bool warningActive = elimination != null &&
                                  elimination.Level != EliminationWarningLevel.None;
-            executionText.gameObject.SetActive(warningActive);
-            executionText.text = warningActive
+            string executionMessage = warningActive
                 ? $"PURGE IN {elimination.SecondsToElimination:0.0}s — " +
                   (elimination.CurrentLastPlaceIndex == 0
                       ? "YOU ARE MARKED"
                       : $"CAR {elimination.CurrentLastPlaceIndex + 1} IS MARKED")
                 : string.Empty;
-            lastPlaceText.text = $"{last}  {(elimination != null ? elimination.Level.ToString() : "-")}";
             bool playerLast = elimination != null && elimination.CurrentLastPlaceIndex == 0;
-            lastPlaceText.color = playerLast ? new Color(1f, 0.1f, 0.05f) : new Color(1f, 0.75f, 0.15f);
-            executionText.color = elimination != null && elimination.Level >= EliminationWarningLevel.Intense
+            Color executionColor = elimination != null &&
+                                   elimination.Level >= EliminationWarningLevel.Intense
                 ? new Color(1f, 0.15f, 0.05f)
                 : Color.white;
-            boostText.text = $"BOOST  {(boost != null ? $"{boost.Charges}/{GameBalance.Current.boost.maximumCharges}" : "-")}";
-            curseText.text = curseLine;
             bool finalDuel = phase == RacePhase.FinalDuel;
             bool activeChallenge = overtake != null && overtake.Challenge != null &&
                                    overtake.Challenge.Status == OvertakeStatus.Active;
-            overtakeText.gameObject.SetActive(activeChallenge || finalDuel);
-            overtakeText.text = finalDuel ? finalGate : challenge;
-            finalGateText.text = finalGate;
-            objectiveText.text = phase == RacePhase.FinalDuel
+            string overtakeMessage = finalDuel ? finalGate : challenge;
+            string objectiveMessage = phase == RacePhase.FinalDuel
                 ? "FINAL DUEL — REACH THE GATE FIRST"
                 : playerLast
                     ? "ESCAPE LAST PLACE BEFORE THE TIMER HITS ZERO"
                     : "STAY AHEAD — THE LAST RACER DIES EVERY 30 SECONDS";
+
+            if (HasAuthoredAlertUi)
+            {
+                objectiveTmp.text = objectiveMessage;
+                executionTmp.gameObject.SetActive(warningActive);
+                executionTmp.text = executionMessage;
+                executionTmp.color = executionColor;
+                overtakeTmp.gameObject.SetActive(activeChallenge || finalDuel);
+                overtakeTmp.text = overtakeMessage;
+            }
+
+            if (positionText == null)
+                return;
+
+            positionText.text = $"{rank}/{Mathf.Max(0, total)}";
+            executionText.gameObject.SetActive(warningActive);
+            executionText.text = executionMessage;
+            lastPlaceText.text =
+                $"{last}  {(elimination != null ? elimination.Level.ToString() : "-")}";
+            lastPlaceText.color = playerLast
+                ? new Color(1f, 0.1f, 0.05f)
+                : new Color(1f, 0.75f, 0.15f);
+            executionText.color = executionColor;
+            boostText.text =
+                $"BOOST  {(boost != null ? $"{boost.Charges}/{GameBalance.Current.boost.maximumCharges}" : "-")}";
+            curseText.text = curseLine;
+            overtakeText.gameObject.SetActive(activeChallenge || finalDuel);
+            overtakeText.text = overtakeMessage;
+            finalGateText.text = finalGate;
+            objectiveText.text = objectiveMessage;
         }
 
         private int GetRank()
