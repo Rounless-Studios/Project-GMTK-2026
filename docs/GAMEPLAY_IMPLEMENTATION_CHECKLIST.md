@@ -319,7 +319,7 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 | 레이스 씬·트랙 | 구현 | 베이크 산출물 전부를 `Assets/Prefab/Race Track Authoring.prefab`이 소유한다 (도로·웨이포인트 2635개/21 075 m·게이트 1개·그리드 8개). 공유 씬 `Assets/Scenes/GMTK_Race.unity`는 **51.8KB**로 트랙 데이터를 들지 않으며 베이크해도 diff가 0줄이다 | 정적 |
 | Build Settings | 구현 | `ProjectSettings/EditorBuildSettings.asset`에 `Assets/Scenes/GMTK_Race.unity` 단일 씬만 enabled | 정적 |
 | 팀 UI ↔ 레이스 씬 통합 | 구현 | `Assets/Prefab/UI/Main UI.prefab`이 `GMTK_Race`에 배치됨 (`StartScreen`/`Prologue`/`Countdown`/`RaceUI` 중첩, `RaceUI` 안에 `Durability`·`Curse Skill`·`Position TMP`·`Race Timer` 포함) | 정적 |
-| 규칙 HUD (처형 카운트다운·최하위 경고·부스트·도전·관문) | **미배치** | `RaceHud.cs`는 **어떤 씬·프리팹에도 붙어 있지 않다** (스크립트 GUID 참조 0건). 현재 실행 시 이 정보가 화면에 표시되지 않음 | 정적 |
+| 규칙 HUD (처형 카운트다운·최하위 경고·부스트·도전·관문) | 부분 구현 | `RaceHud`가 런타임 자동 생성되고 `RaceUI/RaceAlertPanel`의 Foozle 프레임 + TMP 3줄에 목표·처형 경고·추월/관문 문구를 출력. 월드 마커와 경고 우선순위는 미완 | 정적 + 컴파일 |
 | 시작 화면·오디오 | 부분 | `StartMenuCanvas.cs`, `GameAudioManager.cs`(592줄, cue 시스템), `Assets/Sound/*` 오디오 클립 **35개**, `Audio Manager.prefab`이 `GMTK_Race`에 배치 | 정적 |
 | 게임플레이 오디오 훅 | **미완** | 호출되는 것은 `PlayCountdownTick`·`PlayRaceStart`·`PlayButtonClick`뿐(모두 `RaceFlow`). 처형·저주·추월·관문·폭발·부스트 사운드 호출 지점 없음 | 정적 |
 | `VehicleSettings`·`SpecialEventSettings` 설정화 | **미구현** | 차량 수치는 RCCP 프리팹과 `GmtkRccpVehicle.boostAcceleration`, 이벤트 수치는 `RandomEventManager` 인스펙터에 산재 | — |
@@ -360,8 +360,8 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 4. **킷 `RaceFinish`가 `GMTK_Race` YAML에는 남아 있다.** 런타임 권한 계층이 씬 로드 시 제거해
    승패 발행을 막는다. 제거 시 이벤트 구독을 해제하고 `finishTrigger`를 null-safe 처리해 재시작
    이벤트 체인이 끊기던 문제는 코드 수정 완료했으며 Play Mode 확인 대기.
-5. **`RaceHud`가 어디에도 배치되지 않았다.** 처형 카운트다운·최하위 경고·부스트·저주·추월·관문
-   상태가 화면에 전혀 표시되지 않는다.
+5. ~~**`RaceHud`가 어디에도 배치되지 않았다.**~~ → **중앙 상단 규칙 HUD 통합 완료.**
+   `RaceHud`가 런타임 자동 생성되어 `RaceUI/RaceAlertPanel`의 TMP를 갱신한다. 월드 마커와 경고 우선순위는 남아 있다.
 6. **`GameJamDefault.maximumDurability = 1000000`** — 대파를 미루기 위한 임시값. 최종 밸런스 값은
    팀이 정하기로 했고, 프리셋 정규화 도구도 이 값을 덮지 않는다.
 7. **추월 실패 속박이 실제로 감속하지 않는다** (`BindSpeedMultiplier` 소비자 없음).
@@ -655,19 +655,19 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 
 ### 3.5 핵심 HUD와 전용 씬
 
-> 상태: 전용 씬과 팀 UI 통합은 완료. 반면 **규칙 HUD는 화면에 전혀 없다.**
-> `RaceHud.cs`는 구현되어 있지만 스크립트 GUID가 어떤 `.unity`/`.prefab`에도 없다(참조 0건).
+> 상태: 전용 씬과 팀 UI 통합 완료. `RaceHud`는 런타임 자동 생성되고
+> `RaceUI/RaceAlertPanel`의 Foozle `Panel_1` 배경과 TMP 3줄을 갱신한다.
 > `GMTK_Race`에는 `Main UI.prefab`이 있고 그 안의 `RaceUI`가 속도 게이지, `Position TMP`,
 > `Race Timer TMP`, `Durability` 슬라이더, `Curse Skill` 슬라이더를 제공한다.
 
-- [ ] 현재 순위와 전체 6대 표시 — `RaceUI`의 `Position TMP`(킷 `RacePositionGUI`)로 순위는 나오지만 전체 대수 표기와 탈락 반영은 `RaceHud` 쪽에만 있고 미배치
-- [ ] 30초 처형 카운트다운 상시 표시 — **표시 수단 없음.** `EliminationManager.SecondsToElimination`을 읽는 UI가 배치되지 않았다
-- [ ] 최하위 경고와 월드 마커 — 이벤트만 존재, 표시·마커 없음
-- [ ] 플레이어 최하위 바이탈 경고 — 없음
+- [x] 현재 순위와 생존 레이서 수 표시 — `RacePositionGUI`가 `Position TMP`에 순위 숫자, `nd TMP`에 `/생존수` 출력
+- [ ] 30초 처형 카운트다운 상시 표시 — `Execution TMP`가 경고 단계에서는 남은 시간을 표시하지만 평상시에는 숨김
+- [ ] 최하위 경고와 월드 마커 — 중앙 `Execution TMP` 경고는 구현, 차량 위 월드 마커는 없음
+- [x] 플레이어 최하위 바이탈 경고 — `ESCAPE LAST PLACE BEFORE THE TIMER HITS ZERO` 및 `YOU ARE MARKED`
 - [ ] 부스트·내구도·저주·쿨다운 표시 — 내구도(`DurabilityHud` → `RaceUI/Durability`)와 저주 쿨다운(`CurseManager` → `RaceUI/Curse Skill` 슬라이더)은 배치 확인. **부스트 충전량은 표시 수단 없음**
 - [ ] 저주 대상 마커 — 없음
 - [x] 퀴즈 문제와 마우스 답 입력 — `QuizUiPresenter` + 월드 스페이스 휴대폰
-- [ ] 추월 도전 대상과 타이머 — `RaceHud` 라벨만 있고 미배치
+- [x] 추월 도전 대상과 타이머 — `RaceAlertPanel/Overtake TMP`에 대상 차량과 남은 시간 표시
 - [ ] 처형 경고 → 추월 도전 → 퀴즈 → 쿨다운 순서로 강조 — 우선순위 로직 없음
 - [ ] 시작 직후 기본 조작 키 가이드 — `RaceFlow` 프롤로그 텍스트는 규칙 설명만 하고 조작 키는 안내하지 않는다
 - [x] 1랩·6대·최종 관문을 포함한 게임 전용 씬 — `Assets/Scenes/GMTK_Race.unity`. 단 관문 오브젝트는 아직 없음(3.4)
@@ -1108,7 +1108,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 - [x] 설정 기반 탈락 간격과 10초·5초·3초 경고 — `EliminationWarningLevel` 3단계 + 전용 이벤트. **프리셋 값 확정 필요**
 - [x] 0초에 최신 순위를 다시 계산해 최하위 처형 — `EliminateLastPlace`가 `FindLastPlace()` 재호출
 - [x] 두 대가 남으면 탈락 중단 — `ActiveCarCount <= finalDuelRacerCount`
-- [ ] 순위·처형 타이머·최하위 경고 HUD — **`RaceHud`가 어떤 씬에도 배치되지 않았다.** 배치 또는 `Main UI.prefab` 통합 필요
+- [ ] 순위·처형 타이머·최하위 경고 HUD — 순위·생존수와 중앙 최하위 경고는 구현. 처형 타이머는 경고 단계에서만 표시되어 상시 표시는 미완
 - [x] 플레이어 화면을 메인 화면에 유지 — `ExecutionCctvDirector`가 플레이어 카메라의 rect/depth를 변경하지 않음
 - [x] 처형 차량 CCTV를 오른쪽 아래 설정 Rect로 표시 — `executionCctvViewportRect`
 - [x] 처형 후 CCTV 정상 종료 — `wreckLingerSeconds` 후 축소 → `CompleteHide`에서 원본 복원
@@ -1253,7 +1253,7 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 **진행률: 규칙·보상 완료. 실패 페널티의 실제 감속과 UI가 없다.**
 
 - [x] 무작위 경쟁자 선택과 이미 앞선 차량 무시 — `PickRivalAhead()`
-- [ ] 대상·제한 시간·앞섬 여부 HUD — 표시 수단 없음 (`RaceHud` 미배치)
+- [ ] 대상·제한 시간·앞섬 여부 HUD — `RaceAlertPanel/Overtake TMP`에 대상·제한 시간은 표시하지만 앞섬 유지 상태는 별도 표시하지 않음
 - [x] 8초 안에 추월 후 0.5초 유지 판정 — `OvertakeChallengeState`
 - [x] 부스트 한 칸 회복과 저주 쿨다운 즉시 초기화 — `OnSuccess()`
 - [ ] 실패 시 속박 — 상태 플래그·타이머만 있고 **감속이 차량에 전달되지 않는다**
@@ -1489,8 +1489,8 @@ P0 레이스가 성립하지 않게 만드는 것부터 정렬했다. 위쪽 4�
 5. ~~최종 관문 실물~~ → **코드 완료 (2026-07-26).** `FinalGateDoors`가 결승선 위에 관문과 통과 트리거를
    런타임 생성하고 `ReportGateCrossing`을 호출한다. 자동 승리 폴백은 실제 선두 판정으로 교체.
    **남은 일: Play Mode에서 관문 위치·방향·폭(16m)과 폐쇄 시퀀스 확인.**
-6. 규칙 HUD 배치: `RaceHud`를 씬에 올리거나, 그 라벨들을 `Main UI.prefab`의 `RaceUI` 안으로 통합한다.
-   최소한 처형 카운트다운·최하위 표시·부스트 충전량은 필요하다.
+6. ~~규칙 HUD 배치~~ → **부분 완료.** `RaceUI/RaceAlertPanel`에 목표·처형 경고·추월/관문 TMP를 통합했다.
+   남은 일은 처형 타이머 상시 표시, 월드 마커, 경고 우선순위 정리다.
 7. `race.aiCount` / `race.lapCount`를 `RaceData`에 주입해 프리셋이 실제 차량 수·랩 수를 정하게 한다.
 8. 추월 실패 속박: `OvertakeManager.BindSpeedMultiplier`를 `GmtkVehicleAdapter` 경로에서 소비한다.
 
