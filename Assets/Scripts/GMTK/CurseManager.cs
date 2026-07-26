@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Gmtk2026.GameBalance;
 using Gmtk2026.Quiz;
-using SpinMotion;
+using GMTK.Kit;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;

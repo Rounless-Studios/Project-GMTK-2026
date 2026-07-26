@@ -45,7 +45,7 @@ namespace GMTK
         private void Awake() => Instance = this;
         private void OnDestroy()
         {
-            SpinMotion.GameEvents e = Race.Events;
+            GMTK.Kit.GameEvents e = Race.Events;
             if (e != null)
             {
                 e.RaceStartedEvent.RemoveListener(OnRaceStarted);
@@ -64,7 +64,7 @@ namespace GMTK
             e.RaceFinishedEvent.AddListener(OnRaceFinished);
         }
 
-        private void OnRaceFinished(SpinMotion.RaceFinishType _) => armed = false;
+        private void OnRaceFinished(GMTK.Kit.RaceFinishType _) => armed = false;
 
         private void OnRaceStarted()
         {

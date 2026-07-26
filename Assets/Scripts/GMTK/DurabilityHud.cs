@@ -15,10 +15,16 @@ namespace GMTK
     {
         [SerializeField] private TMP_Text valueLabel;
         [SerializeField] private RectTransform fill;
-        [SerializeField] private Image fillImage;
 
         private DurabilityController target;
+        private Image fillImage;
         private float nextRefreshAt;
+
+        private void Awake()
+        {
+            if (fill != null)
+                fillImage = fill.GetComponent<Image>();
+        }
 
         private void Update()
         {
@@ -28,22 +34,13 @@ namespace GMTK
                 RefreshTarget();
             }
 
-            if (target == null || valueLabel == null || fill == null) return;
+            if (target == null || fillImage == null) return;
             float maximum = Mathf.Max(1f, GameBalance.Current.damage.maximumDurability);
             float ratio = Mathf.Clamp01(target.Durability / maximum);
-            Vector2 anchors = fill.anchorMax;
-            anchors.x = ratio;
-            fill.anchorMax = anchors;
-            valueLabel.text = $"DUR {Mathf.CeilToInt(target.Durability):000}";
+            fillImage.fillAmount = ratio;
 
-            if (fillImage != null)
-            {
-                fillImage.color = ratio <= 0.3f
-                    ? new Color(0.92f, 0.16f, 0.14f, 1f)
-                    : ratio <= 0.6f
-                        ? new Color(1f, 0.62f, 0.08f, 1f)
-                        : new Color(0.12f, 0.82f, 0.44f, 1f);
-            }
+            if (valueLabel != null)
+                valueLabel.text = $"DUR {Mathf.CeilToInt(target.Durability):000}";
         }
 
         private void RefreshTarget()

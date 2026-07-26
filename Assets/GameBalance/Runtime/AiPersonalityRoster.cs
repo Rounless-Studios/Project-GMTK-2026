@@ -76,6 +76,33 @@ namespace Gmtk2026.GameBalance
             return order;
         }
 
+        /// <summary>
+        /// Grid order for an explicit per-car roster: the roster entry each AI slot drives, for an
+        /// already resolved seed. Every entry is used exactly once when the counts match, so a car's
+        /// personality and its body stay paired while the slot it starts from still changes each race.
+        /// A field larger than the roster keeps cycling it.
+        /// </summary>
+        public static List<int> BuildRosterOrder(int entryCount, int aiCount, int seed)
+        {
+            var order = new List<int>();
+
+            if (entryCount <= 0 || aiCount <= 0)
+                return order;
+
+            for (int i = 0; i < entryCount; i++)
+                order.Add(i);
+
+            Shuffle(order, seed);
+
+            while (order.Count < aiCount)
+                order.Add(order[order.Count - entryCount]);
+
+            if (order.Count > aiCount)
+                order.RemoveRange(aiCount, order.Count - aiCount);
+
+            return order;
+        }
+
         private static int NewSeed()
         {
             int seed = Environment.TickCount & int.MaxValue;

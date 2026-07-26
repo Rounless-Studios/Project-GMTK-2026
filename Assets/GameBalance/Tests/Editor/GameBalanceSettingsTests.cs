@@ -168,8 +168,8 @@ namespace Gmtk2026.GameBalance.Tests
             Assert.AreEqual(12f, preset.curse.sharedCooldownSeconds);
             Assert.AreEqual(1.25f, preset.curse.aiQuizResolutionDelayMinimumSeconds);
             Assert.AreEqual(3f, preset.curse.aiQuizResolutionDelayMaximumSeconds);
-            Assert.AreEqual(1000000f, preset.damage.maximumDurability,
-                "GameJamDefault intentionally suppresses wrecks during active playtesting");
+            Assert.AreEqual(100f, preset.damage.maximumDurability,
+                "the durability HUD and damage thresholds use a visible 0-100 range");
             Assert.AreEqual(0.75f, preset.presentation.gateCloseDurationSeconds);
             Assert.AreEqual(0.25f, preset.presentation.gateExecutionDelaySeconds);
             GameBalance.ResetForTests();

@@ -26,14 +26,14 @@ namespace GMTK
         [SerializeField] private TMP_Text statusText;
         [SerializeField] private TMP_Text countdownText;
 
-        private const float GaugeMaximumSpeedKph = 300f;
-        private const float GaugeMinimumNeedleAngle = 150f;
-        private const float GaugeMaximumNeedleAngle = -150f;
+        private const float GaugeMaximumSpeedKph = 220f;
+        private const float GaugeMinimumNeedleAngle = 125f;
+        private const float GaugeMaximumNeedleAngle = -125f;
         private const float GaugeNeedleSmoothTime = 0.08f;
 
         private TMP_Text speedText;
         private RectTransform rpmNeedle;
-        private Image boosterFillImage;
+        private Slider boosterSlider;
         private Rigidbody playerRigidbody;
         private BoostController playerBoost;
         private float displayedNeedleAngle = GaugeMinimumNeedleAngle;
@@ -84,6 +84,14 @@ namespace GMTK
             if (RacePanel == null)
                 return;
 
+            if (boosterSlider == null)
+            {
+                boosterSlider = RacePanel.transform.Find("BOOST")?.GetComponent<Slider>();
+
+                if (boosterSlider != null)
+                    boosterSlider.interactable = false;
+            }
+
             Transform gauge = RacePanel.transform.Find("Gauge");
 
             if (gauge == null)
@@ -91,9 +99,6 @@ namespace GMTK
 
             if (speedText == null)
                 speedText = gauge.Find("Speed")?.GetComponent<TMP_Text>();
-
-            if (boosterFillImage == null)
-                boosterFillImage = gauge.Find("BOOSTER")?.GetComponent<Image>();
 
             if (rpmNeedle == null)
             {
@@ -112,7 +117,7 @@ namespace GMTK
 
         private void UpdateGauge()
         {
-            if (speedText == null || rpmNeedle == null || boosterFillImage == null)
+            if (speedText == null || rpmNeedle == null || boosterSlider == null)
                 CacheGauge();
 
             if (playerRigidbody == null || playerBoost == null)
@@ -133,8 +138,14 @@ namespace GMTK
             if (speedText != null)
                 speedText.SetText("{0:0}", speedKph);
 
-            if (boosterFillImage != null && playerBoost?.State != null)
-                boosterFillImage.fillAmount = playerBoost.State.ChargeFill01;
+            if (boosterSlider != null && playerBoost?.State != null)
+            {
+                float sliderValue = Mathf.Lerp(
+                    boosterSlider.minValue,
+                    boosterSlider.maxValue,
+                    playerBoost.State.ChargeFill01);
+                boosterSlider.SetValueWithoutNotify(sliderValue);
+            }
 
             if (rpmNeedle == null)
                 return;

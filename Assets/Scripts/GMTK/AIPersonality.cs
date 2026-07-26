@@ -1,6 +1,5 @@
 using Gmtk2026.GameBalance;
 using UnityEngine;
-using SpinMotion;
 
 namespace GMTK
 {
@@ -21,16 +20,10 @@ namespace GMTK
 
         private Transform player;
         private GmtkVehicleAdapter vehicleAdapter;
-        private CarAIControl legacyAi;
 
         private void Awake()
         {
             vehicleAdapter = GetComponent<GmtkVehicleAdapter>();
-            legacyAi = GetComponent<CarAIControl>();
-
-            if (legacyAi != null)
-                legacyAi.RefreshModifier();
-
             ApplyToDriver();
         }
 

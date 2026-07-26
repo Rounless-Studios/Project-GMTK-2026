@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.Events;
-using SpinMotion;
+using GMTK.Kit;
 using Gmtk2026.GameBalance;
 
 namespace GMTK.Rccp
@@ -17,14 +17,15 @@ namespace GMTK.Rccp
         [SerializeField] private GameEvents gameEvents;
         [SerializeField] private RCCP_CarController vehiclePrefab;
 
-        [Tooltip("One car per personality, so a glance at the paint tells you who you are racing. " +
-                 "Rows without a prefab, and the player, fall back to Vehicle Prefab.")]
-        [SerializeField] private List<PersonalityVehicle> personalityVehicles = new();
+        [Tooltip("One row per AI car: the personality it drives and the body it drives it in. The " +
+                 "pair stays together while the grid slots are shuffled, so the paint always tells you " +
+                 "who you are racing. Empty rows and the player fall back to Vehicle Prefab.")]
+        [SerializeField] private List<AiCar> aiCars = new();
 
-        /// <summary>A personality and the car it drives. Kept here because prefab references belong
-        /// to the RCCP boundary, not to the engine-neutral balance settings.</summary>
+        /// <summary>An AI car: a personality and the body it races in. Prefab references belong to the
+        /// RCCP boundary, not to the engine-neutral balance settings.</summary>
         [System.Serializable]
-        private struct PersonalityVehicle
+        private struct AiCar
         {
             public AIPersonalityType personality;
             public RCCP_CarController prefab;
@@ -218,10 +219,10 @@ namespace GMTK.Rccp
             int aiCount = Mathf.Min(GameBalance.Current.race.aiCount, spawnPoints.Count - 1);
             int playerIndex = ResolvePlayerSpawnIndex(aiCount);
 
-            // drawn here, before anything is instantiated: the personality decides which car body
-            // is spawned, and AIPersonalityAssigner reads the same plan once the grid exists
-            IReadOnlyList<AIPersonalityType> personalityPlan =
-                AIPersonalityAssigner.PlanForRace(aiCount, rebuild: true);
+            // Drawn before anything is instantiated: each AI slot takes one roster entry, which decides
+            // both its personality and the body it spawns in. The plan is published so
+            // AIPersonalityAssigner assigns exactly these personalities once the grid exists.
+            List<int> rosterOrder = BuildAiRoster(aiCount);
             GmtkRccpWaypointPath waypointPath = GmtkRccpWaypointPath.GetOrCreate();
 
             // RCCP hands the chase camera to the vehicle that registered last, which would be an AI
@@ -247,7 +248,7 @@ namespace GMTK.Rccp
 
                 RCCP_CarController body = isPlayer
                     ? source
-                    : VehicleFor(personalityPlan, raceIndex, source);
+                    : VehicleFor(rosterOrder, raceIndex, source);
 
                 GameObject vehicle = Instantiate(
                     body.gameObject,
@@ -309,23 +310,45 @@ namespace GMTK.Rccp
         }
 
         /// <summary>
-        /// The car an AI slot drives: its personality's row, or the shared prefab when the row is
-        /// empty. Race index 1 is the first AI, which is entry 0 of the plan.
+        /// Shuffles the AI roster into grid order and publishes the personalities that follow from it.
+        /// With no roster authored it falls back to the composition plan from the balance preset, and
+        /// every car keeps the shared body.
+        /// </summary>
+        private List<int> BuildAiRoster(int aiCount)
+        {
+            if (aiCars.Count == 0)
+            {
+                AIPersonalityAssigner.PlanForRace(aiCount, rebuild: true);
+                return null;
+            }
+
+            int seed = AiPersonalityRoster.ResolveSeed(
+                GameBalance.Current.ai.personalityAssignment.shuffleSeed);
+            List<int> order = AiPersonalityRoster.BuildRosterOrder(aiCars.Count, aiCount, seed);
+
+            var personalities = new List<AIPersonalityType>(order.Count);
+            foreach (int entry in order)
+                personalities.Add(aiCars[entry].personality);
+
+            AIPersonalityAssigner.PublishPlan(personalities, seed);
+            return order;
+        }
+
+        /// <summary>
+        /// The body an AI slot races in: its roster entry's prefab, or the shared one when there is no
+        /// roster or the row left it empty. Race index 1 is the first AI, which is slot 0.
         /// </summary>
         private RCCP_CarController VehicleFor(
-            IReadOnlyList<AIPersonalityType> plan,
+            List<int> rosterOrder,
             int raceIndex,
             RCCP_CarController fallback)
         {
-            if (plan == null || plan.Count == 0) return fallback;
+            if (rosterOrder == null || rosterOrder.Count == 0) return fallback;
 
-            AIPersonalityType personality = plan[(raceIndex - 1) % plan.Count];
+            int slot = (raceIndex - 1) % rosterOrder.Count;
+            RCCP_CarController prefab = aiCars[rosterOrder[slot]].prefab;
 
-            foreach (PersonalityVehicle entry in personalityVehicles)
-                if (entry.personality == personality && entry.prefab != null)
-                    return entry.prefab;
-
-            return fallback;
+            return prefab != null ? prefab : fallback;
         }
 
         private RCCP_CarController ResolveVehiclePrefab()

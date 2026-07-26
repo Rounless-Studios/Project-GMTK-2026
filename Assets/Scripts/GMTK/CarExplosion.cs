@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using Gmtk2026.GameBalance;
 using UnityEngine;
-using SpinMotion;
 
 namespace GMTK
 {
@@ -60,8 +59,8 @@ namespace GMTK
         private IEnumerator ExplodeRoutine()
         {
             // 1. stop the car from driving itself
-            foreach (var ai in GetComponentsInChildren<CarAIControl>()) ai.enabled = false;
-            foreach (var user in GetComponentsInChildren<CarUserControl>()) user.enabled = false;
+            var vehicleAdapter = GetComponent<GmtkVehicleAdapter>();
+            if (vehicleAdapter != null) vehicleAdapter.SetControlsEnabled(false);
             FreezeOriginalVehicle();
 
             // 2. replace the intact shell with the authored breakable Skyline. Its ten body

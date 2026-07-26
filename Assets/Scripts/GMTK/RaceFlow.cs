@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
 using Gmtk2026.Quiz;
-using SpinMotion;
+using GMTK.Kit;
 
 namespace GMTK
 {

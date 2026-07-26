@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
-using SpinMotion;
+using GMTK.Kit;
 using Gmtk2026.GameBalance;
 using Gmtk2026.Quiz;
 

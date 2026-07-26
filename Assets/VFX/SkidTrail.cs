@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
 
-namespace SpinMotion
+namespace GMTK.Kit
 {
     public class SkidTrail : MonoBehaviour
     {
