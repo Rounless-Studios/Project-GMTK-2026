@@ -33,7 +33,42 @@ namespace GMTK
         private RaceFinishType finishType;
         private bool finalDuelStarted;
 
+        private GameBalanceSettings previousPreset;
+        private int previousAiBots;
+        private int previousLaps;
+        private bool editorStateCaptured;
+
         private void Start() => StartCoroutine(Run());
+
+        /// <summary>
+        /// Play-mode domain reloads are off in this project, so the balance preset and RaceData are
+        /// statics that outlive the run. Restoring at the end of the coroutine is not enough — leaving
+        /// play mode, a recompile or any abort would skip it and leave FastTest active, which executes
+        /// a car every three seconds in the next ordinary playtest. Restore on teardown as well.
+        /// </summary>
+        private void OnDestroy() => RestoreEditorState();
+
+        private void CaptureEditorState()
+        {
+            if (editorStateCaptured) return;
+
+            previousPreset = GameBalance.Active;
+            previousAiBots = RaceData.AiBotsSelected;
+            previousLaps = RaceData.LapsSelected;
+            editorStateCaptured = true;
+        }
+
+        private void RestoreEditorState()
+        {
+            if (!editorStateCaptured) return;
+            editorStateCaptured = false;
+
+            GameBalance.EndRace();
+            if (previousPreset != null) GameBalance.SetActive(previousPreset);
+            else GameBalance.Load(GameBalance.DefaultPresetName);
+            RaceData.AiBotsSelected = previousAiBots;
+            RaceData.LapsSelected = previousLaps;
+        }
 
         private void OnDuel() => finalDuelStarted = true;
 
@@ -52,7 +87,9 @@ namespace GMTK
             var events = Race.Events;
             if (events == null) { Debug.LogError(Tag + " FAIL | no GameEvents"); LastResult = "FAIL | no GameEvents"; yield break; }
 
-            // deterministic, fast run: FastTest preset (short elimination interval) + no random events
+            // deterministic, fast run: FastTest preset (short elimination interval) + no random events.
+            // See OnDestroy for why the previous state is captured before anything is overwritten.
+            CaptureEditorState();
             var preset = GameBalance.Load("FastTest");
             Check("FastTest preset loaded", preset != null);
             var eventMgr = Object.FindAnyObjectByType<RandomEventManager>();
@@ -61,18 +98,33 @@ namespace GMTK
             events.RaceFinishedEvent.AddListener(OnFinished);
             EliminationManager.FinalDuelStarted += OnDuel;
 
+            // same static-leak problem as the preset: the menu only writes these when someone opens it
             RaceData.AiBotsSelected = aiCount;
             RaceData.LapsSelected = laps;
+
+            // RaceFlow and the game-mode host subscribe from Start/AfterSceneLoad callbacks, so a click
+            // in the first frame reaches the spawner — already listening — but not the race flow: cars
+            // appear on the grid and the countdown never runs. Wait until the flow is up.
+            float ready = Time.realtimeSinceStartup + 5f;
+            while (GMTKRaceState.Instance == null && Time.realtimeSinceStartup < ready) yield return null;
+            yield return null;
+            Check("race flow ready", GMTKRaceState.Instance != null);
+
             events.OnClickPlayRaceEvent.Invoke();
 
-            float t0 = Time.time;
-            while (!Race.IsRaceInProgress && Time.time - t0 < startTimeout) yield return null;
+            // the flow runs the prologue and countdown on unscaled time while the race is frozen
+            float t0 = Time.realtimeSinceStartup;
+            while (!Race.IsRaceInProgress && Time.realtimeSinceStartup - t0 < startTimeout)
+                yield return null;
             Check("race started", Race.IsRaceInProgress);
             Check("phase == Racing", GMTKRaceState.Instance != null && GMTKRaceState.Instance.CurrentPhase == RacePhase.Racing,
                 GMTKRaceState.Instance != null ? GMTKRaceState.Instance.CurrentPhase.ToString() : "no state");
 
-            // pin the player to the top so it survives the cascade into the final duel
-            if (Race.Positions != null && Race.Positions.LapScores.Count > 0)
+            // pin the player to the top so it survives the cascade into the final duel. The score now
+            // comes from waypoint progress, so raising the kit's lap count would be overwritten.
+            var progress = Object.FindAnyObjectByType<GmtkRaceProgress>();
+            if (progress != null && progress.SuppliesStandings) progress.PinToLead(0);
+            else if (Race.Positions != null && Race.Positions.LapScores.Count > 0)
                 Race.Positions.LapScores[0] = 999999;
 
             var elim = Object.FindAnyObjectByType<EliminationManager>();
@@ -148,6 +200,11 @@ namespace GMTK
             }
 
             EliminationManager.FinalDuelStarted -= OnDuel;
+            events.RaceFinishedEvent.RemoveListener(OnFinished);
+
+            // hand the editor back the balance it had; OnDestroy repeats this if a run never gets here
+            RestoreEditorState();
+
             LastResult = (pass ? "PASS" : "FAIL") + " | " + sb;
             Debug.Log(Tag + " " + LastResult);
         }

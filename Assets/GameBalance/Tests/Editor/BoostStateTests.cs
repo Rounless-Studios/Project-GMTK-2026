@@ -102,6 +102,55 @@ namespace Gmtk2026.GameBalance.Tests
         }
 
         [Test]
+        public void ChargeFillIsFullWithEveryChargeInHand()
+        {
+            var b = new BoostState(Settings());
+            Assert.AreEqual(1f, b.ChargeFill01, 0.0001f);
+        }
+
+        [Test]
+        public void ChargeFillCountsTheRechargeProgressOfTheNextSlot()
+        {
+            var b = new BoostState(Settings());
+            b.TryActivate();                  // charges 1 of 2
+            Assert.AreEqual(0.5f, b.ChargeFill01, 0.0001f, "one of two slots, nothing recharged yet");
+
+            b.Tick(3f);                       // half of the 6 s recharge
+            Assert.AreEqual(0.75f, b.ChargeFill01, 0.0001f, "the gauge must move between slots");
+
+            b.Tick(3f);                       // slot refilled
+            Assert.AreEqual(1f, b.ChargeFill01, 0.0001f);
+        }
+
+        [Test]
+        public void ChargeFillIsEmptyWithNoChargesAndNoProgress()
+        {
+            var s = Settings();
+            s.rechargeSecondsPerCharge = 0f;   // no recharge configured: nothing to show but the slots
+            var b = new BoostState(s);
+
+            b.TryActivate(); b.Tick(1.25f);
+            b.TryActivate();
+
+            Assert.AreEqual(0, b.Charges);
+            Assert.AreEqual(0f, b.ChargeFill01, 0.0001f);
+        }
+
+        [Test]
+        public void SealFreezesTheChargeFill()
+        {
+            var b = new BoostState(Settings());
+            b.TryActivate(); b.Tick(1.25f);
+            b.ApplySeal(3f);
+            float sealedFill = b.ChargeFill01;
+
+            b.Tick(3f);                       // whole tick spent sealed
+
+            Assert.AreEqual(sealedFill, b.ChargeFill01, 0.0001f,
+                "a sealed booster must not appear to be refilling");
+        }
+
+        [Test]
         public void SealPausesRechargeThenResumesAfterExpiry()
         {
             var b = new BoostState(Settings());

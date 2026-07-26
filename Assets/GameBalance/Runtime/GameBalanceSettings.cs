@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Gmtk2026.GameBalance
 {
@@ -8,7 +9,8 @@ namespace Gmtk2026.GameBalance
     public enum CurseSelectionMode { OrderedRotation, Random, PlayerChoice }
     public enum CurseTargetingMode { NearestAheadThenNearestActive, NearestActive, CurrentLeader }
     public enum OvertakeCooldownRewardMode { Reset, Reduce }
-    public enum AIArchetype { Rammer, Speedster, Schemer, Survivor }
+    // AI personalities live in AIPersonalityType.cs; the old AIArchetype axis was dropped
+    // on 2026-07-26 in favour of the four types the runtime actually drives.
 
     // ---- settings groups (defaults = the GameJamDefault preset values) ----
 
@@ -20,7 +22,6 @@ namespace Gmtk2026.GameBalance
         [Min(1)] public int finalDuelRacerCount = 2;
         [Min(0)] public float targetRaceDurationMinSeconds = 180f;
         [Min(0)] public float targetRaceDurationMaxSeconds = 300f;
-
         // Player count is a structural invariant of single-player, not a tunable.
         public int TotalRacerCount => 1 + aiCount;
     }
@@ -70,12 +71,8 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float soulSwapMaximumDistanceMeters = 40f;
         [Min(0)] public float soulSwapCollisionIgnoreSeconds = 0.3f;
 
-        [Header("AI Quiz Ability")]
-        [Range(0f, 1f)] public float defaultAiQuizSuccessChance = 0.5f;
-        [Range(0f, 1f)] public float cleanRacerQuizSuccessChance = 0.8f;
-        [Range(0f, 1f)] public float rammerQuizSuccessChance = 0.35f;
-        [Range(0f, 1f)] public float blockerQuizSuccessChance = 0.65f;
-        [Range(0f, 1f)] public float recklessQuizSuccessChance = 0.3f;
+        // Per-personality curse defence now lives in AISettings.personalityProfiles
+        // (quizAvoidChance), so one personality means one row of numbers.
 
         [Header("AI Casting")]
         [Min(0f)] public float aiInitialCastDelayMinimumSeconds = 2f;
@@ -124,6 +121,17 @@ namespace Gmtk2026.GameBalance
     }
 
     [System.Serializable]
+    public class VehicleSettings
+    {
+        [Min(0)] public float boostAcceleration = 18f;
+        [Min(0)] public float lateralGripRecovery = 2.2f;
+        [Min(0)] public float yawDamping = 1.8f;
+        [Min(0)] public float maximumYawRadiansPerSecond = 2.8f;
+        [Min(0)] public float bindingDeceleration = 14f;
+        [Min(0)] public float stabilizationMinimumSpeedKph = 25f;
+    }
+
+    [System.Serializable]
     public class OvertakeSettings
     {
         [Min(0)] public float checkIntervalSeconds = 20f;
@@ -140,48 +148,111 @@ namespace Gmtk2026.GameBalance
     public class CameraSettings
     {
         [Min(0)] public float sideBySideActivationSeconds = 0.6f;
-        // bottom-right ~1/3 of the screen (x, y, width, height in 0..1 viewport space)
-        public Rect executionPlayerViewportRect = new Rect(0.66f, 0f, 0.34f, 0.34f);
+        // Execution CCTV inset; the player's camera remains in its original main viewport.
+        [FormerlySerializedAs("executionPlayerViewportRect")]
+        public Rect executionCctvViewportRect = new Rect(0.67f, 0.35f, 0.32f, 0.30f);
+        [Min(0)] public float executionTransitionSeconds = 0.2f;
+        [Min(0)] public float executionReturnSeconds = 0.25f;
     }
 
+    /// <summary>
+    /// Everything one AI personality is worth, in one row. Replaces the old AIArchetypeProfile:
+    /// the pace scale, the sideways pull and the curse defence chance used to live in three
+    /// different places (the driver's switch, AiPersonalityAssignmentSettings, CurseSettings).
+    /// </summary>
     [System.Serializable]
-    public class AIArchetypeProfile
+    public class AiPersonalityProfile
     {
-        public AIArchetype archetype = AIArchetype.Speedster;
-        [Range(0.5f, 1.5f)] public float speedMultiplier = 1f;
-        [Range(0f, 1f)] public float aggression = 0.3f;
-        [Range(0f, 1f)] public float avoidance = 0.7f;
+        public AIPersonalityType personality = AIPersonalityType.CleanRacer;
+
+        [Tooltip("Scales the AI's throttle and corner-speed target. This is the personality's pace.")]
+        [Range(0.5f, 1.5f)] public float paceScale = 0.9f;
+
+        [Tooltip("Metres the racing line may be pulled toward the player. Ram pulls straight at " +
+                 "them, block pushes sideways into their lane. 0 for personalities that never " +
+                 "leave the racing line.")]
+        [Min(0)] public float lateralStrengthMetres;
+
+        [Tooltip("How eagerly this personality spends boost charges. Not consumed yet — AI boost " +
+                 "is a separate task.")]
         [Range(0f, 1f)] public float boostTendency = 0.5f;
-        [Range(0f, 1f)] public float curseTendency = 0.3f;
-        [Min(0)] public float curseCooldownSeconds = 12f;
-        [Min(0)] public float curseWarningSeconds = 1.5f;
+
+        [Tooltip("Chance this personality answers the defence quiz correctly and shrugs the curse " +
+                 "off. Fast and aggressive personalities defend worse.")]
+        [Range(0f, 1f)] public float quizAvoidChance = 0.5f;
+
+        [Tooltip("Extra acceleration for a personality that has fallen far behind. Not consumed " +
+                 "yet — catch-up is a separate task.")]
         [Min(0)] public float catchupAcceleration = 0.1f;
     }
 
     [System.Serializable]
     public class AISettings
     {
-        // one archetype per AI car (length should match RaceSettings.aiCount)
-        public List<AIArchetype> archetypeAssignments = new()
+        /// <summary>
+        /// One entry per AI car, so the grid composition is data instead of enum order. The
+        /// confirmed default is 폭주광 2 + 난폭자 1 + 봉쇄자 1 + 생존자 1 for five cars.
+        /// <see cref="AiPersonalityRoster"/> shuffles which grid slot gets which entry, so the
+        /// composition stays fixed while the slot mapping varies per race.
+        /// </summary>
+        public List<AIPersonalityType> personalityAssignments = new()
         {
-            AIArchetype.Rammer, AIArchetype.Speedster, AIArchetype.Schemer,
-            AIArchetype.Survivor, AIArchetype.Speedster
-        };
-        public AiDrivingSettings driving = new();
-        public AiPersonalityAssignmentSettings personalityAssignment = new();
-        public List<AIArchetypeProfile> profiles = new()
-        {
-            new AIArchetypeProfile { archetype = AIArchetype.Rammer, aggression = 0.9f, avoidance = 0.3f },
-            new AIArchetypeProfile { archetype = AIArchetype.Speedster, speedMultiplier = 1.1f, boostTendency = 0.8f },
-            new AIArchetypeProfile { archetype = AIArchetype.Schemer, curseTendency = 0.9f },
-            new AIArchetypeProfile { archetype = AIArchetype.Survivor, avoidance = 0.95f, aggression = 0.1f },
+            AIPersonalityType.Reckless,
+            AIPersonalityType.Reckless,
+            AIPersonalityType.Rammer,
+            AIPersonalityType.Blocker,
+            AIPersonalityType.CleanRacer,
         };
 
-        public AIArchetypeProfile GetProfile(AIArchetype archetype)
+        public AiDrivingSettings driving = new();
+        public AiPersonalityAssignmentSettings personalityAssignment = new();
+
+        /// <summary>Used when a targeted car has no personality (the player, or an unassigned car).</summary>
+        [Range(0f, 1f)] public float defaultQuizAvoidChance = 0.5f;
+
+        // Pace scales match what GmtkRccpWaypointDriver used to hard-code; defence chances match
+        // what CurseSettings used to hold. No number changes in this refactor.
+        public List<AiPersonalityProfile> personalityProfiles = new()
         {
-            foreach (var p in profiles)
-                if (p != null && p.archetype == archetype) return p;
+            new AiPersonalityProfile
+            {
+                personality = AIPersonalityType.Reckless,
+                paceScale = 1f, lateralStrengthMetres = 0f,
+                boostTendency = 0.8f, quizAvoidChance = 0.3f,
+            },
+            new AiPersonalityProfile
+            {
+                personality = AIPersonalityType.Rammer,
+                paceScale = 0.96f, lateralStrengthMetres = 7f,
+                boostTendency = 0.5f, quizAvoidChance = 0.35f,
+            },
+            new AiPersonalityProfile
+            {
+                personality = AIPersonalityType.Blocker,
+                paceScale = 0.86f, lateralStrengthMetres = 5f,
+                boostTendency = 0.5f, quizAvoidChance = 0.65f,
+            },
+            new AiPersonalityProfile
+            {
+                personality = AIPersonalityType.CleanRacer,
+                paceScale = 0.9f, lateralStrengthMetres = 0f,
+                boostTendency = 0.5f, quizAvoidChance = 0.8f,
+            },
+        };
+
+        /// <summary>The profile for a personality, or null when the preset has no row for it.</summary>
+        public AiPersonalityProfile GetProfile(AIPersonalityType personality)
+        {
+            foreach (var p in personalityProfiles)
+                if (p != null && p.personality == personality) return p;
             return null;
+        }
+
+        /// <summary>Curse defence chance for a personality, falling back to the default.</summary>
+        public float QuizAvoidChanceOf(AIPersonalityType personality)
+        {
+            var profile = GetProfile(personality);
+            return profile != null ? profile.quizAvoidChance : defaultQuizAvoidChance;
         }
     }
 
@@ -244,6 +315,14 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float stuckSpeedKph = 1.5f;
         [Min(0)] public float stuckDelaySeconds = 2.5f;
         [Min(0)] public float reverseDurationSeconds = 1.25f;
+
+        [Header("Tactics")]
+        [Min(0.1f)] public float boostDecisionIntervalSeconds = 1f;
+        [Min(0)] public float boostStraightMaximumDegrees = 8f;
+        [Min(1)] public float catchupGapMetres = 35f;
+        [Min(0)] public float eliminationUrgencyScale = 1.12f;
+        [Min(1)] public float obstacleProbeMetres = 12f;
+        [Range(0f, 1f)] public float obstacleAvoidanceStrength = 0.65f;
     }
 
     [System.Serializable]
@@ -255,8 +334,9 @@ namespace Gmtk2026.GameBalance
         public bool logAssignment = true;
 
         [Header("Aggression")]
-        [Min(0)] public float ramStrengthMetres = 7f;
-        [Min(0)] public float blockStrengthMetres = 5f;
+        // Ram/block strength moved to AiPersonalityProfile.lateralStrengthMetres so each
+        // personality owns its own number. Range stays shared: it is how far any AI can
+        // notice the player, not a personality trait.
         [Min(0)] public float aggroRangeMetres = 45f;
     }
 
@@ -271,9 +351,17 @@ namespace Gmtk2026.GameBalance
     public class PresentationSettings
     {
         [Header("Final Gate")]
-        [Min(0)] public float gateCloseSpeed = 2f;
+        [Tooltip("Duel time limit; when it runs out the racer furthest along the track wins.")]
+        [Min(0)] public float gateOpenDurationSeconds = 20f;
+        [Tooltip("Drivable width the two closing leaves span together.")]
+        [Min(1)] public float gateWidthMeters = 16f;
+        [Min(1)] public float gateHeightMeters = 7f;
+        [Tooltip("Pause after the winner crosses before the leaves start moving.")]
         [Min(0)] public float gateCloseDelaySeconds = 0.2f;
-        [Min(0)] public float gateExecutionDelaySeconds = 0.5f;
+        [Tooltip("Time the leaves take to slam shut behind the winner.")]
+        [Min(0)] public float gateCloseDurationSeconds = 0.75f;
+        [Tooltip("Pause after the gate is shut before the racers locked outside are executed.")]
+        [Min(0)] public float gateExecutionDelaySeconds = 0.25f;
         [Header("Explosion / Wreck")]
         [Min(0)] public float explosionVfxDurationSeconds = 0.45f;
         [Min(0)] public float wreckLingerSeconds = 2.5f;
@@ -287,6 +375,40 @@ namespace Gmtk2026.GameBalance
     {
         [Min(0)] public float ruleUnderstandingTargetSeconds = 15f;
         [Min(0)] public int minimumExternalTesterCount = 3;
+    }
+
+    [System.Serializable]
+    public class SpecialEventSettings
+    {
+        public bool enabled = true;
+        [Min(0)] public float initialDelaySeconds = 15f;
+        [Min(0)] public float minimumIntervalSeconds = 25f;
+        [Min(0)] public float maximumIntervalSeconds = 40f;
+        [Min(0)] public float warningLeadSeconds = 2f;
+        [Min(1)] public int maximumSimultaneousEvents = 1;
+        [Min(1)] public int maximumEventsPerRace = 4;
+        public bool blockDuringExecutionWarning = true;
+        public bool blockDuringQuiz = true;
+        public bool blockDuringOvertakeChallenge = true;
+        public bool blockDuringFinalDuel = true;
+        public bool preventImmediateRepeat = true;
+
+        [Header("Dump Truck")]
+        [Min(1)] public float dumpTruckSpeed = 22f;
+        [Min(0)] public float dumpTruckDamage = 20f;
+        [Min(0)] public float dumpTruckKnockback = 6f;
+        [Min(0.1f)] public float dumpTruckLifetimeSeconds = 12f;
+
+        [Header("Earthquake")]
+        [Min(0.1f)] public float earthquakeDurationSeconds = 3f;
+        [Min(0)] public float earthquakeLateralVelocityChange = 2f;
+
+        [Header("Meteor")]
+        [Min(0)] public float meteorWarningSeconds = 2f;
+        [Min(0.1f)] public float meteorImpactRadius = 5f;
+        [Min(0)] public float meteorDamage = 25f;
+        [Min(0)] public float meteorKnockback = 5f;
+        [Min(0.1f)] public float meteorDebrisLifetimeSeconds = 3f;
     }
 
     /// <summary>
@@ -306,12 +428,14 @@ namespace Gmtk2026.GameBalance
         public BoostSettings boost = new();
         public DamageSettings damage = new();
         public VehicleRecoverySettings vehicleRecovery = new();
+        public VehicleSettings vehicle = new();
         public OvertakeSettings overtake = new();
         public CameraSettings camera = new();
         public AISettings ai = new();
         public TrackValidationSettings trackValidation = new();
         public PresentationSettings presentation = new();
         public PlaytestSettings playtest = new();
+        public SpecialEventSettings specialEvents = new();
 
         /// <summary>Returns a list of specific validation errors; empty when valid.</summary>
         public List<string> Validate()
@@ -325,6 +449,12 @@ namespace Gmtk2026.GameBalance
                 errors.Add($"race.finalDuelRacerCount ({race.finalDuelRacerCount}) must be < total racers ({race.TotalRacerCount})");
             if (race.targetRaceDurationMinSeconds > race.targetRaceDurationMaxSeconds)
                 errors.Add("race.targetRaceDurationMinSeconds must be <= targetRaceDurationMaxSeconds");
+            if (specialEvents.minimumIntervalSeconds > specialEvents.maximumIntervalSeconds)
+                errors.Add("specialEvents.minimumIntervalSeconds must be <= maximumIntervalSeconds");
+            if (specialEvents.maximumSimultaneousEvents < 1)
+                errors.Add("specialEvents.maximumSimultaneousEvents must be >= 1");
+            if (specialEvents.maximumEventsPerRace < 1)
+                errors.Add("specialEvents.maximumEventsPerRace must be >= 1");
 
             // all elimination warnings must fit inside the interval
             if (elimination.warningSeconds >= elimination.intervalSeconds)
@@ -366,9 +496,68 @@ namespace Gmtk2026.GameBalance
             if (boost.overtakeRewardCharges > boost.maximumCharges)
                 errors.Add("boost.overtakeRewardCharges must be <= boost.maximumCharges");
 
-            var r = camera.executionPlayerViewportRect;
-            if (r.xMin < 0f || r.yMin < 0f || r.xMax > 1f || r.yMax > 1f)
-                errors.Add("camera.executionPlayerViewportRect must be within the 0..1 viewport");
+            // AI personalities: the grid list must cover every AI car, and every personality
+            // handed out must have a profile row, otherwise a car silently falls back to defaults.
+            if (ai.personalityAssignments == null || ai.personalityAssignments.Count == 0)
+            {
+                errors.Add("ai.personalityAssignments must list one personality per AI car");
+            }
+            else if (ai.personalityAssignments.Count != race.aiCount)
+            {
+                errors.Add($"ai.personalityAssignments has {ai.personalityAssignments.Count} " +
+                           $"entries but race.aiCount is {race.aiCount}");
+            }
+
+            if (ai.personalityProfiles == null || ai.personalityProfiles.Count == 0)
+            {
+                errors.Add("ai.personalityProfiles must contain a row per personality");
+            }
+            else
+            {
+                foreach (var profile in ai.personalityProfiles)
+                {
+                    if (profile == null)
+                    {
+                        errors.Add("ai.personalityProfiles contains an empty row");
+                        continue;
+                    }
+                    if (profile.paceScale <= 0f)
+                        errors.Add($"ai.personalityProfiles[{profile.personality}].paceScale must be > 0");
+                    if (profile.lateralStrengthMetres < 0f)
+                        errors.Add($"ai.personalityProfiles[{profile.personality}].lateralStrengthMetres must be >= 0");
+                }
+
+                if (ai.personalityAssignments != null)
+                {
+                    foreach (var personality in ai.personalityAssignments)
+                    {
+                        if (ai.GetProfile(personality) == null)
+                            errors.Add($"ai.personalityAssignments uses {personality} but " +
+                                       "ai.personalityProfiles has no row for it");
+                    }
+                }
+            }
+
+            var r = camera.executionCctvViewportRect;
+            if (r.width <= 0f || r.height <= 0f ||
+                r.xMin < 0f || r.yMin < 0f || r.xMax > 1f || r.yMax > 1f)
+            {
+                errors.Add("camera.executionCctvViewportRect must have positive size and remain within the 0..1 viewport");
+            }
+
+            // the final gate must have a real opening and a real duel window to be crossable
+            if (presentation.gateOpenDurationSeconds <= 0f)
+                errors.Add("presentation.gateOpenDurationSeconds must be > 0");
+            if (presentation.gateWidthMeters <= 0f)
+                errors.Add("presentation.gateWidthMeters must be > 0");
+            if (presentation.gateHeightMeters <= 0f)
+                errors.Add("presentation.gateHeightMeters must be > 0");
+            if (presentation.gateCloseDurationSeconds < 0f)
+                errors.Add("presentation.gateCloseDurationSeconds must be >= 0");
+            if (presentation.gateCloseDelaySeconds < 0f)
+                errors.Add("presentation.gateCloseDelaySeconds must be >= 0");
+            if (presentation.gateExecutionDelaySeconds < 0f)
+                errors.Add("presentation.gateExecutionDelaySeconds must be >= 0");
 
             // non-negative sanity for the common time/charge fields
             if (boost.durationSeconds < 0f) errors.Add("boost.durationSeconds must be >= 0");

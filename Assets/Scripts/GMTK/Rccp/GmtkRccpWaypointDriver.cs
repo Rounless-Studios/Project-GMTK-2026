@@ -36,9 +36,10 @@ namespace GMTK.Rccp
         private float reverseTimer;
         private AIPersonalityType personalityType;
         private Transform personalityTarget;
-        private float ramStrength;
-        private float blockStrength;
+        private float lateralStrength;
         private float aggroRange;
+        private float nextBoostDecisionAt;
+        private BoostController boost;
 
         private void Awake()
         {
@@ -46,6 +47,7 @@ namespace GMTK.Rccp
             carRigidbody = GetComponent<Rigidbody>();
             inputReceiver = GetComponentInChildren<RCCP_Input>(true);
             inputs = new RCCP_Inputs();
+            boost = GetComponent<BoostController>();
         }
 
         private void OnDisable()
@@ -83,26 +85,21 @@ namespace GMTK.Rccp
         public void ConfigurePersonality(AIPersonalityType type)
         {
             personalityType = type;
-            throttleScale = type switch
-            {
-                AIPersonalityType.Reckless => 1f,
-                AIPersonalityType.Rammer => 0.96f,
-                AIPersonalityType.Blocker => 0.86f,
-                _ => 0.9f,
-            };
+
+            // pace is the personality's own number in the balance asset, not a switch here
+            var profile = GameBalance.Current.ai.GetProfile(type);
+            throttleScale = profile != null ? profile.paceScale : 0.9f;
         }
 
         public void SetPersonalityTarget(
             AIPersonalityType type,
             Transform target,
-            float ramAmount,
-            float blockAmount,
+            float lateralAmount,
             float range)
         {
             personalityType = type;
             personalityTarget = target;
-            ramStrength = ramAmount;
-            blockStrength = blockAmount;
+            lateralStrength = lateralAmount;
             aggroRange = range;
         }
 
@@ -154,6 +151,7 @@ namespace GMTK.Rccp
                     AiDriving.CornerSpeedKph(headingChange, arc, throttleScale, S),
                     Time.fixedDeltaTime,
                     S);
+                targetSpeed *= TacticalPaceScale();
                 lastTargetSpeed = targetSpeed;
 
                 AiDriving.SpeedInputs(targetSpeed, speedKph, out float throttle, out float brake);
@@ -167,6 +165,9 @@ namespace GMTK.Rccp
                     (targetAngle * AiDriving.SteerGain(speedKph, S) - angleRate * S.steerDamping) / 35f,
                     -1f,
                     1f);
+
+                ApplyObstacleAvoidance(ref inputs.steerInput);
+                TryUseBoost(headingChange);
             }
 
             previousSteerAngle = targetAngle;
@@ -175,6 +176,62 @@ namespace GMTK.Rccp
             inputs.clutchInput = 0f;
             inputs.nosInput = personalityType == AIPersonalityType.Reckless ? 0.35f : 0f;
             inputReceiver.OverrideInputs(inputs);
+        }
+
+        private float TacticalPaceScale()
+        {
+            float scale = 1f;
+            EliminationManager elimination = EliminationManager.Instance;
+            if (elimination != null && elimination.CurrentLastPlaceIndex == raceIndex)
+                scale *= S.eliminationUrgencyScale;
+
+            if (Race.CarCount > 0)
+            {
+                double leader = double.MinValue;
+                foreach (int index in Race.AllCarIndices())
+                    leader = System.Math.Max(leader, Race.ScoreOf(index));
+
+                if (leader - Race.ScoreOf(raceIndex) >= S.catchupGapMetres)
+                {
+                    AiPersonalityProfile profile =
+                        GameBalance.Current.ai.GetProfile(personalityType);
+                    if (profile != null) scale += profile.catchupAcceleration;
+                }
+            }
+
+            return scale;
+        }
+
+        private void TryUseBoost(float headingChange)
+        {
+            if (boost == null || Time.time < nextBoostDecisionAt) return;
+            nextBoostDecisionAt = Time.time + S.boostDecisionIntervalSeconds;
+            if (Mathf.Abs(headingChange) > S.boostStraightMaximumDegrees) return;
+
+            AiPersonalityProfile profile = GameBalance.Current.ai.GetProfile(personalityType);
+            float tendency = profile != null ? profile.boostTendency : 0.5f;
+            if (Random.value <= tendency) boost.TryBoost();
+        }
+
+        private void ApplyObstacleAvoidance(ref float steer)
+        {
+            Vector3 origin = transform.position + transform.forward * 1.5f + Vector3.up * 0.6f;
+            if (!Physics.Raycast(
+                    origin,
+                    transform.forward,
+                    out RaycastHit hit,
+                    S.obstacleProbeMetres,
+                    ~0,
+                    QueryTriggerInteraction.Ignore))
+                return;
+            if (hit.transform.root == transform.root) return;
+
+            Vector3 local = transform.InverseTransformPoint(hit.point);
+            float direction = local.x >= 0f ? -1f : 1f;
+            steer = Mathf.Clamp(
+                steer + direction * S.obstacleAvoidanceStrength,
+                -1f,
+                1f);
         }
 
         /// <summary>
@@ -339,11 +396,14 @@ namespace GMTK.Rccp
             if (toTarget.sqrMagnitude > aggroRange * aggroRange)
                 return Vector3.zero;
 
+            if (lateralStrength <= 0f)
+                return Vector3.zero;
+
             return personalityType switch
             {
-                AIPersonalityType.Rammer => toTarget.normalized * ramStrength,
+                AIPersonalityType.Rammer => toTarget.normalized * lateralStrength,
                 AIPersonalityType.Blocker =>
-                    Vector3.Project(toTarget, transform.right).normalized * blockStrength,
+                    Vector3.Project(toTarget, transform.right).normalized * lateralStrength,
                 _ => Vector3.zero,
             };
         }

@@ -197,25 +197,18 @@ namespace GMTK
                 result.IsCorrect);
         }
 
-        private float GetAiQuizSuccessChance(GameObject targetCar)
+        /// <summary>
+        /// How likely an AI target is to answer its (off-screen) defence quiz and shrug the curse
+        /// off. One number per personality, stored beside the rest of that personality's values.
+        /// </summary>
+        private static float GetAiQuizSuccessChance(GameObject targetCar)
         {
+            AISettings ai = GameBalance.Current.ai;
             AIPersonality personality = targetCar.GetComponent<AIPersonality>();
-            if (personality == null)
-                return Settings.defaultAiQuizSuccessChance;
 
-            switch (personality.type)
-            {
-                case AIPersonalityType.CleanRacer:
-                    return Settings.cleanRacerQuizSuccessChance;
-                case AIPersonalityType.Rammer:
-                    return Settings.rammerQuizSuccessChance;
-                case AIPersonalityType.Blocker:
-                    return Settings.blockerQuizSuccessChance;
-                case AIPersonalityType.Reckless:
-                    return Settings.recklessQuizSuccessChance;
-                default:
-                    return Settings.defaultAiQuizSuccessChance;
-            }
+            return personality == null
+                ? ai.defaultQuizAvoidChance
+                : ai.QuizAvoidChanceOf(personality.type);
         }
 
         private void LogCurseActivated(
@@ -358,7 +351,14 @@ namespace GMTK
             }
 
             if (quiz != null)
+            {
+                QuizSettings settings = GameBalance.Current.quiz;
+                quiz.ConfigureQuestionRules(
+                    settings.answerTimeSeconds,
+                    settings.minimumAnswerCount,
+                    settings.maximumAnswerCount);
                 quiz.AnswerEvaluated += OnHumanQuizEvaluated;
+            }
         }
 
         private void EnsureCooldownSlider()

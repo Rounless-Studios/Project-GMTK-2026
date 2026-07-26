@@ -1,0 +1,161 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b0f04d15b8523a47bc043a053dee25b, type: 3}
+  m_Name: FastTest
+  m_EditorClassIdentifier: GMTK.GameBalance.Runtime::Gmtk2026.GameBalance.GameBalanceSettings
+  race:
+    aiCount: 5
+    lapCount: 1
+    finalDuelRacerCount: 2
+    targetRaceDurationMinSeconds: 180
+    targetRaceDurationMaxSeconds: 300
+  elimination:
+    intervalSeconds: 3
+    warningSeconds: 1.5
+    intenseWarningSeconds: 1
+    executionCameraLeadSeconds: 1
+    executeAtRemainingSeconds: 0
+  result:
+    playerDeathCinematicMaxSeconds: 3
+    restartToControlMaxSeconds: 5
+  quiz:
+    answerTimeSeconds: 2
+    minimumAnswerCount: 2
+    maximumAnswerCount: 3
+  curse:
+    sharedCooldownSeconds: 12
+    selectionMode: 0
+    targetingMode: 0
+    ruptureDurabilityDamage: 35
+    ruptureKnockbackForce: 8
+    engineSealDurationSeconds: 5
+    soulSwapMinimumDistanceMeters: 15
+    soulSwapMaximumDistanceMeters: 40
+    soulSwapCollisionIgnoreSeconds: 0.3
+    aiInitialCastDelayMinimumSeconds: 2
+    aiInitialCastDelayMaximumSeconds: 5
+    aiFailedCastRetrySeconds: 1
+  boost:
+    maximumCharges: 2
+    durationSeconds: 1.25
+    rechargeSecondsPerCharge: 6
+    overtakeRewardCharges: 1
+    boostSpeedMultiplier: 1.5
+  damage:
+    maximumDurability: 1000000
+    damagedThreshold: 60
+    criticalThreshold: 30
+    wreckedThreshold: 0
+    wreckDurationSeconds: 2
+    recoveryDurability: 50
+    recoveryProtectionSeconds: 2
+    strongCollisionImpulse: 8
+    strongCollisionDamage: 15
+  vehicleRecovery:
+    fallDistanceBelowTrack: 8
+    respawnHeightAboveWaypoint: 2
+    maximumTrackDistanceFromWaypoint: 20
+    groundProbeDistance: 5
+    trackSampleIntervalSeconds: 0.1
+  overtake:
+    checkIntervalSeconds: 5
+    challengeDurationSeconds: 3
+    requiredLeadHoldSeconds: 0.5
+    cooldownRewardMode: 0
+    cooldownReductionSeconds: 6
+    bindDurationSeconds: 5
+    bindSpeedMultiplier: 0.5
+  camera:
+    sideBySideActivationSeconds: 0.6
+    executionCctvViewportRect:
+      serializedVersion: 2
+      x: 0.67
+      y: 0.35
+      width: 0.32
+      height: 0.3
+    executionTransitionSeconds: 0.2
+    executionReturnSeconds: 0.25
+  ai:
+    personalityAssignments: 0300000003000000010000000200000000000000
+    driving:
+      minLookAheadMetres: 14
+      lookAheadMetresPerKph: 0.32
+      minCornerScanMetres: 30
+      cornerBrakingDecel: 8
+      targetSpeedRiseKphPerSecond: 50
+      straightSpeedKph: 160
+      minCornerSpeedKph: 55
+      cornerGrip: 14
+      steerGainLowSpeed: 1.5
+      steerGainHighSpeed: 0.55
+      steerDamping: 0.06
+      apexOffsetMetres: 4.5
+      entryOffsetMetres: 3.5
+      racingLineReferenceDegrees: 30
+      laneMergeMetres: 140
+      maxLaneOffsetMetres: 6
+      laneSpreadMetres: 1.2
+      maxRoadHalfWidthMetres: 13
+      roadEdgeMarginMetres: 2.2
+      logDriveTelemetry: 0
+      waypointReachMetres: 9
+      maxPersonalityLateralMetres: 3
+      stuckSpeedKph: 1.5
+      stuckDelaySeconds: 2.5
+      reverseDurationSeconds: 1.25
+    personalityAssignment:
+      shuffleSeed: 0
+      logAssignment: 1
+      aggroRangeMetres: 45
+    defaultQuizAvoidChance: 0.5
+    personalityProfiles:
+    - personality: 3
+      paceScale: 1
+      lateralStrengthMetres: 0
+      boostTendency: 0.8
+      quizAvoidChance: 0.3
+      catchupAcceleration: 0.1
+    - personality: 1
+      paceScale: 0.96
+      lateralStrengthMetres: 7
+      boostTendency: 0.5
+      quizAvoidChance: 0.35
+      catchupAcceleration: 0.1
+    - personality: 2
+      paceScale: 0.86
+      lateralStrengthMetres: 5
+      boostTendency: 0.5
+      quizAvoidChance: 0.65
+      catchupAcceleration: 0.1
+    - personality: 0
+      paceScale: 0.9
+      lateralStrengthMetres: 0
+      boostTendency: 0.5
+      quizAvoidChance: 0.8
+      catchupAcceleration: 0.1
+  trackValidation:
+    minimumBoostStraights: 2
+    minimumParallelSections: 1
+  presentation:
+    gateOpenDurationSeconds: 20
+    gateWidthMeters: 16
+    gateHeightMeters: 7
+    gateCloseDelaySeconds: 0.2
+    gateCloseDurationSeconds: 0.75
+    gateExecutionDelaySeconds: 0.25
+    explosionVfxDurationSeconds: 0.45
+    wreckLingerSeconds: 2.5
+    masterSfxVolume: 1
+    warningAudioFadeSeconds: 0.25
+  playtest:
+    ruleUnderstandingTargetSeconds: 15
+    minimumExternalTesterCount: 3

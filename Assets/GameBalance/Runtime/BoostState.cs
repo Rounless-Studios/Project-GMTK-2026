@@ -22,6 +22,24 @@ namespace Gmtk2026.GameBalance
         public float SealTimeRemaining => Mathf.Max(0f, sealTimer);
         public float CurrentSpeedMultiplier => IsBoosting ? s.boostSpeedMultiplier : 1f;
 
+        /// <summary>
+        /// Booster gauge fill, 0..1: the charges in hand plus how far the next one has recharged, so a
+        /// UI gauge moves smoothly instead of jumping a whole slot at a time. Stays put while sealed,
+        /// because <see cref="Tick"/> pauses the recharge then.
+        /// </summary>
+        public float ChargeFill01
+        {
+            get
+            {
+                if (s.maximumCharges <= 0) return 0f;
+
+                float partial = Charges < s.maximumCharges && s.rechargeSecondsPerCharge > 0f
+                    ? Mathf.Clamp01(rechargeTimer / s.rechargeSecondsPerCharge)
+                    : 0f;
+                return Mathf.Clamp01((Charges + partial) / s.maximumCharges);
+            }
+        }
+
         private float boostTimer;
         private float rechargeTimer;
         private float sealTimer;

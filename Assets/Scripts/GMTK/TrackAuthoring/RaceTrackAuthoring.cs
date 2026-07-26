@@ -38,7 +38,8 @@ namespace GMTK.TrackAuthoring
     [ExecuteAlways, DisallowMultipleComponent]
     public sealed class RaceTrackAuthoring : MonoBehaviour
     {
-        private const string GeneratedRootName = "__GeneratedTrack";
+        /// <summary>Holds the road and the starting grid. The editor reads it to apply bake results.</summary>
+        public const string GeneratedRootName = "__GeneratedTrack";
 
         [Header("Shape")]
         [SerializeField] private bool closed = true;
@@ -63,6 +64,10 @@ namespace GMTK.TrackAuthoring
 
         [Header("Gameplay")]
         [SerializeField, Min(1f)] private float aiWaypointSpacing = 8f;
+        [Tooltip("Ranking and elimination read waypoint progress (GmtkRaceProgress), so the track only " +
+            "needs the finish line: one gate for the lap counter and the finish visual. Turn this off " +
+            "to fall back on a full ring of gates spaced by Checkpoint Spacing.")]
+        [SerializeField] private bool singleFinishGate = true;
         [SerializeField, Min(5f)] private float checkpointSpacing = 45f;
         [SerializeField, Min(1)] private int startingGridCount = 8;
         [SerializeField, Min(2f)] private float gridRowSpacing = 5f;
@@ -241,7 +246,9 @@ namespace GMTK.TrackAuthoring
             }
 
             AutoFindSceneSystems();
-            ClearGenerated();
+            // only the road and grid are thrown away here: the waypoint and checkpoint builders reuse
+            // or trim their own children, which keeps the fileIDs their owning prefabs are saved with
+            DestroyGeneratedRoots();
             SampleCollection samples = BuildSamples();
             Transform generated = NewChild(transform, GeneratedRootName);
 
@@ -254,11 +261,50 @@ namespace GMTK.TrackAuthoring
             Debug.Log($"Baked '{name}': {samples.length:0} m, {samples.items.Count} road samples.", this);
         }
 
+        /// <summary>
+        /// Rebuilds the checkpoint gates and nothing else. The AI waypoints live in a prefab, and a
+        /// full bake would pull all of them into the scene as instance overrides, so gate-only fixes
+        /// must not go through <see cref="Bake"/>.
+        /// </summary>
+        public void BakeCheckpointsOnly()
+        {
+            if (!TryValidate(out string problem))
+            {
+                Debug.LogError($"Cannot bake checkpoints: {problem}", this);
+                return;
+            }
+
+            AutoFindSceneSystems();
+            if (checkpoints == null)
+            {
+                Debug.LogError("Baking checkpoints on their own needs a Checkpoints manager in the scene, " +
+                    "otherwise the gates would be parented under a generated root that no bake clears.", this);
+                return;
+            }
+
+            SampleCollection samples = BuildSamples();
+            BuildCheckpoints(transform, samples);
+            Debug.Log($"Baked checkpoints for '{name}': {samples.length:0} m.", this);
+        }
+
+        /// <summary>
+        /// Transform.Find only ever returns the first match, so a scene that somehow holds two
+        /// generated roots could never converge: every bake destroyed one and added one back. Sweep
+        /// every match instead, or the stale road keeps its collider and the mesh asset.
+        /// </summary>
+        private void DestroyGeneratedRoots()
+        {
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                Transform child = transform.GetChild(i);
+                if (child.name == GeneratedRootName) DestroySafely(child.gameObject);
+            }
+        }
+
         [ContextMenu("Clear Generated Track")]
         public void ClearGenerated()
         {
-            Transform old = transform.Find(GeneratedRootName);
-            if (old != null) DestroySafely(old.gameObject);
+            DestroyGeneratedRoots();
 
             if (aiWaypoints != null)
                 ClearChildren(aiWaypoints.transform);
@@ -361,24 +407,35 @@ namespace GMTK.TrackAuthoring
             Transform root = aiWaypoints != null
                 ? aiWaypoints.transform
                 : NewChild(generated, "AI Waypoints");
-            if (aiWaypoints != null) ClearChildren(root);
 
+            // The path is owned by a prefab, and destroying the points would renumber every fileID in
+            // it: an unchanged track would still produce a 70k-line diff. Move the existing points
+            // instead, then add or trim only the difference.
             int count = Mathf.Max(2, Mathf.CeilToInt(samples.length / aiWaypointSpacing));
             for (int i = 0; i < count; i++)
             {
                 float distance = samples.length * i / count;
                 EvaluateSamples(samples, distance, out Vector3 position, out Quaternion rotation, out _);
-                GameObject point = waypointPrefab != null
-                    ? Instantiate(waypointPrefab)
-                    : GameObject.CreatePrimitive(PrimitiveType.Cube);
-                point.name = $"Waypoint_{i:000}";
-                point.transform.SetParent(root, false);
-                point.transform.SetPositionAndRotation(
+                Transform point = i < root.childCount ? root.GetChild(i) : NewWaypoint(root);
+                point.gameObject.name = $"Waypoint_{i:000}";
+                point.SetPositionAndRotation(
                     transform.TransformPoint(position + rotation * Vector3.up * 0.5f),
                     transform.rotation * rotation);
-                point.transform.localScale = Vector3.one;
+                point.localScale = Vector3.one;
                 if (point.TryGetComponent(out Collider collider)) DestroySafely(collider);
             }
+
+            for (int i = root.childCount - 1; i >= count; i--)
+                DestroySafely(root.GetChild(i).gameObject);
+        }
+
+        private Transform NewWaypoint(Transform root)
+        {
+            GameObject point = waypointPrefab != null
+                ? Instantiate(waypointPrefab)
+                : GameObject.CreatePrimitive(PrimitiveType.Cube);
+            point.transform.SetParent(root, false);
+            return point.transform;
         }
 
         private void BuildCheckpoints(Transform generated, SampleCollection samples)
@@ -394,7 +451,9 @@ namespace GMTK.TrackAuthoring
             RealTimeRacePositions positions =
                 FindFirstObjectByType<RealTimeRacePositions>(FindObjectsInactive.Include);
 
-            int count = Mathf.Max(2, Mathf.CeilToInt(samples.length / checkpointSpacing));
+            int count = singleFinishGate
+                ? 1
+                : Mathf.Max(2, Mathf.CeilToInt(samples.length / checkpointSpacing));
             for (int i = 0; i < count; i++)
             {
                 float distance = RepeatDistance(startDistance + samples.length * i / count, samples.length);

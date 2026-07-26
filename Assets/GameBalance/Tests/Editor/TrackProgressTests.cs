@@ -157,6 +157,70 @@ namespace Gmtk2026.GameBalance.Tests
         }
 
         [Test]
+        public void AGridBehindTheStartLineDoesNotEarnAPhantomLap()
+        {
+            TrackProgress track = Square();
+            var cursor = new TrackProgress.CarCursor();
+
+            // the starting grid sits behind the line, so the first crossing is not a completed lap
+            track.Advance(ref cursor, new Vector3(0f, 0f, 10f));   // 390 m: last segment, 10 m to go
+            TrackProgress.CarCursor start = cursor;
+
+            track.Advance(ref cursor, new Vector3(10f, 0f, 0f));   // 10 m past the line
+
+            Assert.AreEqual(1, cursor.lap, "the wrap itself is still a lap of the path");
+            Assert.AreEqual(20d, track.DistanceDriven(start, cursor), 0.001d,
+                "but the car has only driven the 20 m between the two points");
+        }
+
+        [Test]
+        public void DistanceDrivenRanksCarsThatStartedOnDifferentGridSlots()
+        {
+            TrackProgress track = Square();
+            var pole = new TrackProgress.CarCursor();
+            var back = new TrackProgress.CarCursor();
+
+            track.Advance(ref pole, new Vector3(0f, 0f, 5f));      // 395 m: front row
+            TrackProgress.CarCursor poleStart = pole;
+            track.Advance(ref back, new Vector3(0f, 0f, 15f));     // 385 m: back row
+            TrackProgress.CarCursor backStart = back;
+
+            track.Advance(ref pole, new Vector3(10f, 0f, 0f));     // drove 15 m
+            track.Advance(ref back, new Vector3(30f, 0f, 0f));     // drove 45 m
+
+            Assert.Greater(track.DistanceDriven(backStart, back), track.DistanceDriven(poleStart, pole),
+                "the car that covered more ground leads, whatever slot it started from");
+            Assert.AreEqual(15d, track.DistanceDriven(poleStart, pole), 0.001d);
+            Assert.AreEqual(45d, track.DistanceDriven(backStart, back), 0.001d);
+        }
+
+        [Test]
+        public void ReversingOffTheGridDrivesANegativeDistance()
+        {
+            TrackProgress track = Square();
+            var cursor = new TrackProgress.CarCursor();
+
+            track.Advance(ref cursor, new Vector3(50f, 0f, 0f));
+            TrackProgress.CarCursor start = cursor;
+            track.Advance(ref cursor, new Vector3(30f, 0f, 0f));
+
+            Assert.AreEqual(-20d, track.DistanceDriven(start, cursor), 0.001d,
+                "a car pointing the wrong way must rank behind one that has not moved");
+        }
+
+        [Test]
+        public void AnUnplacedCursorHasDrivenNothing()
+        {
+            TrackProgress track = Square();
+            var unplaced = new TrackProgress.CarCursor();
+            var placed = new TrackProgress.CarCursor();
+            track.Advance(ref placed, new Vector3(50f, 0f, 0f));
+
+            Assert.AreEqual(0d, track.DistanceDriven(unplaced, placed));
+            Assert.AreEqual(0d, track.DistanceDriven(placed, unplaced));
+        }
+
+        [Test]
         public void AnEmptyPathIsUnusableAndInert()
         {
             var empty = new TrackProgress(new List<Vector3>());

@@ -122,10 +122,23 @@ namespace Gmtk2026.GameBalance
             cursor.progressMetres = progress;
         }
 
-        /// <summary>Distance driven since the race start: the value races are ranked by.</summary>
+        /// <summary>Distance from the start of the path, laps included.</summary>
         public double TotalDistance(in CarCursor cursor)
         {
             return cursor.lap * (double)Length + cursor.progressMetres;
+        }
+
+        /// <summary>
+        /// Distance driven between two cursors on this path: the value races are ranked by. Cars line
+        /// up on a grid behind the start line, so a car's own starting point — not the path origin — is
+        /// what its progress has to be measured from, otherwise crossing the line for the first time
+        /// awards a whole phantom lap. Driving backwards returns a negative distance, which is what
+        /// ranking wants: such a car is behind everyone who has moved.
+        /// </summary>
+        public double DistanceDriven(in CarCursor start, in CarCursor now)
+        {
+            if (!start.placed || !now.placed) return 0d;
+            return TotalDistance(now) - TotalDistance(start);
         }
 
         /// <summary>Forget where a car was, so the next <see cref="Advance"/> searches the whole path.</summary>
