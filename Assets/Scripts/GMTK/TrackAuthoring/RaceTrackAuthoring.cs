@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using GMTK.Kit;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Serialization;
 
 namespace GMTK.TrackAuthoring
 {
@@ -61,6 +62,20 @@ namespace GMTK.TrackAuthoring
         [SerializeField] private Material roadMaterial;
         [SerializeField, Min(0.1f)] private float textureMetersPerTile = 5f;
         [SerializeField] private bool generateCollider = true;
+
+        [Header("Guardrails")]
+        [SerializeField] private bool generateGuardrails = true;
+        [SerializeField] private Material guardrailMaterial;
+        [SerializeField, Min(0.1f)] private float guardrailHeight = 1.2f;
+        [SerializeField, Min(0.02f)] private float guardrailThickness = 0.2f;
+
+        [Header("Start Line")]
+        [SerializeField] private bool generateStartLine = true;
+        [SerializeField] private Material startLineMaterial;
+        [SerializeField, Min(0.25f)] private float startLineLength = 1.5f;
+        [SerializeField, Min(1)] private int startLineChecksAcross = 10;
+        [FormerlySerializedAs("surfaceHeightOffset")]
+        [SerializeField, Min(0.001f)] private float startLineHeightOffset = 0.015f;
 
         [Header("Gameplay")]
         [SerializeField, Min(1f)] private float aiWaypointSpacing = 8f;
@@ -253,6 +268,8 @@ namespace GMTK.TrackAuthoring
             Transform generated = NewChild(transform, GeneratedRootName);
 
             BuildRoad(generated, samples);
+            BuildGuardrails(generated, samples);
+            BuildStartLine(generated, samples);
             BuildWaypoints(generated, samples);
             BuildCheckpoints(generated, samples);
             BuildStartingGrid(generated, samples);
@@ -400,6 +417,152 @@ namespace GMTK.TrackAuthoring
                 MeshCollider collider = road.AddComponent<MeshCollider>();
                 collider.sharedMesh = mesh;
             }
+        }
+
+        private void BuildGuardrails(Transform generated, SampleCollection samples)
+        {
+            if (!generateGuardrails) return;
+
+            Transform root = NewChild(generated, "Guardrails");
+            BuildGuardrail(root, samples, -1f, "Guardrail Left");
+            BuildGuardrail(root, samples, 1f, "Guardrail Right");
+        }
+
+        private void BuildGuardrail(Transform root, SampleCollection samples, float side,
+            string objectName)
+        {
+            GameObject rail = new(objectName);
+            rail.transform.SetParent(root, false);
+            MeshFilter filter = rail.AddComponent<MeshFilter>();
+            MeshRenderer renderer = rail.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = guardrailMaterial;
+
+            int count = samples.items.Count;
+            var vertices = new Vector3[count * 4];
+            var normals = new Vector3[count * 4];
+            var uvs = new Vector2[count * 4];
+            int segmentCount = closed ? count : count - 1;
+            var triangles = new int[segmentCount * 18];
+
+            for (int i = 0; i < count; i++)
+            {
+                TrackSample sample = samples.items[i];
+                Vector3 right = sample.rotation * Vector3.right;
+                Vector3 up = sample.rotation * Vector3.up;
+                // The inner face shares the road's exact edge vertex. Keeping an authoring offset
+                // here leaves a visible seam and can let wheels drop between road and collider.
+                Vector3 inner = sample.position + right * (side * sample.width * 0.5f);
+                Vector3 outer = inner + right * (side * guardrailThickness);
+                int v = i * 4;
+                vertices[v] = inner;
+                vertices[v + 1] = inner + up * guardrailHeight;
+                vertices[v + 2] = outer;
+                vertices[v + 3] = outer + up * guardrailHeight;
+                normals[v] = normals[v + 1] = -right * side;
+                normals[v + 2] = normals[v + 3] = right * side;
+                float uvDistance = sample.distance / textureMetersPerTile;
+                uvs[v] = new Vector2(0f, uvDistance);
+                uvs[v + 1] = new Vector2(1f, uvDistance);
+                uvs[v + 2] = new Vector2(0f, uvDistance);
+                uvs[v + 3] = new Vector2(1f, uvDistance);
+            }
+
+            for (int i = 0; i < segmentCount; i++)
+            {
+                int next = (i + 1) % count;
+                int a = i * 4;
+                int b = next * 4;
+                int t = i * 18;
+                AddQuad(triangles, t, a, b, a + 1, b + 1);
+                AddQuad(triangles, t + 6, a + 3, b + 3, a + 2, b + 2);
+                AddQuad(triangles, t + 12, a + 1, b + 1, a + 3, b + 3);
+            }
+
+            Mesh mesh = CreateMesh($"{name}_{objectName}", vertices, normals, uvs, triangles);
+            filter.sharedMesh = mesh;
+            rail.AddComponent<MeshCollider>().sharedMesh = mesh;
+        }
+
+        private void BuildStartLine(Transform generated, SampleCollection samples)
+        {
+            if (!generateStartLine || startLineMaterial == null) return;
+
+            EvaluateSamples(samples, startDistance - startLineLength * 0.5f,
+                out Vector3 start, out Quaternion startRotation, out float startWidth);
+            EvaluateSamples(samples, startDistance + startLineLength * 0.5f,
+                out Vector3 end, out Quaternion endRotation, out float endWidth);
+            var vertices = new Vector3[4];
+            var normals = new Vector3[4];
+            var uvs = new Vector2[4];
+            var triangles = new int[6];
+            WriteRibbonQuad(vertices, normals, uvs, triangles, 0, start, startRotation,
+                startWidth, end, endRotation, endWidth, 0f, 1f, startLineHeightOffset);
+            float checksAlong = Mathf.Max(1f, startLineChecksAcross * startLineLength
+                / Mathf.Max(0.1f, (startWidth + endWidth) * 0.5f));
+            uvs[1] = new Vector2(startLineChecksAcross, 0f);
+            uvs[2] = new Vector2(0f, checksAlong);
+            uvs[3] = new Vector2(startLineChecksAcross, checksAlong);
+            CreateMeshObject(generated, "Start Line", startLineMaterial,
+                CreateMesh($"{name}_StartLine", vertices, normals, uvs, triangles));
+        }
+
+        private static void WriteRibbonQuad(Vector3[] vertices, Vector3[] normals, Vector2[] uvs,
+            int[] triangles, int index, Vector3 start, Quaternion startRotation, float startWidth,
+            Vector3 end, Quaternion endRotation, float endWidth, float lateral, float widthRatio,
+            float heightOffset)
+        {
+            int v = index * 4;
+            Vector3 startRight = startRotation * Vector3.right;
+            Vector3 endRight = endRotation * Vector3.right;
+            Vector3 startUp = startRotation * Vector3.up;
+            Vector3 endUp = endRotation * Vector3.up;
+            float startCenter = lateral * startWidth * 0.5f;
+            float endCenter = lateral * endWidth * 0.5f;
+            float startHalf = startWidth * widthRatio * 0.5f;
+            float endHalf = endWidth * widthRatio * 0.5f;
+            vertices[v] = start + startRight * (startCenter - startHalf) + startUp * heightOffset;
+            vertices[v + 1] = start + startRight * (startCenter + startHalf) + startUp * heightOffset;
+            vertices[v + 2] = end + endRight * (endCenter - endHalf) + endUp * heightOffset;
+            vertices[v + 3] = end + endRight * (endCenter + endHalf) + endUp * heightOffset;
+            normals[v] = normals[v + 1] = startUp;
+            normals[v + 2] = normals[v + 3] = endUp;
+            uvs[v] = new Vector2(0f, 0f);
+            uvs[v + 1] = new Vector2(1f, 0f);
+            uvs[v + 2] = new Vector2(0f, 1f);
+            uvs[v + 3] = new Vector2(1f, 1f);
+            AddQuad(triangles, index * 6, v, v + 2, v + 1, v + 3);
+        }
+
+        private static void AddQuad(int[] triangles, int offset, int a, int b, int c, int d)
+        {
+            triangles[offset] = a;
+            triangles[offset + 1] = b;
+            triangles[offset + 2] = c;
+            triangles[offset + 3] = c;
+            triangles[offset + 4] = b;
+            triangles[offset + 5] = d;
+        }
+
+        private static Mesh CreateMesh(string meshName, Vector3[] vertices, Vector3[] normals,
+            Vector2[] uvs, int[] triangles)
+        {
+            Mesh mesh = new() { name = meshName };
+            if (vertices.Length > 65535) mesh.indexFormat = IndexFormat.UInt32;
+            mesh.vertices = vertices;
+            mesh.normals = normals;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        private static void CreateMeshObject(Transform parent, string objectName, Material material,
+            Mesh mesh)
+        {
+            GameObject item = new(objectName);
+            item.transform.SetParent(parent, false);
+            item.AddComponent<MeshFilter>().sharedMesh = mesh;
+            item.AddComponent<MeshRenderer>().sharedMaterial = material;
         }
 
         private void BuildWaypoints(Transform generated, SampleCollection samples)

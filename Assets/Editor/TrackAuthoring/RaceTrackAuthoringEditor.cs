@@ -76,6 +76,9 @@ namespace GMTK.Editor.TrackAuthoring
         private const string FinishPrefab =
             "Assets/Racing Starter Kit/RSK Assets/Prefabs/Race Finish Checkpoint Variant.prefab";
         private const string RoadMaterial = "Assets/Track/Materials/Tarmac.mat";
+        private const string GuardrailMaterial = "Assets/Track/Materials/Barrier.mat";
+        private const string StartLineMaterial = "Assets/Track/Materials/StartLineChecker.mat";
+        private const string StartLineTexture = "Assets/Track/Textures/CheckerAlbedo.tif";
 
         private int selectedPoint;
         private static readonly Color PointColor = new(0f, 1f, 1f, 1f);
@@ -375,6 +378,9 @@ namespace GMTK.Editor.TrackAuthoring
             AssignAssetIfEmpty<GameObject>(so, "checkpointPrefab", CheckpointPrefab);
             AssignAssetIfEmpty<GameObject>(so, "finishCheckpointPrefab", FinishPrefab);
             AssignAssetIfEmpty<Material>(so, "roadMaterial", RoadMaterial);
+            AssignAssetIfEmpty<Material>(so, "guardrailMaterial", GuardrailMaterial);
+            EnsureStartLineMaterial();
+            AssignAssetIfEmpty<Material>(so, "startLineMaterial", StartLineMaterial);
 
             if (createMissing)
             {
@@ -386,6 +392,25 @@ namespace GMTK.Editor.TrackAuthoring
             so.ApplyModifiedProperties();
             EditorUtility.SetDirty(track);
             MarkSceneDirty(track);
+        }
+
+        private static void EnsureStartLineMaterial()
+        {
+            if (AssetDatabase.LoadAssetAtPath<Material>(StartLineMaterial) != null) return;
+
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            Texture texture = AssetDatabase.LoadAssetAtPath<Texture>(StartLineTexture);
+            if (shader == null || texture == null)
+            {
+                Debug.LogWarning("Could not create the start-line material because its URP shader " +
+                    $"or checker texture is missing ({StartLineTexture}).");
+                return;
+            }
+
+            Material material = new(shader) { name = "StartLineChecker", mainTexture = texture };
+            material.SetTexture("_BaseMap", texture);
+            AssetDatabase.CreateAsset(material, StartLineMaterial);
+            AssetDatabase.SaveAssetIfDirty(material);
         }
 
         private static void AssignAssetIfEmpty<T>(SerializedObject so, string propertyName,
@@ -427,7 +452,7 @@ namespace GMTK.Editor.TrackAuthoring
             SyncVisualHandlesToAuthoring(track);
             Undo.RegisterFullObjectHierarchyUndo(track.gameObject, "Bake Race Track");
             track.Bake();
-            PersistGeneratedMesh(track);
+            PersistGeneratedMeshes(track);
             MarkSceneDirty(track);
         }
 
@@ -461,11 +486,10 @@ namespace GMTK.Editor.TrackAuthoring
             SceneView.RepaintAll();
         }
 
-        private static void PersistGeneratedMesh(RaceTrackAuthoring track)
+        private static void PersistGeneratedMeshes(RaceTrackAuthoring track)
         {
-            MeshFilter filter = track.transform.Find("__GeneratedTrack/Road")
-                ?.GetComponent<MeshFilter>();
-            if (filter == null || filter.sharedMesh == null) return;
+            Transform generated = track.transform.Find(RaceTrackAuthoring.GeneratedRootName);
+            if (generated == null) return;
 
             const string folder = "Assets/GeneratedTracks";
             if (!AssetDatabase.IsValidFolder(folder))
@@ -474,13 +498,29 @@ namespace GMTK.Editor.TrackAuthoring
             string sceneName = string.IsNullOrWhiteSpace(track.gameObject.scene.name)
                 ? "UnsavedScene"
                 : track.gameObject.scene.name;
-            string fileName = MakeSafeFileName($"{sceneName}_{track.name}_Road.asset");
-            string path = $"{folder}/{fileName}";
+            string legacySurfaceDetails = $"{folder}/" +
+                MakeSafeFileName($"{sceneName}_{track.name}_Surface Details.asset");
+            if (AssetDatabase.LoadAssetAtPath<Mesh>(legacySurfaceDetails) != null)
+                AssetDatabase.DeleteAsset(legacySurfaceDetails);
+
+            foreach (MeshFilter filter in generated.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null) continue;
+                string suffix = filter.transform == generated.Find("Road")
+                    ? "Road"
+                    : filter.name;
+                string fileName = MakeSafeFileName($"{sceneName}_{track.name}_{suffix}.asset");
+                PersistMesh(filter, $"{folder}/{fileName}");
+            }
+        }
+
+        private static void PersistMesh(MeshFilter filter, string path)
+        {
             Mesh source = filter.sharedMesh;
             Mesh replacement = AssetDatabase.LoadAssetAtPath<Mesh>(path);
             if (ReferenceEquals(source, replacement))
             {
-                // The road already is the asset, so the copy below would Clear() the very geometry it
+                // The mesh already is the asset, so the copy below would Clear() the very geometry it
                 // is about to read and leave an empty mesh behind. Nothing to copy: just save it.
                 EditorUtility.SetDirty(replacement);
                 AssetDatabase.SaveAssetIfDirty(replacement);
