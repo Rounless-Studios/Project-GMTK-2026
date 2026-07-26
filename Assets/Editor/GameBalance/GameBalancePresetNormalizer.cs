@@ -65,8 +65,9 @@ namespace GMTK.EditorTools
             // only means harder braking at every corner, which reads as slower, not faster.
             settings.ai.driving.straightSpeedKph = 200f;
             // boost is spent the moment a charge is back, including off the start line
-            settings.ai.driving.boostDecisionIntervalSeconds = 0.25f;
+            settings.ai.driving.boostDecisionIntervalSeconds = 0f;
             settings.ai.driving.boostMinimumSpeedKph = 0f;
+            settings.ai.driving.boostOnlyOnStraights = false;
             settings.ai.driving.cornerGrip = 18f;
             settings.ai.driving.minCornerSpeedKph = 60f;
 

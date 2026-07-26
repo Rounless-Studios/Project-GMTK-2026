@@ -408,7 +408,7 @@ namespace GMTK.Rccp
             if (boost == null || Time.time < nextBoostDecisionAt) return;
             nextBoostDecisionAt = Time.time + S.boostDecisionIntervalSeconds;
 
-            if (!AiDriving.ShouldBoostOnStraight(
+            if (!AiDriving.ShouldBoost(
                     headingChange,
                     currentSpeedKph,
                     boost.Charges > 0,

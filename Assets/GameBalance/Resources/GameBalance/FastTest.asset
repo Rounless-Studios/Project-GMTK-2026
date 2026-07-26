@@ -139,11 +139,14 @@ MonoBehaviour:
       logDriveTelemetry: 0
       logTrackContact: 0
       waypointReachMetres: 9
+      waypointReachSecondsAhead: 0.25
+      waypointResyncMetres: 45
       maxPersonalityLateralMetres: 3
       stuckSpeedKph: 1.5
       stuckDelaySeconds: 2.5
       reverseDurationSeconds: 1.25
-      boostDecisionIntervalSeconds: 0.25
+      boostDecisionIntervalSeconds: 0
+      boostOnlyOnStraights: 0
       boostStraightMaximumDegrees: 8
       boostMinimumSpeedKph: 0
       catchupGapMetres: 35

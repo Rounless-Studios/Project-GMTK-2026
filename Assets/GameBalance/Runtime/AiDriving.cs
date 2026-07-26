@@ -245,12 +245,14 @@ namespace Gmtk2026.GameBalance
         }
 
         /// <summary>
-        /// Whether to spend a boost charge now. Only on a straight - a boost into a corner is thrown
-        /// away and usually into a barrier - only while actually moving, and only with a charge in hand.
+        /// Whether to spend a boost charge now: as soon as one is in hand, unless the preset asks the AI
+        /// to wait for a straight. Waiting is off by default - a charge sitting unused is a charge the
+        /// player never has to race against - and the speed target is raised only on a straight anyway,
+        /// so a boost burning through a corner cannot carry the car off the road.
         /// <paramref name="roll"/> is a 0..1 random draw compared against the personality's eagerness,
         /// passed in so the decision stays deterministic under test.
         /// </summary>
-        public static bool ShouldBoostOnStraight(
+        public static bool ShouldBoost(
             float headingChangeDegrees,
             float speedKph,
             bool hasCharge,
@@ -259,8 +261,11 @@ namespace Gmtk2026.GameBalance
             AiDrivingSettings s)
         {
             if (!hasCharge) return false;
-            if (Mathf.Abs(headingChangeDegrees) > s.boostStraightMaximumDegrees) return false;
             if (speedKph < s.boostMinimumSpeedKph) return false;
+
+            if (s.boostOnlyOnStraights &&
+                Mathf.Abs(headingChangeDegrees) > s.boostStraightMaximumDegrees)
+                return false;
 
             return roll <= boostTendency;
         }

@@ -420,8 +420,10 @@ namespace Gmtk2026.GameBalance
         [Min(0)] public float reverseDurationSeconds = 1.25f;
 
         [Header("Tactics")]
-        [Tooltip("How often the AI reconsiders spending a charge. Short so a charge is spent as soon as it recharges.")]
-        [Min(0.1f)] public float boostDecisionIntervalSeconds = 0.25f;
+        [Tooltip("Seconds between boost decisions. 0 means the AI spends a charge the frame it becomes available, which is the current design.")]
+        [Min(0)] public float boostDecisionIntervalSeconds = 0f;
+        [Tooltip("When set, the AI holds its charge until the road ahead is straight. Off by default: a charge is spent as soon as it exists. The speed target is still only raised on a straight, so a boost burning through a corner does not carry the car off the road.")]
+        public bool boostOnlyOnStraights = false;
         [Tooltip("Heading change over the corner scan that still counts as a straight, both for " +
                  "spending a boost and for letting the boosted speed target stand.")]
         [Min(0)] public float boostStraightMaximumDegrees = 8f;

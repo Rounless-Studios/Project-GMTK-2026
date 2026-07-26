@@ -264,22 +264,29 @@ namespace Gmtk2026.GameBalance.Tests
         }
 
         [Test]
-        public void BoostIsSpentOnStraightsOnly()
+        public void BoostIsSpentAsSoonAsAChargeExists()
         {
             var s = Settings();
             float straight = s.boostStraightMaximumDegrees * 0.5f;
             float corner = s.boostStraightMaximumDegrees + 5f;
 
-            Assert.IsTrue(AiDriving.ShouldBoostOnStraight(straight, 120f, true, 1f, 0.5f, s));
-            Assert.IsFalse(AiDriving.ShouldBoostOnStraight(corner, 120f, true, 1f, 0.5f, s),
-                "a boost into a corner is thrown away");
-            Assert.IsFalse(AiDriving.ShouldBoostOnStraight(straight, 120f, false, 1f, 0.5f, s),
+            Assert.IsTrue(AiDriving.ShouldBoost(straight, 120f, true, 1f, 0.5f, s));
+            Assert.IsTrue(AiDriving.ShouldBoost(corner, 120f, true, 1f, 0.5f, s),
+                "by default a charge is not hoarded for a straight");
+
+            s.boostOnlyOnStraights = true;
+            Assert.IsFalse(AiDriving.ShouldBoost(corner, 120f, true, 1f, 0.5f, s),
+                "a preset can still ask the AI to wait for a straight");
+            Assert.IsTrue(AiDriving.ShouldBoost(straight, 120f, true, 1f, 0.5f, s));
+
+            s.boostOnlyOnStraights = false;
+            Assert.IsFalse(AiDriving.ShouldBoost(straight, 120f, false, 1f, 0.5f, s),
                 "no charge in hand");
             // the default is 0 so cars boost off the line; the threshold still has to work when set
             s.boostMinimumSpeedKph = 40f;
-            Assert.IsFalse(AiDriving.ShouldBoostOnStraight(straight, 30f, true, 1f, 0.5f, s),
+            Assert.IsFalse(AiDriving.ShouldBoost(straight, 30f, true, 1f, 0.5f, s),
                 "with a threshold set, a crawling car keeps its charge");
-            Assert.IsTrue(AiDriving.ShouldBoostOnStraight(straight, 50f, true, 1f, 0.5f, s));
+            Assert.IsTrue(AiDriving.ShouldBoost(straight, 50f, true, 1f, 0.5f, s));
         }
 
         [Test]
@@ -287,9 +294,9 @@ namespace Gmtk2026.GameBalance.Tests
         {
             var s = Settings();
 
-            Assert.IsTrue(AiDriving.ShouldBoostOnStraight(0f, 120f, true, 0.8f, 0.7f, s),
+            Assert.IsTrue(AiDriving.ShouldBoost(0f, 120f, true, 0.8f, 0.7f, s),
                 "an eager personality takes this draw");
-            Assert.IsFalse(AiDriving.ShouldBoostOnStraight(0f, 120f, true, 0.3f, 0.7f, s),
+            Assert.IsFalse(AiDriving.ShouldBoost(0f, 120f, true, 0.3f, 0.7f, s),
                 "a cautious one does not");
         }
 
