@@ -303,7 +303,7 @@ EditMode 테스트는 `GameBalanceSettingsTests.cs` 11케이스로 존재하지�
 | 최종 관문 (규칙 + 폐쇄 연출) | 구현·플레이 미검증 | `FinalGate.cs`(규칙·시퀀스 타이밍), `FinalGateDoors.cs`(런타임 2엽 관문·폐쇄 애니메이션·통과 트리거), `PresentationSettings` 관문 6필드 | 정적 |
 | 내구도·대파 | 구현 (상태머신) | `DurabilityController.cs`, `DurabilityManager.cs`, `DurabilityState.cs`, `DurabilityHud.cs`. 단계별 VFX 없음 | 정적 |
 | 부스트 (2칸·1.25초·6초 재충전) | 구현 | `BoostController.cs`, `BoostManager.cs`, `BoostState.cs`, `GmtkRccpVehicle.ApplyBoost` | 정적 |
-| 부스트 입력 | **규칙 위반** | `BoostController.Update`가 레거시 `Input.GetKeyDown(Space/LeftShift/RightShift)` 사용. 프로젝트 규칙은 새 Input System 전용 | 정적 |
+| 부스트 입력 | 구현 | `BoostController.Update`가 새 Input System의 좌·우 `Shift`를 사용. RCCP의 수동 변속과 `F` NOS 입력은 런타임 바인딩 해제로 중복 동작 방지 | 정적 |
 | 저주 3종 + 공용 쿨다운 12초 | 구현 | `CurseController.cs`(284줄), `CurseManager.cs`(487줄), `CurseType.cs`, `CurseCooldownState.cs` | 정적 |
 | 저주 ↔ 퀴즈 결합 방향 (방어형) | 구현·기획 확정 | **시전자가 E로 발동 → 대상이 퀴즈를 풀어 방어**(정답=무효, 오답·시간초과=적용). 2026-07-26 이 흐름을 정본으로 확정 | 정적 |
 | 추월 도전 (20초 주기·8초 제한·0.5초 유지·보상) | 구현 | `OvertakeManager.cs`, `OvertakeChallengeState.cs` | 정적 |
@@ -367,13 +367,15 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 7. **추월 실패 속박이 실제로 감속하지 않는다** (`BindSpeedMultiplier` 소비자 없음).
 8. **저주 사전 경고와 연속 저주 유예가 없다.** 방어형 흐름 자체는 확정·구현이지만, AI가 표적을 연속으로
    찍는 것을 막는 유예(`hostileEffectGraceSeconds`)와 "표적이 됐다"는 사전 신호가 없다.
-9. `BoostController`가 레거시 `Input` API를 사용한다 (프로젝트 규칙 위반, Active Input Handling 의존).
-10. RCC 차량 렌즈 플레어가 URP에서 표시되지 않음 (`LegacyLensFlareUrpBridge` 미검증).
-11. 레거시 랜덤 이벤트가 `GMTK_Race`에서 켜져 있다 (`enableEvents: 1`).
-12. 관문 슬램 SFX 음원이 없어 `SFX_VEH_COLLISION_`이 플레이스홀더로 쓰인다 (3.14 범위).
+9. RCC 차량 렌즈 플레어가 URP에서 표시되지 않음 (`LegacyLensFlareUrpBridge` 미검증).
+10. 레거시 랜덤 이벤트가 `GMTK_Race`에서 켜져 있다 (`enableEvents: 1`).
+11. 관문 슬램 SFX 음원이 없어 `SFX_VEH_COLLISION_`이 플레이스홀더로 쓰인다 (3.14 범위).
 
 **2026-07-26에 해소된 항목**
 
+- ~~`BoostController`가 레거시 `Input` API를 사용한다~~ → 새 Input System의 좌·우 `Shift`로 이전하고,
+  RCCP의 수동 변속 및 `F` NOS 액션을 런타임에 해제했다. RCCP NOS의 배기 불꽃은 토크 로직 없이
+  `BoostController.IsBoosting` 동안 재사용한다.
 - ~~트랙 산출물이 씬과 두 프리팹에 흩어져 있다~~ → 웨이포인트·게이트·스폰 포인트·도로·그리드를 모두
   `Race Track Authoring.prefab`이 소유한다. `aiWaypoints`/`checkpoints`/`spawnPoints` 참조도 프리팹 내부
   참조가 되어 공유 씬은 5.78MB → 51.8KB, **베이크 1회당 씬 diff 0줄**(프리팹 2 380줄)이 됐다. Bake Track이
@@ -606,11 +608,11 @@ PlayMode 자동 테스트는 없고, 대신 CLI에서 수동 생성하는 스모
 ### 3.2 부스트
 
 - [x] 충전량·지속시간·재충전·가속 배율을 `BoostSettings`에서 읽음 — `BoostState`가 `maximumCharges`/`durationSeconds`/`rechargeSecondsPerCharge`/`boostSpeedMultiplier` 사용
-- [ ] `Space` 또는 `Shift` 부스트 입력 — 동작하는 코드는 있으나 **레거시 `Input.GetKeyDown`** 이라 프로젝트 규칙(새 Input System 전용) 위반. `InputSystem_Actions`로 이전 필요
+- [x] `Shift` 부스트 입력 — 새 Input System의 좌·우 `Shift` 사용. RCCP의 `Gear Shift Up`과 `F` NOS는 런타임 바인딩 해제로 중복 입력 차단
 - [x] 최대 2칸, 사용 시 한 칸 소비
 - [x] 1.25초 추가 가속 — `GmtkRccpVehicle.ApplyBoost`가 `(배수-1) × boostAcceleration`을 `ForceMode.Acceleration`으로 가함
 - [x] 6초마다 한 칸 재충전
-- [ ] 부스트 VFX와 사운드 — 없음. `Assets/Sound`에 `SFX_HUD_BOOST_CHARGE-01~03` 클립은 있으나 호출 지점이 없다
+- [x] 부스트 VFX와 사운드 — `BoostController.IsBoosting` 동안 RCCP NOS의 배기 불꽃·색상·라이트를 재사용하고, `GameAudioManager`가 시작·루프·종료·충전·봉인 큐를 재생
 - [ ] 부스트 충전량 HUD — `RaceHud`에 문자열은 있으나 **`RaceHud`가 씬에 배치되지 않아 표시되지 않는다**
 - [x] 추월 성공 시 한 칸 회복 — `OvertakeManager.OnSuccess` → `BoostController.RewardOvertake`
 - [x] 엔진 봉인 중 사용과 충전 중단 — `BoostState.ApplySeal`

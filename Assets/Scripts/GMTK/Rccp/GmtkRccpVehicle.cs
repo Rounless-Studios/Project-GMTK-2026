@@ -98,6 +98,10 @@ namespace GMTK.Rccp
             RCCP.RegisterPlayerVehicle(carController, true, true);
             RCCP.SetControl(carController, true);
 
+            // registering the player is what makes RCCP build its input actions, so the
+            // unwanted bindings are stripped right after
+            GmtkRccpInputOverrides.Apply();
+
             AttachChaseCamera();
         }
 
